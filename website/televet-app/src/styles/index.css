@@ -1,0 +1,371 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+body {
+  background-color: #FEF7E5;
+  margin: 0;
+  padding: 0;
+  font-family: 'Inter', sans-serif;
+}
+
+/* Hero Container */
+.hero-container {
+  position: relative;
+}
+
+/* Wave Divider */
+.wave-divider {
+  position: absolute;
+  bottom: -50px;
+  left: 0;
+  width: 100%;
+  height: 100px;
+  z-index: 1;
+  overflow: hidden;
+}
+
+.wave-svg {
+  position: relative;
+  display: block;
+  width: calc(100% + 1.3px);
+  height: 100px;
+}
+
+/* Hero Section */
+.hero-title {
+  font-size: 2.5rem;
+  font-weight: bold;
+  color: #1f2937;
+  margin-bottom: 1.5rem;
+  line-height: 1.25;
+  text-align: center;
+}
+
+@media (min-width: 768px) {
+  .hero-title {
+    font-size: 3rem;
+  }
+}
+
+.hero-subtitle {
+  color: #4b5563;
+  font-size: 1.125rem;
+  margin-bottom: 2rem;
+  max-width: 32rem;
+  margin-left: auto;
+  margin-right: auto;
+  text-align: center;
+}
+
+.signup-btn {
+  background-color: #2C46BE;
+  color: white;
+  padding: 0.75rem 2rem;
+  font-size: 1.125rem;
+  font-weight: 500;
+  border-radius: 9999px;
+  transition: background-color 0.3s;
+  border: none;
+  cursor: pointer;
+  display: block;
+  margin: 0 auto 3rem auto;
+}
+
+.signup-btn:hover {
+  background-color: #20359D;
+}
+
+/* Hero Image */
+.hero-image-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: 3rem;
+  margin-bottom: 0;
+  position: relative;
+  z-index: 5;
+}
+
+.hero-image {
+  width: 100%;
+  max-width: 40rem;
+  height: auto;
+  object-fit: contain;
+  display: block;
+  margin: 0 auto;
+}
+
+/* Statistics Section */
+.stats-section {
+  background: linear-gradient(to right, #fb923c, #facc15);
+  border-radius: 1rem;
+  padding: 2rem;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  position: relative;
+  z-index: 10;
+  margin-top: -1rem;
+  max-width: 800px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 2rem;
+  color: white;
+  text-align: center;
+}
+
+@media (min-width: 768px) {
+  .stats-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+.stat-item {
+  position: relative;
+}
+
+.stat-number {
+  font-size: 2.5rem;
+  font-weight: bold;
+  margin-bottom: 0.5rem;
+}
+
+.stat-label {
+  font-size: 0.875rem;
+  opacity: 0.9;
+}
+
+@media (min-width: 768px) {
+  .stat-number {
+    font-size: 3rem;
+  }
+
+  .stat-label {
+    font-size: 1rem;
+  }
+}
+
+.stat-dot {
+  display: none;
+}
+
+@media (min-width: 768px) {
+  .stat-dot {
+    display: block;
+    position: absolute;
+    top: 50%;
+    right: -1rem;
+    width: 0.5rem;
+    height: 0.5rem;
+    background-color: white;
+    border-radius: 9999px;
+    opacity: 0.6;
+    transform: translateY(-50%);
+  }
+}
+
+/* New "What We Offer" section */
+.what-we-offer-section {
+  background-color: #5368d3;
+}
+.wave-divider {
+  position: absolute;
+  bottom: -10px; /* adjust as needed */
+  left: 0;
+  width: 100%;
+  height: 180px;
+  z-index: 1;
+  overflow: hidden;
+}
+
+.wave-svg {
+  display: block;
+  width: 100%;
+  height: 180px;
+}
+
+
+.what-we-offer-section {
+  background-color: #5368d3;
+  /* margin-top: 6rem; */ /* Remove or change this */
+  margin-top: 0; /* <-- Add this instead */
+  z-index: 1;
+  position: relative;
+  padding: 4rem 1.5rem;
+  color: white;
+}
+.stats-section {
+  /* existing styles... */
+  margin-bottom: 0;
+}
+
+.offer-title {
+  font-size: 2.5rem;
+  font-weight: bold;
+  color: #ffffff;
+  margin-bottom: 2rem;
+  line-height: 1.25;
+  text-align: center;
+}
+
+@media (min-width: 768px) {
+  .offer-title {
+    font-size: 3rem;
+  }
+}
+
+/* Section Layout */
+.how-it-works-section {
+  background-color: #FEF7E5;
+  padding: 4rem 1.5rem;
+  margin-top: 2rem;
+  border-radius: 1rem;
+}
+
+/* General Row Style */
+.row {
+  display: flex;
+  margin: 3rem auto;
+  max-width: 1000px;
+}
+
+/* Column Structure */
+.column {
+  flex: 1;
+  padding: 1rem;
+  text-align: center;
+}
+
+/* Centered paw section */
+.paw-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Paw Emoji Styling */
+.paw-print {
+  font-size: 1.5rem;
+  color: #1f2937;
+  opacity: 0.7;
+}
+
+/* Text Styling */
+.step-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #1f2937;
+  margin-bottom: 0.5rem;
+}
+
+.step-description {
+  font-size: 1rem;
+  color: #6b7280;
+  line-height: 1.5;
+}
+
+/* Button Styling */
+.learn-more-btn {
+  background-color: #2C46BE;
+  color: white;
+  padding: 0.75rem 2rem;
+  font-size: 1.125rem;
+  font-weight: 500;
+  border-radius: 9999px;
+  transition: background-color 0.3s;
+  border: none;
+  cursor: pointer;
+  display: block;
+  margin: 0 auto;
+}
+
+.learn-more-btn:hover {
+  background-color: #20359D;
+}
+
+/* Responsive Stack for Mobile */
+@media screen and (max-width: 768px) {
+  .row {
+    flex-direction: column;
+  }
+  .column {
+    width: 100%;
+  }
+  .paw-center {
+    flex-direction: row;
+    justify-content: center;
+    gap: 0.5rem;
+  }
+}
+
+.with-paws {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 1rem;
+}
+
+.paw-image-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.paw-image {
+  width: 50px;
+  height: auto;
+  opacity: 0.6;
+}
+
+.svg-wave {
+  position: relative;
+  margin-top: -150px;
+  margin-bottom: -1px; /* small overlap to ensure flush fit */
+  z-index: 0;
+  line-height: 0;       /* removes vertical whitespace */
+  display: block;       /* removes inline gap */
+}
+
+.svg-wave svg {
+  display: block;       /* also ensure svg itself removes inline spacing */
+  width: 100%;
+  height: auto;
+}
+
+
+
+.learn-more-btn {
+  position: relative;
+  z-index: 1;
+}
+
+/* Section Layout */
+.start-now-section {
+  background-color: #9ac8fe;
+}
+
+
+
+.start-title {
+  font-size: 2.5rem;
+  font-weight: bold;
+  color: #ffffff;
+  margin: 0;
+  line-height: 1.25;
+  text-align: center;
+  position: relative;
+  z-index: 1;
+  margin-bottom: 2rem;
+}
+
+
+.start-now-section img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 0 auto; /* this centers it */
+}

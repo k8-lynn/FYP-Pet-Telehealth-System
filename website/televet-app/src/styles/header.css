@@ -1,0 +1,84 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+.header-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.5rem;
+  max-width: 80rem;
+  margin: 0 auto;
+  font-family: 'Inter', sans-serif;
+}
+
+.logo {
+  font-size: 1.25rem;
+  font-weight: bold;
+  font-family: 'Inter', sans-serif;
+}
+
+.logo-dark {
+  color: #1f2937;
+}
+
+.logo-accent {
+  color: #f97316;
+}
+
+.nav-links {
+  display: none;
+}
+
+@media (min-width: 768px) {
+  .nav-links {
+    display: flex;
+    align-items: center;
+    gap: 2rem;
+  }
+}
+
+.nav-link {
+  font-weight: 500;
+  color: #4b5563;
+  text-decoration: none;
+  transition: color 0.3s;
+  font-family: 'Inter', sans-serif;
+}
+
+.nav-link:hover {
+  color: #2C46BE;
+}
+
+.button-group {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.btn {
+  padding: 0.5rem 1.5rem;
+  border-radius: 9999px;
+  font-weight: 500;
+  transition: background-color 0.3s;
+  font-family: 'Inter', sans-serif;
+  cursor: pointer;
+}
+
+.btn.login {
+  background-color: white;
+  color: #374151;
+  border: 1px solid #d1d5db;
+}
+
+.btn.login:hover {
+  background-color: #f9fafb;
+}
+
+.btn.register {
+  background-color: #2C46BE;
+  color: white;
+  border: none;
+}
+
+.btn.register:hover {
+  background-color: #20359D;
+}

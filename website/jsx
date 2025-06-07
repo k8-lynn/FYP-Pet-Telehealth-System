@@ -1,0 +1,115 @@
+import Image from "next/image"
+import Link from "next/link"
+import { Button } from "@/components/ui/button"
+
+export default function HomePage() {
+  return (
+    <div className="min-h-screen bg-[#F5F1E8]">
+      {/* Header */}
+      <header className="flex items-center justify-between px-6 py-4 max-w-7xl mx-auto">
+        <div className="flex items-center">
+          <div className="text-xl font-bold">
+            <span className="text-gray-800">YOUR</span>
+            <span className="text-orange-500">KITTEN</span>
+          </div>
+        </div>
+
+        <nav className="hidden md:flex items-center space-x-8">
+          <Link href="#about" className="text-blue-600 hover:text-blue-700 font-medium">
+            About Us
+          </Link>
+          <Link href="#services" className="text-gray-600 hover:text-gray-700 font-medium">
+            Services
+          </Link>
+          <Link href="#qna" className="text-gray-600 hover:text-gray-700 font-medium">
+            QnA
+          </Link>
+        </nav>
+
+        <div className="flex items-center space-x-3">
+          <Button
+            variant="outline"
+            className="rounded-full px-6 bg-white border-gray-300 text-gray-700 hover:bg-gray-50"
+          >
+            Login
+          </Button>
+          <Button className="rounded-full px-6 bg-blue-600 hover:bg-blue-700 text-white">Register</Button>
+        </div>
+      </header>
+
+      {/* Hero Section */}
+      <main className="max-w-7xl mx-auto px-6 py-12">
+        <div className="text-center mb-8">
+          <h1 className="text-4xl md:text-5xl font-bold text-gray-800 mb-6 leading-tight">
+            Healthy Pet, Happy
+            <br />
+            Owners
+          </h1>
+          <p className="text-gray-600 text-lg mb-8 max-w-2xl mx-auto">
+            Connecting you with certified vets for instant consultations,
+            <br />
+            personalized care, and expert advice anytime, anywhere.
+          </p>
+          <Button className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-full text-lg font-medium">
+            Sign Up!
+          </Button>
+        </div>
+
+        {/* Hero Image */}
+        <div className="flex justify-center mb-16">
+          <div className="relative w-full max-w-2xl">
+            <Image
+              src="/images/pets-hero.png"
+              alt="Happy corgi dog and cat sitting together"
+              width={800}
+              height={400}
+              className="w-full h-auto object-contain"
+              priority
+            />
+          </div>
+        </div>
+
+        {/* Statistics Section */}
+        <div className="bg-gradient-to-r from-orange-400 to-yellow-500 rounded-2xl p-8 shadow-lg">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center text-white">
+            <div className="relative">
+              <div className="text-4xl md:text-5xl font-bold mb-2">99%</div>
+              <div className="text-sm md:text-base opacity-90">Satisfied users</div>
+              {/* Connector dot */}
+              <div className="hidden md:block absolute -right-4 top-1/2 transform -translate-y-1/2 w-2 h-2 bg-white rounded-full opacity-60"></div>
+            </div>
+
+            <div className="relative">
+              <div className="text-4xl md:text-5xl font-bold mb-2">80%</div>
+              <div className="text-sm md:text-base opacity-90">
+                Cases Resolved
+                <br />
+                Remotely
+              </div>
+              <div className="hidden md:block absolute -right-4 top-1/2 transform -translate-y-1/2 w-2 h-2 bg-white rounded-full opacity-60"></div>
+            </div>
+
+            <div className="relative">
+              <div className="text-4xl md:text-5xl font-bold mb-2">100</div>
+              <div className="text-sm md:text-base opacity-90">
+                Monthly
+                <br />
+                Consultations
+              </div>
+              <div className="hidden md:block absolute -right-4 top-1/2 transform -translate-y-1/2 w-2 h-2 bg-white rounded-full opacity-60"></div>
+            </div>
+
+            <div>
+              <div className="text-4xl md:text-5xl font-bold mb-2">54%</div>
+              <div className="text-sm md:text-base opacity-90">
+                decrease in non-
+                <br />
+                emergency
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  )
+}
