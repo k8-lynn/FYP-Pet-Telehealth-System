@@ -1,7 +1,10 @@
-import React from "react"
-import "./styles/header.css" // Ensure this path is correct relative to your file
+import React from "react";
+import "./styles/header.css";
+import { useNavigate } from "react-router-dom"; // This is correct
 
 function Header() {
+  const navigate = useNavigate();
+
   return (
     <header className="header-container">
       {/* Logo */}
@@ -19,11 +22,11 @@ function Header() {
 
       {/* Buttons */}
       <div className="button-group">
-        <button className="btn login">Login</button>
-        <button className="btn register">Register</button>
+        <button className="btn login" onClick={() => navigate('/login')}>Login</button>
+        <button className="btn register" onClick={() => navigate('/register')}>Register</button>
       </div>
     </header>
-  )
+  );
 }
 
-export default Header
+export default Header;
