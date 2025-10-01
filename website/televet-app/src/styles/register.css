@@ -1,0 +1,402 @@
+body {
+  
+  background-repeat: repeat;
+  background-size: auto;
+  margin: 0;
+  padding: 0;
+  font-family: 'Inter', sans-serif;
+  height: 100vh;
+}
+
+.register-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 100vh;
+  padding: 2rem 0;
+}
+
+.register-page {
+  background-image: url('../images/tile1.png');
+  background-size: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 2rem 0;
+  min-height: 100vh;
+}
+
+
+/* Horizontal Progress Steps */
+.progress-steps-horizontal {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 3rem;
+  margin-bottom: 2rem;
+  padding: 1.5rem 2rem;
+  background: rgba(251, 251, 251, 0.95);
+  border-radius: 50px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.step-horizontal {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  opacity: 0.4;
+  transition: opacity 0.3s ease;
+}
+
+.step-horizontal.active {
+  opacity: 1;
+}
+
+.step-horizontal.completed {
+  opacity: 0.7;
+}
+
+.step-circle-horizontal {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 2px solid #999;
+  background-color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: #999;
+  transition: all 0.3s ease;
+}
+
+.step-horizontal.active .step-circle-horizontal {
+  background-color: #3A4CD1;
+  border-color: #3A4CD1;
+  color: white;
+}
+
+.step-horizontal.completed .step-circle-horizontal {
+  background-color: #4ade80;
+  border-color: #4ade80;
+  color: white;
+}
+
+.step-horizontal .step-label {
+  font-size: 1rem;
+  font-weight: 500;
+  color: #333;
+  white-space: nowrap;
+}
+
+/* Form Section */
+.form-section {
+  display: flex;
+  justify-content: center;
+  align-items: center;  /* <-- fix */
+  width: 100%;
+  max-width: 1200px;
+}
+
+
+.form-box {
+  width: 90%;
+  max-width: 900px;
+  min-height: 600px;
+  background: #FBFBFB;
+  padding: 2rem 3rem; /* reduce top padding */
+
+  border-radius: 27px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.15);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  margin: 0 auto;
+
+}
+
+.form-box h2 {
+  font-size: 2.5rem;
+  margin-bottom: 3rem;
+  margin-top: 0rem;
+  text-align: center;
+  color: #000000;
+}
+
+.form-box form > div {
+  margin-bottom: 1.5rem;
+}
+
+
+
+.form-box label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+  color: #333;
+}
+
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="number"],
+input[type="date"],
+select,
+textarea {
+  width: 100%;
+  padding: 0.75rem;
+  font-size: 1rem;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+  box-sizing: border-box;
+}
+
+/* Better select/combo box styling */
+select {
+  appearance: none;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  background-size: 1em;
+  padding-right: 2.5rem;
+  cursor: pointer;
+}
+
+
+textarea {
+  min-height: 80px;
+  resize: vertical;
+}
+
+button[type="submit"],
+.form-buttons button {
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+  border: none;
+  border-radius: 20px;
+  background-color: #3A4CD1;
+  color: white;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+button[type="submit"]:hover,
+.form-buttons button:hover {
+  background-color: #2f3db4;
+}
+
+.form-buttons {
+  display: flex;
+  gap: 1rem;
+  margin-top: 2rem;
+}
+
+.form-buttons button[type="button"] {
+  background-color: #6b7280;
+}
+
+.form-buttons button[type="button"]:hover {
+  background-color: #4b5563;
+}
+
+/* User Type Radio Buttons */
+.user-type-label {
+  display: block;
+  margin-bottom: 1rem;
+  font-weight: 500;
+}
+
+.user-type {
+  display: flex;
+  gap: 1rem;
+}
+
+.radio-button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border: 2px solid #ccc;
+  border-radius: 20px;
+  cursor: pointer;
+  font-weight: 500;
+  background-color: white;
+  transition: all 0.3s ease;
+  user-select: none;
+  min-width: 120px;
+  justify-content: center;
+  text-align: center; 
+}
+
+.radio-button input[type="radio"] {
+  display: none;
+}
+
+.radio-button span {
+  color: #333;
+  transition: color 0.3s ease;
+}
+
+.radio-button:has(input:checked) {
+  background-color: #fb923c;
+  border-color: #fb923c;
+}
+
+.radio-button:has(input:checked) span {
+  color: white;
+}
+
+/* Radio Groups */
+.radio-group {
+  display: flex;
+  gap: 1rem;
+  margin-top: 0.5rem;
+}
+
+/* Radio button styling improvements */
+.radio-group label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  padding: 0.5rem 1rem;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+  background: white;
+}
+
+.radio-group label:hover {
+  border-color: #3A4CD1;
+  background: #f8f9ff;
+}
+
+.radio-group input[type="radio"] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  accent-color: #3A4CD1;
+}
+
+/* Phone and Email spacing for vet section */
+.clinic-contact-group {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem; /* Add spacing between phone and email */
+  margin-top: 1rem;
+}
+
+.clinic-contact-group > div {
+  margin-bottom: 0; /* Remove default margin */
+}
+
+
+/* Summary Section */
+.summary-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.summary-item {
+  padding: 1rem;
+  background: #f9fafb;
+  border-radius: 8px;
+}
+
+.summary-item strong {
+  display: block;
+  margin-bottom: 0.5rem;
+  color: #3A4CD1;
+}
+
+.summary-item p {
+  margin: 0.25rem 0;
+  color: #333;
+}
+
+/* Consent Section */
+.consent-section {
+  margin: 2rem 0;
+}
+
+.consent-checkbox {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+  cursor: pointer;
+}
+
+.consent-checkbox input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  margin-top: 2px;
+  cursor: pointer;
+}
+
+.consent-checkbox span {
+  flex: 1;
+  line-height: 1.5;
+  color: #333;
+}
+
+/* Location Buttons */
+.location-buttons {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin: 1rem 0;
+}
+
+.location-btn {
+  padding: 0.6rem 1.2rem;
+  border: 2px solid #3A4CD1;
+  background: white;
+  color: #3A4CD1;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.location-btn:hover {
+  background: #3A4CD1;
+  color: white;
+}
+
+.location-btn.secondary {
+  border-color: #ccc;
+  color: #666;
+}
+
+.location-btn.secondary:hover {
+  background: #f3f4f6;
+  border-color: #999;
+}
+
+.or-text {
+  color: #999;
+  font-style: italic;
+}
+
+
+/* Login link at bottom */
+.login-link {
+  text-align: center;
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  color: #666;
+  font-size: 0.95rem;
+}
+
+.login-link a {
+  color: #3A4CD1;
+  text-decoration: none;
+  font-weight: 500;
+  margin-left: 0.5rem;
+}
+
+.login-link a:hover {
+  text-decoration: underline;
+}

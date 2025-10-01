@@ -1,0 +1,274 @@
+.loginWrapper {
+  display: flex;
+  height: 100vh;
+  width: 100vw;
+  background-image: url('../images/tile1.png');
+  background-repeat: repeat;
+  background-size: auto;
+  font-family: 'Inter', sans-serif;
+  justify-content: center;
+  align-items: center;
+}
+
+.formSection {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+}
+
+.loginContainer {
+  width: 90%;
+  max-width: 900px;
+  min-height: 600px;
+  background: #FBFBFB;
+  padding: 4rem;
+  border-radius: 27px;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.15);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+}
+
+.loginContainer h2 {
+  font-size: 2.5rem;
+  margin-bottom: 0;
+  text-align: center;
+  color: #000000;
+  position: absolute;
+  top: 2rem;
+  left: 0;
+  right: 0;
+  width: 100%;
+}
+
+.loginContainer form {
+  width: 70%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: absolute;
+  top: 55%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.loginContainer form > div {
+  margin-bottom: 1.5rem;
+  width: 100%;
+}
+
+.loginContainer label {
+  display: block;
+  margin-bottom: 0.6rem;
+  font-weight: 500;
+  color: #333;
+  font-size: 1.1rem;
+}
+
+.loginContainer input[type="email"],
+.loginContainer input[type="password"] {
+  width: 100%;
+  padding: 0.8rem;
+  font-size: 1.1rem;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+  box-sizing: border-box;
+}
+
+.loginContainer button[type="submit"] {
+  width: 50%;
+  padding: 0.9rem;
+  font-size: 1.1rem;
+  background-color: #3A4CD1;
+  color: white;
+  border: none;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+  margin-top: 1.5rem;
+}
+
+.loginContainer button[type="submit"]:hover {
+  background-color: #fb923c;
+}
+
+.registerLink {
+  position: absolute;
+  bottom: 2rem;
+  left: 50%;
+  transform: translateX(-50%);
+  text-align: center;
+  font-size: 1rem;
+  color: #333;
+}
+
+.registerLink a {
+  color: #3A4CD1;
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.3s ease;
+}
+
+.registerLink a:hover {
+  color: #fb923c;
+  text-decoration: underline;
+}
+
+/* Success Modal Overlay */
+.successOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(8px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+  animation: fadeIn 0.3s ease-in;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Success Modal Card */
+.successModal {
+  background: white;
+  padding: 3rem 4rem;
+  border-radius: 24px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  animation: slideUp 0.5s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(50px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Paw Print Loading Animation */
+/* Paw Print Loading Animation */
+.svgSprite {
+  display: none; /* Hide the SVG sprite */
+}
+
+.ajaxLoader {
+  font-size: 40px; /* controls paw size */
+  width: 1em;
+  height: 3em;
+  color: #fb923c;
+  
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  margin: 0 auto 2rem auto; /* center horizontally + add space below */
+  transform: rotate(90deg); /* only rotate, no translate */
+}
+
+
+
+.paw {
+  width: 1em;
+  height: 1em;
+  animation: 1200ms pawAnimation ease-in-out infinite; /* Faster: 1200ms instead of 2050ms */
+  opacity: 0;
+  position: absolute;
+  
+  svg {
+    width: 100%;
+    height: 100%;
+  }
+  
+  .icon {
+    fill: currentColor;
+  }
+
+  /* Odd paws - left side */
+  &:nth-child(odd) {
+    transform: rotate(-10deg);
+  }
+
+  /* Even paws - right side */
+  &:nth-child(even) {
+    transform: rotate(10deg) translate(125%, 0);
+  }
+
+  /* Stagger the animation delays - much faster */
+  &:nth-child(1) { animation-delay: 0.75s; }  /* was 1.25s */
+  &:nth-child(2) { animation-delay: 0.6s; }   /* was 1s */
+  &:nth-child(3) { animation-delay: 0.45s; }  /* was 0.75s */
+  &:nth-child(4) { animation-delay: 0.3s; }   /* was 0.5s */
+  &:nth-child(5) { animation-delay: 0.15s; }  /* was 0.25s */
+  &:nth-child(6) { animation-delay: 0s; }     /* was 0s */
+}
+
+@keyframes pawAnimation {
+  0% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+/* Success Modal Card - ensure proper centering */
+.successModal {
+  background: white;
+  padding: 3rem 4rem;
+  border-radius: 24px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  animation: slideUp 0.5s ease-out;
+  text-align: center;
+}
+
+.successTitle {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #1f2937;
+  margin: 0 0 0.75rem 0;
+  animation: fadeInText 0.5s ease-in 0.4s both; /* Faster text appearance */
+}
+
+.successMessage {
+  font-size: 1.1rem;
+  color: #6b7280;
+  margin: 0;
+  animation: fadeInText 0.5s ease-in 0.6s both; /* Faster text appearance */
+}
+
+@keyframes fadeInText {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
