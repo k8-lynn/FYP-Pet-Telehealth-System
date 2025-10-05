@@ -1,0 +1,361 @@
+/* Dashboard Container */
+.dashboard-container {
+  display: flex;
+  min-height: 100vh;
+  background: #fdfdf1;
+  font-family: 'Inter', sans-serif;
+  position: relative;
+  overflow: hidden;
+}
+
+.paw-pattern {
+  position: absolute;
+  top: -10%;
+  left: 0;
+  width: 100%;
+  height: 120%;
+  z-index: 0;
+}
+
+/* Make paws responsive - start smaller */
+.paw-pattern svg {
+  width: 190px; /* Reduced from 200px */
+  height: 190px;
+}
+
+/* Responsive sizing - more aggressive scaling */
+@media (max-width: 1200px) {
+  .paw-pattern svg {
+    width: 80px;
+    height: 80px;
+  }
+}
+
+@media (max-width: 992px) {
+  .paw-pattern svg {
+    width: 60px;
+    height: 60px;
+  }
+}
+
+@media (max-width: 768px) {
+  .paw-pattern svg {
+    width: 40px;
+    height: 40px;
+  }
+}
+
+@media (max-width: 576px) {
+  .paw-pattern svg {
+    width: 30px;
+    height: 30px;
+  }
+}
+
+@media (max-width: 480px) {
+  .paw-pattern svg {
+    width: 20px; /* More reasonable than 10px */
+    height: 20px;
+  }
+}
+
+@media (max-width: 360px) {
+  .paw-pattern svg {
+    width: 15px;
+    height: 15px;
+  }
+}
+
+.sidebar,
+.main-content {
+  position: relative;
+  z-index: 1; /* content above pattern */
+}
+
+
+
+
+/* Main Content */
+.main-content {
+  flex: 1;
+  padding: 2rem;
+  max-width: 1400px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* Header */
+.header {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.notification-button {
+  background: white;
+  border: none;
+  border-radius: 12px;
+  padding: 0.75rem;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.user-profile {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  background: white;
+  padding: 0.5rem 1rem;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  cursor: pointer;
+}
+
+.user-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #cbd5e1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.user-name {
+  font-size: 0.95rem;
+  color: #374e54;
+  font-weight: 500;
+}
+
+/* Dashboard Content */
+.dashboard-content {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+}
+
+/* Schedule Section */
+.schedule-section {
+  background: #fefefe;
+  border-radius: 16px;
+  padding: 2rem;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+}
+
+.schedule-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 2rem;
+}
+
+.schedule-title-container h2 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.5rem;
+  color: #374e54;
+}
+
+.schedule-date {
+  margin: 0;
+  color: #6c757d;
+  font-size: 0.9rem;
+}
+
+.book-appointment-button {
+  background: #8ddabf;
+  color: #374e54;
+  border: none;
+  border-radius: 10px;
+  padding: 0.75rem 1.25rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  box-shadow: 0 4px 12px rgba(141, 218, 191, 0.3);
+}
+
+.schedule-timeline {
+  overflow-y: auto;
+  max-height: 500px;
+}
+
+.time-slot {
+  display: flex;
+  border-bottom: 1px solid #f1f3f5;
+  min-height: 60px;
+  padding: 0.75rem 0;
+}
+
+.time-label {
+  width: 80px;
+  color: #6c757d;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.time-content {
+  flex: 1;
+  padding-left: 1rem;
+}
+
+/* Calendar & Scheduled Container */
+.calendar-scheduled-container {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+/* Calendar Section */
+.calendar-section {
+  background: #fefefe;
+  border-radius: 16px;
+  padding: 2rem;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+}
+
+.calendar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.calendar-header h3 {
+  margin: 0;
+  font-size: 1.25rem;
+  color: #374e54;
+}
+
+.calendar-nav {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.calendar-nav-button {
+  background: #f8f9fa;
+  border: none;
+  border-radius: 8px;
+  padding: 0.5rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+}
+
+.calendar-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.calendar-weekday {
+  text-align: center;
+  font-size: 0.8rem;
+  color: #6c757d;
+  font-weight: 600;
+  padding: 0.5rem;
+}
+
+.calendar-days {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 0.5rem;
+}
+
+.calendar-day {
+  aspect-ratio: 1;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: #374e54;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 400;
+  transition: all 0.2s ease;
+}
+
+.calendar-day:hover {
+  background: #f8f9fa;
+}
+
+.calendar-day.selected {
+  background: #cfeae3;
+  color: #374e54;
+  font-weight: 600;
+}
+
+.calendar-day.selected:hover {
+  background: #cfeae3;
+}
+
+/* Scheduled Section */
+.scheduled-section {
+  background: #fefefe;
+  border-radius: 16px;
+  padding: 0;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+  overflow: hidden;
+}
+
+.scheduled-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #ffdf5e;
+  padding: 1.25rem 2rem;
+  margin-bottom: 0;
+}
+
+.scheduled-header h3 {
+  margin: 0;
+  font-size: 1.25rem;
+  color: #374e54;
+  background: transparent;
+  padding: 0;
+  border-radius: 0;
+  display: inline-block;
+}
+
+.view-all-button {
+  background: none;
+  border: none;
+  color: #2196f3;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.scheduled-empty {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: #adb5bd;
+  font-size: 0.95rem;
+  margin: 0 2rem;
+}
+
+.create-task-button {
+  width: auto;
+  background: #f8f9fa;
+  border: 2px dashed #dee2e6;
+  border-radius: 10px;
+  padding: 1rem 2.5rem;
+  cursor: pointer;
+  font-size: 0.95rem;
+  color: #6c757d;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  margin: 0 auto 2rem auto;
+  display: block;
+}
+
+.create-task-button:hover {
+  background: #e9ecef;
+  border-color: #adb5bd;
+}

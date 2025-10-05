@@ -22,50 +22,115 @@ db.connect(err => {
   }
 });
 
-app.post('/register', (req, res) => {
-  const { firstName, lastName, email, password, userType } = req.body;
-
-  const sql = 'INSERT INTO user (firstName, lastName, email, password, userType) VALUES (?, ?, ?, ?, ?)';
-  db.query(sql, [firstName, lastName, email, password, userType], (err, result) => {
-    if (err) {
-      console.error('Insert error:', err);
-      return res.status(500).json({ error: 'Failed to register user' });
-    }
-    res.status(200).json({ message: 'User registered successfully' });
-  });
-});
-
 app.post('/api/login', (req, res) => {
-  console.log('Login attempt:', req.body);
   const { email, password } = req.body;
+
+  console.log("🟢 Received login request:", { email, password }); // Log input
+
   if (!email || !password) {
-    return res.status(400).json({ message: 'Email and password required' });
+    console.log("❌ Missing email or password");
+    return res.status(400).json({ message: 'Email and password are required' });
   }
 
-  const query = 'SELECT * FROM user WHERE email = ? LIMIT 1';
-  db.query(query, [email], (err, results) => {
+  const sql = 'SELECT * FROM user WHERE email = ? AND password = ?';
+
+  db.query(sql, [email, password], (err, result) => {
     if (err) {
-      console.error('DB query error:', err);
+      console.error('❌ Login query error:', err);
       return res.status(500).json({ message: 'Database error' });
     }
-    if (results.length === 0) {
+
+    console.log("🔍 Query result:", result);
+
+    if (result.length === 0) {
+      console.log("❌ Invalid credentials for:", email);
       return res.status(401).json({ message: 'Invalid email or password' });
     }
 
-    const user = results[0];
+    const user = result[0];
+    console.log("✅ Login successful for:", user.email, " | Type:", user.userType);
 
-    if (user.password === password) {
-      // 👇 Send back userType so React can decide where to go
-      return res.status(200).json({
-        success: true,
-        message: 'Login successful',
-        userType: user.userType   // <--- important
+    res.status(200).json({
+      message: 'Login successful',
+      userId: user.id,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      userType: user.userType
+    });
+  });
+});
+
+
+app.post('/register', (req, res) => {
+  const {
+    firstName, lastName, email, password, userType,
+    animalType, petName, breed, birthday, gender,
+    hasVaccination, vaccinationDate, hasCurrentMedication, medicationDetails,
+    hasAllergies, allergies, dietType, weight, behavioralNotes
+  } = req.body;
+
+  const sqlUser = `
+    INSERT INTO user (firstName, lastName, email, password, userType)
+    VALUES (?, ?, ?, ?, ?)
+  `;
+
+  db.query(sqlUser, [firstName, lastName, email, password, userType], (err, result) => {
+    if (err) {
+      console.error('Insert user error:', err);
+
+      // ✅ Handle duplicate email error
+      if (err.code === 'ER_DUP_ENTRY') {
+        return res.status(409).json({ error: 'Email already exists. Please use a different email.' });
+      }
+
+      return res.status(500).json({ error: 'Failed to register user' });
+    }
+
+    const userId = result.insertId;
+
+    if (userType === 'petParent') {
+      const sqlPetParent = `
+        INSERT INTO pet_parent (
+          user_id, animalType, petName, breed, birthday, gender,
+          hasVaccination, vaccinationDate, hasCurrentMedication, medicationDetails,
+          hasAllergies, allergies, dietType, weight, behavioralNotes
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `;
+
+      const safeVaccinationDate = vaccinationDate ? vaccinationDate : null;
+
+      db.query(sqlPetParent, [
+        userId, animalType, petName, breed, birthday, gender,
+        hasVaccination, safeVaccinationDate, hasCurrentMedication, medicationDetails,
+        hasAllergies, allergies, dietType, weight, behavioralNotes
+      ], (err2) => {
+        if (err2) {
+          console.error('Insert pet_parent error:', err2);
+          return res.status(500).json({ error: 'Failed to save pet details' });
+        }
+
+        res.status(200).json({ message: 'Pet parent registered successfully' });
       });
     } else {
-      return res.status(401).json({ message: 'Invalid email or password' });
+      res.status(200).json({ message: 'Vet registered successfully' });
     }
   });
 });
+
+
+app.get('/api/pet/:userId', (req, res) => {
+  const { userId } = req.params;
+  const sql = 'SELECT * FROM pet_parent WHERE user_id = ?';
+  db.query(sql, [userId], (err, result) => {
+    if (err) {
+      console.error('Fetch pet info error:', err);
+      return res.status(500).json({ error: 'Failed to fetch pet info' });
+    }
+    res.status(200).json(result);
+  });
+});
+
 
   
   

@@ -28,20 +28,21 @@ const Login = () => {
       const data = await response.json();
 
       if (response.ok) {
-        // Check if user is a pet parent
         if (data.userType === 'petParent' || data.user_type === 'petParent') {
+          // ✅ Save user's first name to localStorage
+          localStorage.setItem('firstName', data.firstName);
+      
           setShowSuccess(true);
-          // Navigate to dashboard after animation
+      
+          // ✅ Redirect to dashboard
           setTimeout(() => {
             navigate('/petowner-dashboard');
-          }, 2000); // Increased to 3s to see full animation
+          }, 2000);
         } else {
-          // For other user types, just show alert
           alert('Login successful');
-          // Navigate to appropriate dashboard based on user type
-          // You can add more conditions here for other user types
         }
-      } else {
+      }      
+      else {
         alert(data.message || 'Login failed');
       }
     } catch (error) {
