@@ -31,6 +31,8 @@ const Login = () => {
         if (data.userType === 'petParent' || data.user_type === 'petParent') {
           // ✅ Save user's first name to localStorage
           localStorage.setItem('firstName', data.firstName);
+          localStorage.setItem('user_id', data.userId);   // ✅ fixed
+          localStorage.setItem('userType', data.userType); // ✅ consistent
       
           setShowSuccess(true);
       

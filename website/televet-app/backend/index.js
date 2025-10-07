@@ -131,6 +131,38 @@ app.get('/api/pet/:userId', (req, res) => {
   });
 });
 
+// ✅ Fetch pets for a specific user
+app.get('/api/pets/:user_id', (req, res) => {
+  const userId = req.params.user_id;
+
+  const sql = `
+    SELECT 
+      petName AS name,
+      animalType AS species,
+      breed,
+      gender,
+      TIMESTAMPDIFF(YEAR, birthday, CURDATE()) AS age,
+      weight,
+      dietType,
+      behavioralNotes,
+      hasVaccination,
+      vaccinationDate,
+      hasCurrentMedication,
+      medicationDetails,
+      hasAllergies,
+      allergies
+    FROM pet_parent
+    WHERE user_id = ?
+  `;
+
+  db.query(sql, [userId], (err, results) => {
+    if (err) {
+      console.error('Fetch pets error:', err);
+      return res.status(500).json({ error: 'Failed to fetch pets' });
+    }
+    res.status(200).json(results);
+  });
+});
 
   
   
