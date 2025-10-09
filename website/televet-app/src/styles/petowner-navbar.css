@@ -1,19 +1,57 @@
 /* Sidebar */
 .sidebar {
   width: 280px;
-  background: #d0ebe4;
-  transition: width 0.3s ease;
-  border-radius: 0 16px 16px 0;
+  background: linear-gradient(135deg, #ffd89b 0%, #ffebb3 100%);
+  transition: all 0.3s ease;
+  border-radius: 20px;
   padding: 2rem 0;
-  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.05);
-  position: relative;
-
-  min-height: 100vh; /* full height */
-    z-index: 1;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  position: fixed;
+  top: 20px;
+  left: 20px;
+  bottom: 20px;
+  z-index: 1000;
+  backdrop-filter: blur(10px);
 }
 
 .sidebar.collapsed {
   width: 80px;
+}
+
+/* Hide title when collapsed */
+.sidebar.collapsed .sidebar-title {
+  opacity: 0;
+  width: 0;
+  overflow: hidden;
+}
+
+/* Center toggle button when collapsed */
+.sidebar.collapsed .sidebar-header {
+  justify-content: center;
+  padding: 0 0.5rem;
+}
+
+/* Hide labels when collapsed */
+.sidebar.collapsed .nav-label {
+  opacity: 0;
+  width: 0;
+  overflow: hidden;
+}
+
+/* Center nav items when collapsed */
+.sidebar.collapsed .nav-item {
+  padding: 0 0.5rem;
+  justify-content: center;
+}
+
+.sidebar.collapsed .nav-content {
+  justify-content: center;
+  padding: 0.75rem;
+}
+
+/* Remove transform on hover when collapsed */
+.sidebar.collapsed .nav-content:hover {
+  transform: translateX(0);
 }
 
 .sidebar-header {
@@ -22,23 +60,32 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  transition: all 0.3s ease;
 }
 
 .sidebar-title {
   margin: 0;
   font-size: 1.5rem;
   color: #374e54;
+  font-weight: 600;
+  transition: all 0.3s ease;
 }
 
 .sidebar-toggle {
-  background: none;
+  background: rgba(255, 255, 255, 0.3);
   border: none;
   cursor: pointer;
   padding: 0.5rem;
-  border-radius: 8px;
+  border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.sidebar-toggle:hover {
+  background: rgba(255, 255, 255, 0.5);
+  transform: scale(1.05);
 }
 
 /* Navigation */
@@ -54,9 +101,15 @@
 }
 
 .nav-item.active .nav-content {
-  background: #8edac0;
+  background: rgba(142, 218, 192, 0.4);
   padding: 0.75rem 1rem;
-  border-radius: 12px;
+  border-radius: 14px;
+  box-shadow: 0 4px 12px rgba(142, 218, 192, 0.2);
+}
+
+/* Adjust active padding when collapsed */
+.sidebar.collapsed .nav-item.active .nav-content {
+  padding: 0.75rem;
 }
 
 .nav-content {
@@ -66,6 +119,12 @@
   padding: 0.75rem 1rem;
   transition: all 0.2s ease;
   width: 100%;
+  border-radius: 14px;
+}
+
+.nav-content:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: translateX(4px);
 }
 
 .nav-icon {
@@ -82,27 +141,23 @@
   color: #6c757d;
   font-weight: 400;
   white-space: nowrap;
+  transition: all 0.3s ease;
 }
 
 .nav-item.active .nav-label {
   color: #374e54;
-  font-weight: 500;
+  font-weight: 600;
 }
 
-/* 🟡 Yellow hover + active ONLY for My Pets */
-.nav-item:nth-child(4):hover .nav-content {
-    background: #fcdb60; /* yellow */
-    border-radius: 12px;
-  }
-  
-  .nav-content.mypets-active {
-    background: #fcdb60; /* yellow when selected */
-    border-radius: 12px;
-  }
+
+.nav-content.mypets-active {
+  background: rgba(252, 219, 96, 0.4);
+  border-radius: 14px;
+  box-shadow: 0 4px 12px rgba(252, 219, 96, 0.2);
+}
 
 /* Ensure My Pets yellow overrides green active */
 .nav-item.active .nav-content.mypets-active {
-    background: #fcdb60 !important; /* force yellow override */
-    border-radius: 12px;
-  }
-  
+  background: rgba(252, 219, 96, 0.4) !important;
+  border-radius: 14px;
+}

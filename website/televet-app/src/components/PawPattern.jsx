@@ -33,7 +33,7 @@ const PawPattern = ({ count = 80, columns = 9 }) => {
             <PawPrint
               key={idx}
               // Remove the size prop - let CSS handle it
-              stroke="#f2f9f7"
+              stroke="#ffffffff"
               strokeWidth={1.2}
               fill="none"
               style={{
@@ -41,7 +41,7 @@ const PawPattern = ({ count = 80, columns = 9 }) => {
                 left: `${left}%`,
                 top: `${top}%`,
                 transform: `translate(-50%, -50%) rotate(${rotation}deg)`,
-                opacity: 0.45,
+                opacity: 1.0,
                 pointerEvents: "none"
               }}
             />

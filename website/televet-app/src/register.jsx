@@ -24,7 +24,7 @@ const Register = () => {
     gender: '',
     hasVaccination: '',
     vaccinationDate: '',
-    hasCurrentMedication: '',
+    hasMedication: '',
     medicationDetails: '',
     hasAllergies: '',
     allergies: '',
@@ -115,12 +115,13 @@ const Register = () => {
     // 🟢 Prepare the data correctly for backend
     const formattedData = {
       ...formData,
-      gender: formData.gender === "male" ? "m" : "f", // convert gender
-      age: parseInt(formData.age, 10), // ensure it's a number
+      userType: formData.userType === "vet" ? "vetAdmin" : "petParent",
+      gender: formData.gender === "male" ? "m" : "f",
+      age: parseInt(formData.age, 10),
     };
 
     try {
-      const response = await fetch('http://localhost:5000/register', {
+      const response = await fetch('http://localhost:5000/api/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formattedData)
@@ -280,16 +281,16 @@ const Register = () => {
                       <label>Current Medication:</label>
                       <div className="radio-group">
                         <label>
-                          <input type="radio" name="hasCurrentMedication" value="yes" checked={formData.hasCurrentMedication === 'yes'} onChange={handleChange} required />
+                          <input type="radio" name="hasMedication" value="yes" checked={formData.hasMedication === 'yes'} onChange={handleChange} required />
                           Yes
                         </label>
                         <label>
-                          <input type="radio" name="hasCurrentMedication" value="no" checked={formData.hasCurrentMedication === 'no'} onChange={handleChange} />
+                          <input type="radio" name="hasMedication" value="no" checked={formData.hasMedication === 'no'} onChange={handleChange} />
                           No
                         </label>
                       </div>
                     </div>
-                    {formData.hasCurrentMedication === 'yes' && (
+                    {formData.hasMedication === 'yes' && (
                       <div>
                         <label>Medication Details:</label>
                         <textarea name="medicationDetails" value={formData.medicationDetails} onChange={handleChange} required />
@@ -365,7 +366,7 @@ const Register = () => {
                       <div className="summary-item">
                         <strong>Pet Details:</strong>
                         <p>Vaccination: {formData.hasVaccination === 'yes' ? `Yes (${formData.vaccinationDate})` : 'No'}</p>
-                        <p>Current Medication: {formData.hasCurrentMedication === 'yes' ? 'Yes' : 'No'}</p>
+                        <p>Current Medication: {formData.hasMedication === 'yes' ? 'Yes' : 'No'}</p>
                         <p>Allergies: {formData.hasAllergies === 'yes' ? 'Yes' : 'No'}</p>
                         <p>Weight: {formData.weight} kg</p>
                       </div>

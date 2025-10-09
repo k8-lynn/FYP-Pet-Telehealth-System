@@ -7,6 +7,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// ✅ Database connection
 const db = mysql.createConnection({
   host: process.env.DB_HOST,
   user: process.env.DB_USER,
@@ -16,23 +17,22 @@ const db = mysql.createConnection({
 
 db.connect(err => {
   if (err) {
-    console.error('Database connection error:', err);
+    console.error('❌ Database connection error:', err);
   } else {
-    console.log('Connected to MySQL DB');
+    console.log('✅ Connected to MySQL DB');
   }
 });
 
+// -------------------------------------------------------------
+// 🟢 USER LOGIN
+// -------------------------------------------------------------
 app.post('/api/login', (req, res) => {
   const { email, password } = req.body;
 
-  console.log("🟢 Received login request:", { email, password }); // Log input
-
-  if (!email || !password) {
-    console.log("❌ Missing email or password");
+  if (!email || !password)
     return res.status(400).json({ message: 'Email and password are required' });
-  }
 
-  const sql = 'SELECT * FROM user WHERE email = ? AND password = ?';
+  const sql = 'SELECT * FROM user_t WHERE usr_email = ? AND usr_password = ?';
 
   db.query(sql, [email, password], (err, result) => {
     if (err) {
@@ -40,145 +40,208 @@ app.post('/api/login', (req, res) => {
       return res.status(500).json({ message: 'Database error' });
     }
 
-    console.log("🔍 Query result:", result);
-
-    if (result.length === 0) {
-      console.log("❌ Invalid credentials for:", email);
+    if (result.length === 0)
       return res.status(401).json({ message: 'Invalid email or password' });
-    }
 
     const user = result[0];
-    console.log("✅ Login successful for:", user.email, " | Type:", user.userType);
-
     res.status(200).json({
       message: 'Login successful',
-      userId: user.id,
-      firstName: user.firstName,
-      lastName: user.lastName,
-      userType: user.userType
+      userId: user.usr_id,
+      firstName: user.usr_firstName,
+      lastName: user.usr_lastName,
+      userType: user.usr_type
     });
   });
 });
 
 
-app.post('/register', (req, res) => {
-  const {
-    firstName, lastName, email, password, userType,
-    animalType, petName, breed, age, gender,
-    hasVaccination, vaccinationDate, hasCurrentMedication, medicationDetails,
-    hasAllergies, allergies, dietType, weight, behavioralNotes
-  } = req.body;
+// -------------------------------------------------------------
+// 🟢 FETCH PETS (by user ID)
+// -------------------------------------------------------------
+app.get('/api/pets/:usr_id', (req, res) => {
+  const usr_id = req.params.usr_id;
 
-  const sqlUser = `
-    INSERT INTO user (firstName, lastName, email, password, userType)
-    VALUES (?, ?, ?, ?, ?)
+  const sql = `
+    SELECT p.pet_id, p.pet_name, p.pet_species, p.pet_breed, p.pet_age, p.pet_gender,
+           p.pet_hasVaccination, p.pet_vaccinationDate, p.pet_hasMedication,
+           p.pet_medicationDetails, p.pet_hasAllergies, p.pet_allergyDetails,
+           p.pet_dietType, p.pet_weight, p.pet_behavioralNotes, p.pet_lastUpdated
+    FROM pet_t p
+    JOIN pet_parent_t pp ON p.pp_id = pp.pp_id
+    WHERE pp.usr_id = ?
   `;
 
-  db.query(sqlUser, [firstName, lastName, email, password, userType], (err, result) => {
+  db.query(sql, [usr_id], (err, result) => {
     if (err) {
-      console.error('Insert user error:', err);
-
-      // ✅ Handle duplicate email error
-      if (err.code === 'ER_DUP_ENTRY') {
-        return res.status(409).json({ error: 'Email already exists. Please use a different email.' });
-      }
-
-      return res.status(500).json({ error: 'Failed to register user' });
-    }
-
-    const userId = result.insertId;
-
-    if (userType === 'petParent') {
-      const sqlPetParent = `
-        INSERT INTO pet_parent (
-          user_id, animalType, petName, breed, age, gender,
-          hasVaccination, vaccinationDate, hasCurrentMedication, medicationDetails,
-          hasAllergies, allergies, dietType, weight, behavioralNotes
-        )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `;
-
-
-      const safeVaccinationDate = vaccinationDate ? vaccinationDate : null;
-
-      db.query(sqlPetParent, [
-        userId, animalType, petName, breed, age, gender,
-        hasVaccination, safeVaccinationDate, hasCurrentMedication, medicationDetails,
-        hasAllergies, allergies, dietType, weight, behavioralNotes
-      ], (err2) => {
-        if (err2) {
-          console.error('Insert pet_parent error:', err2);
-          return res.status(500).json({ error: 'Failed to save pet details' });
-        }
-
-        res.status(200).json({ message: 'Pet parent registered successfully' });
-      });
-    } else {
-      res.status(200).json({ message: 'Vet registered successfully' });
-    }
-  });
-});
-
-
-app.get('/api/pet/:userId', (req, res) => {
-  const { userId } = req.params;
-  const sql = 'SELECT * FROM pet_parent WHERE user_id = ?';
-  db.query(sql, [userId], (err, result) => {
-    if (err) {
-      console.error('Fetch pet info error:', err);
-      return res.status(500).json({ error: 'Failed to fetch pet info' });
+      console.error('❌ Fetch pets error:', err);
+      return res.status(500).json({ error: 'Failed to fetch pets' });
     }
     res.status(200).json(result);
   });
 });
 
-// ✅ Fetch pets for a specific user
-app.get('/api/pets/:user_id', (req, res) => {
-  const userId = req.params.user_id;
-
-  const sql = `
-    SELECT 
-      id,
-      petName AS name,
-      animalType AS species,
-      breed,
-      gender,
-      age,
-      weight,
-      dietType,
-      behavioralNotes,
-      hasVaccination,
-      vaccinationDate,
-      hasCurrentMedication,
-      medicationDetails,
-      hasAllergies,
-      allergies
-    FROM pet_parent
-    WHERE user_id = ?
-  `;
-
-  db.query(sql, [userId], (err, results) => {
-    if (err) {
-      console.error('Fetch pets error:', err);
-      return res.status(500).json({ error: 'Failed to fetch pets' });
-    }
-    res.status(200).json(results);
-  });
-});
-
-
-// ✅ Add new pet for existing user
-app.post('/api/add-pet', (req, res) => {
+// -------------------------------------------------------------
+// 🟢 ADD NEW PET (for pet parent)
+// -------------------------------------------------------------
+app.post('/api/register', (req, res) => {
   const {
-    userId,
-    animalType,
+    firstName,
+    lastName,
+    email,
+    password,
+    userType,
     petName,
+    animalType,
     breed,
     age,
     gender,
     hasVaccination,
     vaccinationDate,
-    hasCurrentMedication,
+    hasMedication,
+    medicationDetails,
+    hasAllergies,
+    allergies,
+    dietType,
+    weight,
+    behavioralNotes
+  } = req.body;
+
+  console.log("🟢 Received registration request:", req.body);
+
+  // 1️⃣ Insert into user_t
+  const sqlUser = `
+    INSERT INTO user_t (usr_firstName, usr_lastName, usr_email, usr_password, usr_type)
+    VALUES (?, ?, ?, ?, ?)
+  `;
+  db.query(sqlUser, [firstName, lastName, email, password, userType], (err, userResult) => {
+    if (err) {
+      console.error("❌ Error inserting into user_t:", err);
+      return res.status(500).json({ error: "Failed to register user" });
+    }
+
+    const userId = userResult.insertId;
+    console.log("✅ user_t inserted, userId =", userId);
+
+    // 2️⃣ If user is petParent, insert into pet_parent_t
+    if (userType === "petParent") {
+      const sqlParent = `
+        INSERT INTO pet_parent_t (usr_id, pp_lastUpdated)
+        VALUES (?, NOW())
+      `;
+      db.query(sqlParent, [userId], (err2, parentResult) => {
+        if (err2) {
+          console.error("❌ Error inserting into pet_parent_t:", err2);
+          return res.status(500).json({ error: "Failed to create pet parent record" });
+        }
+
+        const pp_id = parentResult.insertId;
+        console.log("✅ pet_parent_t inserted, pp_id =", pp_id);
+
+        // 3️⃣ Insert into pet_t
+        const sqlPet = `
+          INSERT INTO pet_t (
+            pp_id, pet_name, pet_species, pet_breed, pet_age, pet_gender,
+            pet_hasVaccination, pet_vaccinationDate,
+            pet_hasMedication, pet_medicationDetails,
+            pet_hasAllergies, pet_allergyDetails,
+            pet_dietType, pet_weight, pet_behavioralNotes, pet_lastUpdated
+          )
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+        `;
+
+        db.query(sqlPet, [
+          pp_id,
+          petName,
+          animalType,
+          breed,
+          age,
+          gender,
+          hasVaccination,
+          vaccinationDate || null,
+          hasMedication,
+          medicationDetails || null,
+          hasAllergies,
+          allergies || null,
+          dietType,
+          weight,
+          behavioralNotes || null
+        ], (err3, petResult) => {
+          if (err3) {
+            console.error("❌ Error inserting into pet_t:", err3);
+            return res.status(500).json({ error: "Failed to add pet" });
+          }
+
+          console.log("✅ pet_t inserted successfully, pet_id =", petResult.insertId);
+          return res.status(200).json({ message: "Pet parent and pet registered successfully!" });
+        });
+      });
+    } else {
+      // 4️⃣ If user is vetAdmin, skip pet tables
+      console.log("👨‍⚕️ Vet admin registered, skipping pet tables");
+      return res.status(200).json({ message: "Vet registered successfully!" });
+    }
+  });
+});
+
+
+// -------------------------------------------------------------
+// 🟢 UPDATE PET
+// -------------------------------------------------------------
+app.put('/api/pets/:pet_id', (req, res) => {
+  const { pet_id } = req.params;
+  const updatedPet = req.body;
+
+  const sql = `
+    UPDATE pet_t SET
+      pet_name = ?, pet_species = ?, pet_breed = ?, pet_age = ?, pet_gender = ?,
+      pet_hasVaccination = ?, pet_vaccinationDate = ?, pet_hasMedication = ?, pet_medicationDetails = ?,
+      pet_hasAllergies = ?, pet_allergyDetails = ?, pet_dietType = ?, pet_weight = ?, pet_behavioralNotes = ?, pet_lastUpdated = NOW()
+    WHERE pet_id = ?
+  `;
+
+  db.query(sql, [
+    updatedPet.pet_name,
+    updatedPet.pet_species,
+    updatedPet.pet_breed,
+    updatedPet.pet_age,
+    updatedPet.pet_gender,
+    updatedPet.pet_hasVaccination,
+    updatedPet.pet_vaccinationDate || null,
+    updatedPet.pet_hasMedication,
+    updatedPet.pet_medicationDetails,
+    updatedPet.pet_hasAllergies,
+    updatedPet.pet_allergyDetails,
+    updatedPet.pet_dietType,
+    updatedPet.pet_weight,
+    updatedPet.pet_behavioralNotes,
+    pet_id
+  ], (err, result) => {
+    if (err) {
+      console.error('❌ Error updating pet:', err);
+      return res.status(500).json({ error: 'Failed to update pet' });
+    }
+
+    if (result.affectedRows === 0)
+      return res.status(404).json({ error: 'Pet not found' });
+
+    res.status(200).json({ message: 'Pet updated successfully' });
+  });
+});
+
+// -------------------------------------------------------------
+// 🟢 ADD PET (for existing pet parent)
+// -------------------------------------------------------------
+app.post('/api/add-pet', (req, res) => {
+  const {
+    userId,
+    petName,
+    animalType,
+    breed,
+    age,
+    gender,
+    hasVaccination,
+    vaccinationDate,
+    hasMedication,
     medicationDetails,
     hasAllergies,
     allergies,
@@ -188,173 +251,84 @@ app.post('/api/add-pet', (req, res) => {
   } = req.body;
 
   if (!userId) {
-    return res.status(400).json({ error: 'User ID is required' });
+    return res.status(400).json({ error: "Missing userId" });
   }
 
-  // ✅ Convert gender values to match ENUM('m', 'f')
-  const safeGender =
-    gender?.toLowerCase() === 'male' ? 'm' :
-    gender?.toLowerCase() === 'female' ? 'f' :
-    null;
+  // Find the pet parent ID (pp_id) linked to this user
+  const findParentSQL = "SELECT pp_id FROM pet_parent_t WHERE usr_id = ?";
+  db.query(findParentSQL, [userId], (err, parentResult) => {
+    if (err) {
+      console.error("❌ Error finding pet parent:", err);
+      return res.status(500).json({ error: "Database error while finding pet parent" });
+    }
 
-  const safeVaccinationDate = vaccinationDate || null;
-  const safeAge = age ? parseInt(age) : null;
-  const safeWeight = weight ? parseFloat(weight) : null;
+    if (parentResult.length === 0) {
+      return res.status(404).json({ error: "Pet parent not found for this user" });
+    }
 
-  const sqlAddPet = `
-    INSERT INTO pet_parent (
-      user_id, animalType, petName, breed, age, gender,
-      hasVaccination, vaccinationDate, hasCurrentMedication, medicationDetails,
-      hasAllergies, allergies, dietType, weight, behavioralNotes
-    )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `;
+    const pp_id = parentResult[0].pp_id;
 
-  db.query(
-    sqlAddPet,
-    [
-      userId,
-      animalType,
-      petName,
-      breed,
-      safeAge,
-      safeGender, // ✅ mapped here
-      hasVaccination,
-      safeVaccinationDate,
-      hasCurrentMedication,
-      medicationDetails,
-      hasAllergies,
-      allergies,
-      dietType,
-      safeWeight,
-      behavioralNotes
-    ],
-    (err) => {
-      if (err) {
-        console.error('Add pet error:', err.sqlMessage || err);
-        return res.status(500).json({ error: 'Failed to add pet' });
+    const insertPetSQL = `
+      INSERT INTO pet_t (
+        pp_id, pet_name, pet_species, pet_breed, pet_age, pet_gender,
+        pet_hasVaccination, pet_vaccinationDate,
+        pet_hasMedication, pet_medicationDetails,
+        pet_hasAllergies, pet_allergyDetails,
+        pet_dietType, pet_weight, pet_behavioralNotes, pet_lastUpdated
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+    `;
+
+    const values = [
+      pp_id,
+      petName || null,
+      animalType || null,
+      breed || null,
+      age || null,
+      gender || null,
+      hasVaccination || 'no',
+      vaccinationDate || null,
+      hasMedication || 'no',
+      medicationDetails || null,
+      hasAllergies || 'no',
+      allergies || null,
+      dietType || null,
+      weight || null,
+      behavioralNotes || null
+    ];
+
+
+    db.query(insertPetSQL, values, (err2, result) => {
+      if (err2) {
+        console.error("❌ Error inserting pet:", err2);
+        return res.status(500).json({ error: "Failed to add pet" });
       }
 
-      res.sendStatus(200);
-    }
-  );
+      return res.status(200).json({ message: "✅ Pet added successfully!" });
+    });
+  });
 });
 
-app.delete('/api/pets/:petId', (req, res) => {
-  const petId = req.params.petId;
 
-  if (!petId) {
-    return res.status(400).json({ error: "Pet ID is required" });
-  }
+// -------------------------------------------------------------
+// 🟢 DELETE PET
+// -------------------------------------------------------------
+app.delete('/api/pets/:pet_id', (req, res) => {
+  const { pet_id } = req.params;
+  const sql = 'DELETE FROM pet_t WHERE pet_id = ?';
 
-  const sql = "DELETE FROM pet_parent WHERE id = ?";
-
-  db.query(sql, [petId], (err, result) => {
+  db.query(sql, [pet_id], (err, result) => {
     if (err) {
-      console.error("Error deleting pet:", err);
-      return res.status(500).json({ error: "Failed to delete pet" });
+      console.error('❌ Error deleting pet:', err);
+      return res.status(500).json({ error: 'Failed to delete pet' });
     }
+    if (result.affectedRows === 0)
+      return res.status(404).json({ error: 'Pet not found' });
 
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ error: "Pet not found" });
-    }
-
-    res.json({ message: "Pet deleted successfully" });
-  });
-});
-// ✅ Update an existing pet
-app.put('/api/pets/:petId', (req, res) => {
-  const petId = req.params.petId;
-  const updatedPet = req.body;
-
-  if (!petId) {
-    return res.status(400).json({ error: "Pet ID is required" });
-  }
-
-  // Map frontend field names to DB column names
-  const {
-    name,         // from React
-    species,      // from React
-    breed,
-    gender,
-    age,
-    weight,
-    dietType,
-    behavioralNotes,
-    hasVaccination,
-    vaccinationDate,
-    hasCurrentMedication,
-    medicationDetails,
-    hasAllergies,
-    allergies
-  } = updatedPet;
-
-  // Validate and clean up data
-  const safeGender =
-    gender?.toLowerCase() === 'male' ? 'm' :
-    gender?.toLowerCase() === 'female' ? 'f' :
-    gender === 'm' || gender === 'f' ? gender : null;
-
-  const safeVaccinationDate = vaccinationDate || null;
-  const safeAge = age ? parseInt(age) : null;
-  const safeWeight = weight ? parseFloat(weight) : null;
-
-  const sql = `
-    UPDATE pet_parent
-    SET
-      petName = ?,
-      animalType = ?,
-      breed = ?,
-      gender = ?,
-      age = ?,
-      weight = ?,
-      dietType = ?,
-      behavioralNotes = ?,
-      hasVaccination = ?,
-      vaccinationDate = ?,
-      hasCurrentMedication = ?,
-      medicationDetails = ?,
-      hasAllergies = ?,
-      allergies = ?
-    WHERE id = ?
-  `;
-
-  db.query(sql, [
-    name,
-    species,
-    breed,
-    safeGender,
-    safeAge,
-    safeWeight,
-    dietType,
-    behavioralNotes,
-    hasVaccination,
-    safeVaccinationDate,
-    hasCurrentMedication,
-    medicationDetails,
-    hasAllergies,
-    allergies,
-    petId
-  ], (err, result) => {
-    if (err) {
-      console.error("Error updating pet:", err.sqlMessage || err);
-      return res.status(500).json({ error: "Failed to update pet" });
-    }
-
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ error: "Pet not found" });
-    }
-
-    res.status(200).json({ message: "Pet updated successfully" });
+    res.status(200).json({ message: 'Pet deleted successfully' });
   });
 });
 
-
-
-app.listen(process.env.PORT, () => {
-  console.log(`Server running on port ${process.env.PORT}`);
-});
-
-app.get('/', (req, res) => {
-    res.send('Server is running');
-  });
+// -------------------------------------------------------------
+app.get('/', (req, res) => res.send('🐾 Server is running...'));
+app.listen(process.env.PORT || 8080, () => console.log(`🚀 Server on port ${process.env.PORT}`));

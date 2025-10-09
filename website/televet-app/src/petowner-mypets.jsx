@@ -27,7 +27,7 @@ const PetOwnerMyPets = () => {
     gender: '',
     hasVaccination: '',
     vaccinationDate: '',
-    hasCurrentMedication: '',
+    hasMedication: '',
     medicationDetails: '',
     hasAllergies: '',
     allergies: '',
@@ -49,11 +49,33 @@ const PetOwnerMyPets = () => {
       }
 
       const response = await axios.get(`http://localhost:5000/api/pets/${userId}`);
-      setPets(response.data);
+
+      // ✅ Map database field names to consistent frontend keys
+      const formattedPets = response.data.map(p => ({
+        id: p.pet_id,
+        name: p.pet_name,
+        species: p.pet_species,
+        breed: p.pet_breed,
+        age: p.pet_age,
+        gender: p.pet_gender,
+        hasVaccination: p.pet_hasVaccination,
+        vaccinationDate: p.pet_vaccinationDate,
+        hasMedication: p.pet_hasMedication,
+        medicationDetails: p.pet_medicationDetails,
+        hasAllergies: p.pet_hasAllergies,
+        allergyDetails: p.pet_allergyDetails,
+        dietType: p.pet_dietType,
+        weight: p.pet_weight,
+        behavioralNotes: p.pet_behavioralNotes,
+        updatedAt: p.pet_lastUpdated,
+      }));
+
+      setPets(formattedPets);
     } catch (error) {
       console.error('Error fetching pets:', error);
     }
   };
+
 
   const handlePetClick = (pet) => {
     setSelectedPet(pet);
@@ -80,7 +102,7 @@ const PetOwnerMyPets = () => {
       gender: '',
       hasVaccination: '',
       vaccinationDate: '',
-      hasCurrentMedication: '',
+      hasMedication: '',
       medicationDetails: '',
       hasAllergies: '',
       allergies: '',
@@ -123,8 +145,10 @@ const PetOwnerMyPets = () => {
 
       const response = await axios.post('http://localhost:5000/api/add-pet', {
         userId,
-        ...newPetData
+        ...newPetData,
+        gender: newPetData.gender === 'Male' ? 'm' : 'f'
       });
+
 
       // ✅ Removed popup alerts
       console.log(response.data.message || 'Pet added successfully');
@@ -198,14 +222,27 @@ const handleUpdatePet = async () => {
   try {
     const updatedAt = new Date().toISOString();
 
-    await axios.put(`http://localhost:5000/api/pets/${selectedPet.id}`, {
-      ...selectedPet,
-      vaccinationDate: selectedPet.vaccinationDate
+    // 🟢 FIXED: Match backend column names
+    const payload = {
+      pet_name: selectedPet.name,
+      pet_species: selectedPet.species,
+      pet_breed: selectedPet.breed,
+      pet_age: selectedPet.age,
+      pet_gender: selectedPet.gender,
+      pet_hasVaccination: selectedPet.hasVaccination,
+      pet_vaccinationDate: selectedPet.vaccinationDate
         ? new Date(selectedPet.vaccinationDate).toISOString().split('T')[0]
         : null,
-      updatedAt,
-    });
+      pet_hasMedication: selectedPet.hasMedication,
+      pet_medicationDetails: selectedPet.medicationDetails,
+      pet_hasAllergies: selectedPet.hasAllergies,
+      pet_allergyDetails: selectedPet.allergyDetails,
+      pet_dietType: selectedPet.dietType,
+      pet_weight: selectedPet.weight,
+      pet_behavioralNotes: selectedPet.behavioralNotes,
+    };
 
+    await axios.put(`http://localhost:5000/api/pets/${selectedPet.id}`, payload);
 
     // ✅ Instantly update local state so UI reflects change
     setSelectedPet((prev) => ({ ...prev, updatedAt }));
@@ -215,7 +252,7 @@ const handleUpdatePet = async () => {
       text: 'Pet profile updated successfully!',
     });
 
-    fetchPets(); 
+    fetchPets();
     setIsEditing(false);
 
     setTimeout(() => setMessage(null), 1000);
@@ -227,6 +264,7 @@ const handleUpdatePet = async () => {
     });
   }
 };
+
 
 
 const [isEditing, setIsEditing] = useState(false);
@@ -400,16 +438,16 @@ const [isEditing, setIsEditing] = useState(false);
                         <label>Current Medication:</label>
                         <div className="radio-group">
                           <label>
-                            <input type="radio" name="hasCurrentMedication" value="yes" checked={newPetData.hasCurrentMedication === 'yes'} onChange={handleNewPetChange} required />
+                            <input type="radio" name="hasMedication" value="yes" checked={newPetData.hasMedication === 'yes'} onChange={handleNewPetChange} required />
                             Yes
                           </label>
                           <label>
-                            <input type="radio" name="hasCurrentMedication" value="no" checked={newPetData.hasCurrentMedication === 'no'} onChange={handleNewPetChange} />
+                            <input type="radio" name="hasMedication" value="no" checked={newPetData.hasMedication === 'no'} onChange={handleNewPetChange} />
                             No
                           </label>
                         </div>
                       </div>
-                      {newPetData.hasCurrentMedication === 'yes' && (
+                      {newPetData.hasMedication === 'yes' && (
                         <div className="form-group">
                           <label>Medication Details:</label>
                           <textarea name="medicationDetails" value={newPetData.medicationDetails} onChange={handleNewPetChange} required />
@@ -556,13 +594,13 @@ const [isEditing, setIsEditing] = useState(false);
                             <label>
                               <input
                                 type="radio"
-                                name="hasCurrentMedication"
+                                name="hasMedication"
                                 value="yes"
-                                checked={selectedPet.hasCurrentMedication === 'yes'}
+                                checked={selectedPet.hasMedication === 'yes'}
                                 onChange={(e) =>
                                   setSelectedPet({
                                     ...selectedPet,
-                                    hasCurrentMedication: e.target.value,
+                                    hasMedication: e.target.value,
                                   })
                                 }
                               />
@@ -571,13 +609,13 @@ const [isEditing, setIsEditing] = useState(false);
                             <label>
                               <input
                                 type="radio"
-                                name="hasCurrentMedication"
+                                name="hasMedication"
                                 value="no"
-                                checked={selectedPet.hasCurrentMedication === 'no'}
+                                checked={selectedPet.hasMedication === 'no'}
                                 onChange={(e) =>
                                   setSelectedPet({
                                     ...selectedPet,
-                                    hasCurrentMedication: e.target.value,
+                                    hasMedication: e.target.value,
                                   })
                                 }
                               />
@@ -586,7 +624,7 @@ const [isEditing, setIsEditing] = useState(false);
                           </div>
                         </div>
 
-                        {selectedPet.hasCurrentMedication === 'yes' && (
+                        {selectedPet.hasMedication === 'yes' && (
                           <div className="form-group">
                             <label>Medication Details:</label>
                             <textarea
@@ -701,7 +739,7 @@ const [isEditing, setIsEditing] = useState(false);
                             ? new Date(selectedPet.vaccinationDate).toISOString().split('T')[0]
                             : 'N/A'}
                         </p>
-                        <p><strong>Current Medication:</strong> {selectedPet.hasCurrentMedication === 'yes' ? 'Yes' : 'No'}</p>
+                        <p><strong>Current Medication:</strong> {selectedPet.hasMedication === 'yes' ? 'Yes' : 'No'}</p>
                         <p><strong>Medication Details:</strong> {selectedPet.medicationDetails || 'None'}</p>
                         <p><strong>Allergies:</strong> {selectedPet.hasAllergies === 'yes' ? 'Yes' : 'No'}</p>
                         <p><strong>Allergy Details:</strong> {selectedPet.allergies || 'None'}</p>
