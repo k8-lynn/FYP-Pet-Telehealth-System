@@ -3,6 +3,8 @@ import { Bell, ChevronLeft, ChevronRight, User, Plus } from 'lucide-react';
 import './styles/petowner-dashboard.css';
 import PawPattern from "./components/PawPattern";
 import PetOwnerNavbar from './components/petowner-navbar';
+import ProfileNotification from "./components/ProfileNotification";
+
 
 const PetOwnerDashboard = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -51,18 +53,7 @@ const PetOwnerDashboard = () => {
       {/* Main Content */}
       <div className="main-content">
         {/* Header */}
-        <div className="header">
-          <button className="notification-button">
-            <Bell size={20} color="#6c757d" />
-          </button>
-          <div className="user-profile">
-            <div className="user-avatar">
-              <User size={20} color="#64748b" />
-            </div>
-            <span className="user-name">{firstName || 'Pet Owner'}</span>
-            <ChevronLeft size={16} color="#6c757d" style={{ transform: 'rotate(-90deg)' }} />
-          </div>
-        </div>
+        <ProfileNotification firstName={firstName} />
 
         {/* Dashboard Content */}
         <div className="dashboard-content">

@@ -20,7 +20,7 @@ const Register = () => {
     animalType: '',
     petName: '',
     breed: '',
-    birthday: '',
+    age: '',
     gender: '',
     hasVaccination: '',
     vaccinationDate: '',
@@ -106,17 +106,24 @@ const Register = () => {
 
   const handleSubmitFinal = async (e) => {
     e.preventDefault();
-    
+
     if (!consentChecked) {
       alert("Please confirm the consent checkbox before submitting.");
       return;
     }
 
+    // 🟢 Prepare the data correctly for backend
+    const formattedData = {
+      ...formData,
+      gender: formData.gender === "male" ? "m" : "f", // convert gender
+      age: parseInt(formData.age, 10), // ensure it's a number
+    };
+
     try {
       const response = await fetch('http://localhost:5000/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
+        body: JSON.stringify(formattedData)
       });
 
       const data = await response.json();
@@ -126,6 +133,7 @@ const Register = () => {
       alert("Failed to register");
     }
   };
+
 
   // Get step labels based on user type
   const getStepLabels = () => {
@@ -225,9 +233,9 @@ const Register = () => {
                       <label>Breed:</label>
                       <input type="text" name="breed" value={formData.breed} onChange={handleChange} required />
                     </div>
-                    <div>
-                      <label>Birthday:</label>
-                      <input type="date" name="birthday" value={formData.birthday} onChange={handleChange} required />
+                   <div>
+                      <label>Age:</label>
+                      <input type="number" name="age" value={formData.age} onChange={handleChange} required min="0" />
                     </div>
                     <div>
                       <label>Gender:</label>
@@ -350,7 +358,7 @@ const Register = () => {
                         <p>Pet Name: {formData.petName}</p>
                         <p>Animal Type: {formData.animalType}</p>
                         <p>Breed: {formData.breed}</p>
-                        <p>Birthday: {formData.birthday}</p>
+                        <p>Age: {formData.age}</p>
                         <p>Gender: {formData.gender}</p>
                       </div>
 

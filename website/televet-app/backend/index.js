@@ -64,7 +64,7 @@ app.post('/api/login', (req, res) => {
 app.post('/register', (req, res) => {
   const {
     firstName, lastName, email, password, userType,
-    animalType, petName, breed, birthday, gender,
+    animalType, petName, breed, age, gender,
     hasVaccination, vaccinationDate, hasCurrentMedication, medicationDetails,
     hasAllergies, allergies, dietType, weight, behavioralNotes
   } = req.body;
@@ -91,17 +91,18 @@ app.post('/register', (req, res) => {
     if (userType === 'petParent') {
       const sqlPetParent = `
         INSERT INTO pet_parent (
-          user_id, animalType, petName, breed, birthday, gender,
+          user_id, animalType, petName, breed, age, gender,
           hasVaccination, vaccinationDate, hasCurrentMedication, medicationDetails,
           hasAllergies, allergies, dietType, weight, behavioralNotes
         )
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `;
 
+
       const safeVaccinationDate = vaccinationDate ? vaccinationDate : null;
 
       db.query(sqlPetParent, [
-        userId, animalType, petName, breed, birthday, gender,
+        userId, animalType, petName, breed, age, gender,
         hasVaccination, safeVaccinationDate, hasCurrentMedication, medicationDetails,
         hasAllergies, allergies, dietType, weight, behavioralNotes
       ], (err2) => {
@@ -137,11 +138,12 @@ app.get('/api/pets/:user_id', (req, res) => {
 
   const sql = `
     SELECT 
+      id,
       petName AS name,
       animalType AS species,
       breed,
       gender,
-      TIMESTAMPDIFF(YEAR, birthday, CURDATE()) AS age,
+      age,
       weight,
       dietType,
       behavioralNotes,
@@ -164,8 +166,191 @@ app.get('/api/pets/:user_id', (req, res) => {
   });
 });
 
-  
-  
+
+// ✅ Add new pet for existing user
+app.post('/api/add-pet', (req, res) => {
+  const {
+    userId,
+    animalType,
+    petName,
+    breed,
+    age,
+    gender,
+    hasVaccination,
+    vaccinationDate,
+    hasCurrentMedication,
+    medicationDetails,
+    hasAllergies,
+    allergies,
+    dietType,
+    weight,
+    behavioralNotes
+  } = req.body;
+
+  if (!userId) {
+    return res.status(400).json({ error: 'User ID is required' });
+  }
+
+  // ✅ Convert gender values to match ENUM('m', 'f')
+  const safeGender =
+    gender?.toLowerCase() === 'male' ? 'm' :
+    gender?.toLowerCase() === 'female' ? 'f' :
+    null;
+
+  const safeVaccinationDate = vaccinationDate || null;
+  const safeAge = age ? parseInt(age) : null;
+  const safeWeight = weight ? parseFloat(weight) : null;
+
+  const sqlAddPet = `
+    INSERT INTO pet_parent (
+      user_id, animalType, petName, breed, age, gender,
+      hasVaccination, vaccinationDate, hasCurrentMedication, medicationDetails,
+      hasAllergies, allergies, dietType, weight, behavioralNotes
+    )
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `;
+
+  db.query(
+    sqlAddPet,
+    [
+      userId,
+      animalType,
+      petName,
+      breed,
+      safeAge,
+      safeGender, // ✅ mapped here
+      hasVaccination,
+      safeVaccinationDate,
+      hasCurrentMedication,
+      medicationDetails,
+      hasAllergies,
+      allergies,
+      dietType,
+      safeWeight,
+      behavioralNotes
+    ],
+    (err) => {
+      if (err) {
+        console.error('Add pet error:', err.sqlMessage || err);
+        return res.status(500).json({ error: 'Failed to add pet' });
+      }
+
+      res.sendStatus(200);
+    }
+  );
+});
+
+app.delete('/api/pets/:petId', (req, res) => {
+  const petId = req.params.petId;
+
+  if (!petId) {
+    return res.status(400).json({ error: "Pet ID is required" });
+  }
+
+  const sql = "DELETE FROM pet_parent WHERE id = ?";
+
+  db.query(sql, [petId], (err, result) => {
+    if (err) {
+      console.error("Error deleting pet:", err);
+      return res.status(500).json({ error: "Failed to delete pet" });
+    }
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: "Pet not found" });
+    }
+
+    res.json({ message: "Pet deleted successfully" });
+  });
+});
+// ✅ Update an existing pet
+app.put('/api/pets/:petId', (req, res) => {
+  const petId = req.params.petId;
+  const updatedPet = req.body;
+
+  if (!petId) {
+    return res.status(400).json({ error: "Pet ID is required" });
+  }
+
+  // Map frontend field names to DB column names
+  const {
+    name,         // from React
+    species,      // from React
+    breed,
+    gender,
+    age,
+    weight,
+    dietType,
+    behavioralNotes,
+    hasVaccination,
+    vaccinationDate,
+    hasCurrentMedication,
+    medicationDetails,
+    hasAllergies,
+    allergies
+  } = updatedPet;
+
+  // Validate and clean up data
+  const safeGender =
+    gender?.toLowerCase() === 'male' ? 'm' :
+    gender?.toLowerCase() === 'female' ? 'f' :
+    gender === 'm' || gender === 'f' ? gender : null;
+
+  const safeVaccinationDate = vaccinationDate || null;
+  const safeAge = age ? parseInt(age) : null;
+  const safeWeight = weight ? parseFloat(weight) : null;
+
+  const sql = `
+    UPDATE pet_parent
+    SET
+      petName = ?,
+      animalType = ?,
+      breed = ?,
+      gender = ?,
+      age = ?,
+      weight = ?,
+      dietType = ?,
+      behavioralNotes = ?,
+      hasVaccination = ?,
+      vaccinationDate = ?,
+      hasCurrentMedication = ?,
+      medicationDetails = ?,
+      hasAllergies = ?,
+      allergies = ?
+    WHERE id = ?
+  `;
+
+  db.query(sql, [
+    name,
+    species,
+    breed,
+    safeGender,
+    safeAge,
+    safeWeight,
+    dietType,
+    behavioralNotes,
+    hasVaccination,
+    safeVaccinationDate,
+    hasCurrentMedication,
+    medicationDetails,
+    hasAllergies,
+    allergies,
+    petId
+  ], (err, result) => {
+    if (err) {
+      console.error("Error updating pet:", err.sqlMessage || err);
+      return res.status(500).json({ error: "Failed to update pet" });
+    }
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: "Pet not found" });
+    }
+
+    res.status(200).json({ message: "Pet updated successfully" });
+  });
+});
+
+
+
 app.listen(process.env.PORT, () => {
   console.log(`Server running on port ${process.env.PORT}`);
 });
