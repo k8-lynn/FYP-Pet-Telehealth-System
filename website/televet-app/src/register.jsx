@@ -171,7 +171,7 @@ const Register = () => {
         <div className="form-box">
           <h2>Register</h2>
 
-          <form onSubmit={(formData.userType === 'vet' && step === 5) || (formData.userType === 'petParent' && step === 4) ? handleSubmitFinal : handleNext}>
+          <form onSubmit={(formData.userType === 'vet' && step === 4) || (formData.userType === 'petParent' && step === 4) ? handleSubmitFinal : handleNext}>
             {/* STEP 1: Your Profile (Common for both) */}
             {step === 1 && (
               <>

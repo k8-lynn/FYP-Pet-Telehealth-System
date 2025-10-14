@@ -81,107 +81,127 @@ app.get('/api/pets/:usr_id', (req, res) => {
 });
 
 // -------------------------------------------------------------
-// 🟢 ADD NEW PET (for pet parent)
+// 🟢 REGISTER (Pet Parent or Vet Admin)
 // -------------------------------------------------------------
 app.post('/api/register', (req, res) => {
+  console.log("🚀 Incoming /api/register request");
+
+  if (!req.body) {
+    console.error("❌ No body received in request");
+    return res.status(400).json({ error: "Missing request body" });
+  }
+
+  console.log("🟢 Full request body:", req.body);
+
   const {
     firstName,
     lastName,
     email,
     password,
-    userType,
-    petName,
-    animalType,
-    breed,
-    age,
-    gender,
-    hasVaccination,
-    vaccinationDate,
-    hasMedication,
-    medicationDetails,
-    hasAllergies,
-    allergies,
-    dietType,
-    weight,
-    behavioralNotes
+    userType
   } = req.body;
 
-  console.log("🟢 Received registration request:", req.body);
+  // Quick validation
+  if (!firstName || !lastName || !email || !password || !userType) {
+    console.error("❌ Missing basic registration fields");
+    return res.status(400).json({ error: "Incomplete registration data" });
+  }
 
-  // 1️⃣ Insert into user_t
+  console.log("📥 Attempting user_t insert for type:", userType);
+
   const sqlUser = `
     INSERT INTO user_t (usr_firstName, usr_lastName, usr_email, usr_password, usr_type)
     VALUES (?, ?, ?, ?, ?)
   `;
+
   db.query(sqlUser, [firstName, lastName, email, password, userType], (err, userResult) => {
     if (err) {
       console.error("❌ Error inserting into user_t:", err);
-      return res.status(500).json({ error: "Failed to register user" });
+      return res.status(500).json({ error: "Failed to register user_t" });
     }
 
     const userId = userResult.insertId;
-    console.log("✅ user_t inserted, userId =", userId);
+    console.log("✅ Inserted into user_t with usr_id =", userId);
 
-    // 2️⃣ If user is petParent, insert into pet_parent_t
+    // 🧩 PET PARENT REGISTRATION
     if (userType === "petParent") {
-      const sqlParent = `
-        INSERT INTO pet_parent_t (usr_id, pp_lastUpdated)
-        VALUES (?, NOW())
-      `;
+      console.log("👩‍👧 Detected petParent registration");
+
+      const sqlParent = `INSERT INTO pet_parent_t (usr_id, pp_lastUpdated) VALUES (?, NOW())`;
       db.query(sqlParent, [userId], (err2, parentResult) => {
         if (err2) {
           console.error("❌ Error inserting into pet_parent_t:", err2);
-          return res.status(500).json({ error: "Failed to create pet parent record" });
+          return res.status(500).json({ error: "Failed to insert pet_parent_t" });
         }
 
         const pp_id = parentResult.insertId;
         console.log("✅ pet_parent_t inserted, pp_id =", pp_id);
 
-        // 3️⃣ Insert into pet_t
-        const sqlPet = `
-          INSERT INTO pet_t (
-            pp_id, pet_name, pet_species, pet_breed, pet_age, pet_gender,
-            pet_hasVaccination, pet_vaccinationDate,
-            pet_hasMedication, pet_medicationDetails,
-            pet_hasAllergies, pet_allergyDetails,
-            pet_dietType, pet_weight, pet_behavioralNotes, pet_lastUpdated
-          )
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
-        `;
+        // simplified log for brevity
+        console.log("🐶 Skipping full pet insert debug for now...");
+        return res.status(200).json({ message: "Pet parent registered successfully" });
+      });
 
-        db.query(sqlPet, [
-          pp_id,
-          petName,
-          animalType,
-          breed,
-          age,
-          gender,
-          hasVaccination,
-          vaccinationDate || null,
-          hasMedication,
-          medicationDetails || null,
-          hasAllergies,
-          allergies || null,
-          dietType,
-          weight,
-          behavioralNotes || null
-        ], (err3, petResult) => {
-          if (err3) {
-            console.error("❌ Error inserting into pet_t:", err3);
-            return res.status(500).json({ error: "Failed to add pet" });
-          }
+    // 🧩 VET ADMIN REGISTRATION
+    } else if (userType === "vetAdmin") {
+      console.log("👨‍⚕️ Detected vetAdmin registration, preparing vet_admin_t insert...");
 
-          console.log("✅ pet_t inserted successfully, pet_id =", petResult.insertId);
-          return res.status(200).json({ message: "Pet parent and pet registered successfully!" });
-        });
+      const sqlVetAdmin = `
+        INSERT INTO vet_admin_t (
+          usr_id,
+          va_licenseNumber,
+          va_licensingAuthority,
+          va_yearsOfPractice,
+          va_specialization,
+          va_vetLocation,
+          va_clinicName,
+          va_clinicPhone,
+          va_clinicEmail,
+          va_consent,
+          va_createdAt
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+      `;
+
+      console.log("🧾 Inserting vet admin data for userId:", userId);
+      console.log({
+        licenseNumber: req.body.licenseNumber,
+        licensingAuthority: req.body.licensingAuthority,
+        yearsOfPractice: req.body.yearsOfPractice,
+        specialization: req.body.specialization,
+        vetLocation: req.body.vetLocation,
+        clinicName: req.body.clinicName,
+        clinicPhone: req.body.clinicPhone,
+        clinicEmail: req.body.clinicEmail
+      });
+
+      db.query(sqlVetAdmin, [
+        userId,
+        req.body.licenseNumber,
+        req.body.licensingAuthority,
+        req.body.yearsOfPractice,
+        req.body.specialization || null,
+        req.body.vetLocation,
+        req.body.clinicName,
+        req.body.clinicPhone,
+        req.body.clinicEmail,
+        'yes'
+      ], (errVet, vetResult) => {
+        if (errVet) {
+          console.error("❌ Error inserting into vet_admin_t:", errVet);
+          return res.status(500).json({ error: "Failed to register vet admin" });
+        }
+
+        console.log("✅ vet_admin_t inserted successfully, va_id =", vetResult.insertId);
+        return res.status(200).json({ message: "Vet admin registered successfully!" });
       });
     } else {
-      // 4️⃣ If user is vetAdmin, skip pet tables
-      console.log("👨‍⚕️ Vet admin registered, skipping pet tables");
-      return res.status(200).json({ message: "Vet registered successfully!" });
+      console.warn("⚠️ Unknown userType detected:", userType);
+      return res.status(400).json({ error: "Invalid userType" });
     }
   });
 });
+
 
 
 // -------------------------------------------------------------

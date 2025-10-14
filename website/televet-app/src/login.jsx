@@ -28,23 +28,34 @@ const Login = () => {
       const data = await response.json();
 
       if (response.ok) {
+        // ✅ Pet Parent Login
         if (data.userType === 'petParent' || data.user_type === 'petParent') {
-          // ✅ Save user's first name to localStorage
           localStorage.setItem('firstName', data.firstName);
-          localStorage.setItem('user_id', data.userId);   // ✅ fixed
-          localStorage.setItem('userType', data.userType); // ✅ consistent
-      
+          localStorage.setItem('user_id', data.userId);
+          localStorage.setItem('userType', data.userType);
+
           setShowSuccess(true);
-      
-          // ✅ Redirect to dashboard
+
           setTimeout(() => {
             navigate('/petowner-dashboard');
           }, 2000);
-        } else {
-          alert('Login successful');
+        } 
+        // ✅ Vet Admin Login
+        else if (data.userType === 'vetAdmin' || data.user_type === 'vetAdmin') {
+          localStorage.setItem('firstName', data.firstName);
+          localStorage.setItem('user_id', data.userId);
+          localStorage.setItem('userType', data.userType);
+
+          setShowSuccess(true);
+
+          setTimeout(() => {
+            navigate('/vetadmin-dashboard');
+          }, 2000);
+        } 
+        else {
+          alert('Login successful, but unknown user type.');
         }
-      }      
-      else {
+      } else {
         alert(data.message || 'Login failed');
       }
     } catch (error) {
@@ -52,6 +63,7 @@ const Login = () => {
       alert('Something went wrong!');
     }
   };
+
 
   return (
     <div className={styles.loginWrapper}>

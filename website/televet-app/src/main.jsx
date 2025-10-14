@@ -6,9 +6,13 @@ import Login from './login';
 import Register from './register';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import './styles/index.css'; // keep your styles
+
 import PetOwnerDashboard from './petowner-dashboard';
 import PetOwnerMyPets from './petowner-mypets';
 import PetOwnerReminders from './petowner-reminders';
+
+import VetAdminDashboard from './vetadmin-dashboard.jsx';
+
 
 
 ReactDOM.createRoot(document.getElementById('root')).render(
@@ -21,6 +25,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
         <Route path="/petowner-dashboard" element={<PetOwnerDashboard />} />
         <Route path="/petowner-mypets" element={<PetOwnerMyPets />} />
         <Route path="/petowner-reminders" element={<PetOwnerReminders />} />
+        <Route path="/vetadmin-dashboard" element={<VetAdminDashboard />} />
         {/* Add more routes as needed */}
       </Routes>
     </BrowserRouter>
