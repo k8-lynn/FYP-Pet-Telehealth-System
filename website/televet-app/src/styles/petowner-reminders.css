@@ -1,0 +1,722 @@
+/* Reminders Container */
+.reminders-container {
+  display: flex;
+  min-height: 100vh;
+  background: linear-gradient(to top, #e8f4f8 0%, #fef9e7 50%, #fff5e1 100%);
+  font-family: 'DM Sans', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  position: relative;
+  overflow: hidden;
+}
+
+
+/* Main Content */
+.main-content {
+  flex: 1;
+  padding: 2.5rem 2.5rem 2.5rem 340px;
+  max-width: 100%;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Header */
+.header {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 2.5rem;
+}
+
+.notification-button {
+  background: white;
+  border: 2px solid #e8f0f7;
+  border-radius: 14px;
+  padding: 0.75rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.25s ease;
+  color: #374e54;
+}
+
+.notification-button:hover {
+  background: #f8fbff;
+  border-color: #a8ceff;
+  transform: translateY(-2px);
+}
+
+.user-profile {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  background: white;
+  border: 2px solid #e8f0f7;
+  padding: 0.5rem 1.25rem;
+  border-radius: 14px;
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+
+.user-profile:hover {
+  background: #f8fbff;
+  border-color: #a8ceff;
+  transform: translateY(-2px);
+}
+
+.user-avatar {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #a8ceff 0%, #91befe 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: 700;
+  font-size: 1.05rem;
+}
+
+.user-name {
+  font-size: 0.95rem;
+  color: #1a2e35;
+  font-weight: 600;
+}
+
+/* Reminders Content Grid */
+.reminders-content {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.75rem;
+  max-width: 1400px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* Left Column */
+.left-column {
+  display: flex;
+  flex-direction: column;
+  gap: 1.75rem;
+}
+
+/* Calendar Section */
+.calendar-section {
+  background: white;
+  border-radius: 24px;
+  padding: 2.25rem;
+  border: 3px solid #e8f0f7;
+}
+
+.calendar-nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.75rem;
+  padding-bottom: 1.25rem;
+  border-bottom: 2px solid #f1f5f9;
+}
+
+.calendar-month {
+  font-size: 1.6rem;
+  color: #1a2e35;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  margin: 0;
+}
+
+.calendar-nav-buttons {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.calendar-nav-button {
+  background: #f8fafc;
+  border: 2px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 0.6rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  transition: all 0.2s ease;
+  color: #64748b;
+}
+
+.calendar-nav-button:hover {
+  background: #f1f5f9;
+  border-color: #a8ceff;
+  color: #1a2e35;
+  transform: scale(1.08);
+}
+
+.calendar-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.calendar-weekday {
+  text-align: center;
+  font-size: 0.8rem;
+  color: #64748b;
+  font-weight: 800;
+  padding: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.calendar-days {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.calendar-day {
+  aspect-ratio: 1;
+  border: none;
+  border-radius: 14px;
+  background: transparent;
+  color: #475569;
+  cursor: pointer;
+  font-size: 0.95rem;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.calendar-day:hover {
+  background: #f8fbff;
+  color: #1a2e35;
+  font-weight: 700;
+  transform: scale(1.1);
+}
+
+.calendar-day.has-reminder::after {
+  content: '';
+  position: absolute;
+  bottom: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 6px;
+  height: 6px;
+  background: #91befe;
+  border-radius: 50%;
+}
+
+.calendar-day.selected {
+  background: transparent;
+  border: 3px solid #91befe;
+  color: #1a2e35;
+  font-weight: 800;
+  border-radius: 50%;
+}
+
+.calendar-day.today {
+  background: #f8fbff;
+  border: 3px solid #a8ceff;
+  color: #1a2e35;
+  font-weight: 800;
+}
+
+.add-reminder-button {
+  background: linear-gradient(135deg, #a8ceff 0%, #91befe 100%);
+  color: white;
+  border: none;
+  border-radius: 14px;
+  padding: 0.95rem 1.75rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  letter-spacing: -0.01em;
+  width: 100%;
+}
+
+.add-reminder-button:hover {
+  transform: translateY(-3px) scale(1.02);
+  background: linear-gradient(135deg, #91befe 0%, #7aabf5 100%);
+}
+
+/* Today's Reminders Section */
+.todays-reminders-section {
+  background: white;
+  border-radius: 24px;
+  padding: 2.25rem;
+  border: 3px solid #e8f0f7;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1.25rem;
+  border-bottom: 2px solid #f1f5f9;
+}
+
+.section-title {
+  font-size: 1.6rem;
+  color: #1a2e35;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  margin: 0;
+}
+
+.book-appointment-button {
+  background: linear-gradient(135deg, #a8ceff 0%, #91befe 100%);
+  color: white;
+  border: none;
+  border-radius: 14px;
+  padding: 0.75rem 1.5rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  font-weight: 700;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  letter-spacing: -0.01em;
+  flex-shrink: 0;
+}
+
+.book-appointment-button:hover {
+  transform: translateY(-3px) scale(1.02);
+  background: linear-gradient(135deg, #91befe 0%, #7aabf5 100%);
+}
+
+.reminder-count {
+  background: #f8fafc;
+  border: 2px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 0.4rem 0.9rem;
+  font-size: 0.9rem;
+  color: #64748b;
+  font-weight: 700;
+}
+
+.reminders-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.reminder-item {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  border-radius: 14px;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.reminder-item:hover {
+  background: #f8fbff;
+}
+
+.reminder-checkbox {
+  width: 22px;
+  height: 22px;
+  border: 3px solid #cbd5e1;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+  position: relative;
+}
+
+.reminder-checkbox:hover {
+  border-color: #91befe;
+  transform: scale(1.1);
+}
+
+.reminder-checkbox.checked {
+  background: linear-gradient(135deg, #a8ceff 0%, #91befe 100%);
+  border-color: #91befe;
+  position: relative;
+}
+
+.reminder-checkbox.checked::after {
+  content: '✓';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: white;
+  font-size: 0.85rem;
+  font-weight: 800;
+}
+
+.reminder-details {
+  flex: 1;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.reminder-task {
+  font-size: 0.95rem;
+  color: #1a2e35;
+  font-weight: 600;
+}
+
+.reminder-item.completed .reminder-task {
+  text-decoration: line-through;
+  color: #94a3b8;
+}
+
+.reminder-time {
+  font-size: 0.85rem;
+  color: #64748b;
+  font-weight: 700;
+  background: #f8fafc;
+  padding: 0.35rem 0.75rem;
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 2.5rem 1rem;
+  color: #94a3b8;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+/* Right Column */
+.right-column {
+  display: flex;
+  flex-direction: column;
+  gap: 1.75rem;
+}
+
+/* Upcoming Reminders Section */
+.upcoming-reminders-section {
+  background: white;
+  border-radius: 24px;
+  padding: 2.25rem;
+  border: 3px solid #e8f0f7;
+}
+
+.upcoming-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.upcoming-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 1.25rem;
+  background: #f8fbff;
+  border-radius: 14px;
+  border: 2px solid #e8f0f7;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.upcoming-item:hover {
+  border-color: #a8ceff;
+  transform: translateY(-2px);
+}
+
+.upcoming-info {
+  flex: 1;
+}
+
+.upcoming-title {
+  font-size: 0.95rem;
+  color: #1a2e35;
+  font-weight: 700;
+  margin-bottom: 0.4rem;
+}
+
+.upcoming-date {
+  font-size: 0.85rem;
+  color: #64748b;
+  font-weight: 600;
+}
+
+.upcoming-time {
+  font-size: 0.85rem;
+  color: #64748b;
+  font-weight: 700;
+  background: white;
+  padding: 0.35rem 0.75rem;
+  border-radius: 8px;
+  border: 2px solid #e8f0f7;
+  flex-shrink: 0;
+}
+
+/* Upcoming Appointments Section */
+.upcoming-appointments-section {
+  background: white;
+  border-radius: 24px;
+  padding: 2.25rem;
+  border: 3px solid #e8f0f7;
+}
+
+.appointment-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 1.25rem;
+  background: linear-gradient(135deg, #ffe58f15 0%, #ffd66615 100%);
+  border-radius: 14px;
+  border: 2px solid #ffd66630;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.appointment-item:hover {
+  border-color: #ffd666;
+  transform: translateY(-2px);
+}
+
+/* Responsive adjustments */
+@media (max-width: 1200px) {
+  .main-content {
+    padding-left: 340px;
+  }
+  
+  .sidebar.collapsed ~ .main-content {
+    padding-left: 140px;
+  }
+}
+
+@media (max-width: 992px) {
+  .reminders-content {
+    grid-template-columns: 1fr;
+  }
+  
+  .main-content {
+    padding-left: 2.5rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .main-content {
+    padding: 1.5rem;
+  }
+  
+  .section-title,
+  .calendar-month {
+    font-size: 1.4rem;
+  }
+}
+
+/* Modal Styles */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  backdrop-filter: blur(4px);
+}
+
+.modal-container {
+  background: white;
+  border-radius: 24px;
+  width: 90%;
+  max-width: 600px;
+  max-height: 90vh;
+  overflow-y: auto;
+  border: 3px solid #e8f0f7;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 2rem 2.25rem;
+  border-bottom: 2px solid #f1f5f9;
+}
+
+.modal-title {
+  font-size: 1.75rem;
+  color: #1a2e35;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  margin: 0;
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  font-size: 2.5rem;
+  color: #64748b;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  transition: all 0.2s ease;
+}
+
+.modal-close:hover {
+  background: #f8fafc;
+  color: #1a2e35;
+}
+
+.modal-body {
+  padding: 2rem 2.25rem;
+}
+/* Checkbox alignment fix */
+/* Checkbox alignment fix */
+.form-group .form-checkbox-label {
+  display: inline-flex; /* 👈 inline version so it doesn't take full width */
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  width: auto; /* 👈 ensures only takes up content size */
+  padding-left: 0;
+  margin-top: 0.25rem;
+}
+
+/* Checkbox box itself */
+.form-checkbox-input {
+  flex: 0 0 18px; /* 👈 prevents flex growing or shrinking */
+  width: 18px;
+  height: 18px;
+  border: 2px solid #cbd5e1;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  accent-color: #91befe;
+  margin: 0;
+  appearance: none;
+  display: inline-block;
+  position: relative;
+}
+
+/* Checked state */
+.form-checkbox-input:checked {
+  background: linear-gradient(135deg, #a8ceff 0%, #91befe 100%);
+  border-color: #91befe;
+}
+
+/* Custom checkmark */
+.form-checkbox-input:checked::after {
+  content: "✓";
+  color: white;
+  font-weight: 800;
+  font-size: 0.8rem;
+  position: absolute;
+  top: 48%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+/* Checkbox text */
+.form-checkbox-text {
+  font-size: 0.95rem;
+  color: #1a2e35;
+  font-weight: 700;
+  user-select: none;
+}
+
+
+.modal-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 2px solid #f1f5f9;
+}
+
+.modal-actions-right {
+  display: flex;
+  gap: 1rem;
+}
+
+.modal-button-cancel,
+.modal-button-save,
+.modal-button-delete {
+  padding: 0.95rem 1.75rem;
+  border-radius: 14px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  border: none;
+}
+
+.modal-button-cancel {
+  background: #f8fafc;
+  color: #64748b;
+  border: 2px solid #e2e8f0;
+}
+
+.modal-button-cancel:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+  color: #475569;
+}
+
+.modal-button-save {
+  background: linear-gradient(135deg, #a8ceff 0%, #91befe 100%);
+  color: white;
+}
+
+.modal-button-save:hover {
+  transform: translateY(-2px);
+  background: linear-gradient(135deg, #91befe 0%, #7aabf5 100%);
+}
+
+.modal-button-delete {
+  background: #fee;
+  color: #dc2626;
+  border: 2px solid #fecaca;
+}
+
+.modal-button-delete:hover {
+  background: #fecaca;
+  border-color: #f87171;
+  transform: translateY(-2px);
+}
+
+/* Detail View Styles */
+.detail-group {
+  margin-bottom: 1.5rem;
+}
+
+.detail-label {
+  display: block;
+  font-size: 0.85rem;
+  color: #64748b;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.5rem;
+}
+
+.detail-value {
+  font-size: 1rem;
+  color: #1a2e35;
+  font-weight: 600;
+  margin: 0;
+  padding: 0.75rem 1rem;
+  background: #f8fbff;
+  border-radius: 12px;
+  border: 2px solid #e8f0f7;
+}

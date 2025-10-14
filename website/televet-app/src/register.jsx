@@ -204,7 +204,7 @@ const Register = () => {
                     </label>
                     <label className="radio-button">
                       <input type="radio" name="userType" value="vet" checked={formData.userType === 'vet'} onChange={handleChange} />
-                      <span>Vet</span>
+                      <span>Vet Admin</span>
                     </label>
                   </div>
                 </div>
