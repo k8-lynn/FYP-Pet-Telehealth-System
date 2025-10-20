@@ -42,7 +42,8 @@ const PetOwnerMyPets = () => {
 
   const fetchPets = async () => {
     try {
-      const userId = localStorage.getItem('user_id');
+      const userId = sessionStorage.getItem('userid');
+
       if (!userId) {
         console.error('No user ID found in localStorage');
         return;
@@ -137,7 +138,8 @@ const PetOwnerMyPets = () => {
     e.preventDefault();
     
     try {
-      const userId = localStorage.getItem('user_id');
+      const userId = sessionStorage.getItem('userid');
+
       if (!userId) {
         console.error('User not logged in');
         return;
@@ -320,7 +322,8 @@ const [isEditing, setIsEditing] = useState(false);
 
 
       <div className="mypets-content">
-        <ProfileNotification firstName={localStorage.getItem("firstName")} />
+        <ProfileNotification firstName={sessionStorage.getItem("firstName")} />
+
         {/* Pet Cards */}
         {showCard && (
           <div className="pet-cards-row">

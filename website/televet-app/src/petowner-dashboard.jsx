@@ -12,7 +12,8 @@ const PetOwnerDashboard = () => {
   const [firstName, setFirstName] = useState('');
 
   React.useEffect(() => {
-    const storedName = localStorage.getItem('firstName');
+    const storedName = sessionStorage.getItem('firstName');
+
     if (storedName) {
       setFirstName(storedName);
     }

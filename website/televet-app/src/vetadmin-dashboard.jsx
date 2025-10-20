@@ -10,7 +10,7 @@ const VetAdminDashboard = () => {
   const [firstName, setFirstName] = useState('');
 
   useEffect(() => {
-    const storedName = localStorage.getItem('firstName');
+    const storedName = sessionStorage.getItem('firstName');
     if (storedName) {
       setFirstName(storedName);
     }

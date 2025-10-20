@@ -28,8 +28,11 @@ const Login = () => {
       const data = await response.json();
 
       if (response.ok) {
+        localStorage.clear();
+        sessionStorage.clear();
         // ✅ Pet Parent Login
         if (data.userType === 'petParent' || data.user_type === 'petParent') {
+          sessionStorage.clear();
           sessionStorage.setItem('firstName', data.firstName);
           sessionStorage.setItem('userid', data.userId);
           sessionStorage.setItem('userType', data.userType);

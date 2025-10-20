@@ -45,6 +45,17 @@ app.post('/api/login', (req, res) => {
       return res.status(401).json({ message: 'Invalid email or password' });
 
     const user = result[0];
+
+    // 🧾 Log the login event with all key details
+    console.log("✅ Login successful for user:");
+    console.log({
+      usr_id: user.usr_id,
+      usr_firstName: user.usr_firstName,
+      usr_lastName: user.usr_lastName,
+      usr_email: user.usr_email,
+      usr_type: user.usr_type
+    });
+
     res.status(200).json({
       message: 'Login successful',
       userId: user.usr_id,
@@ -127,21 +138,59 @@ app.post('/api/register', (req, res) => {
     // 🧩 PET PARENT REGISTRATION
     if (userType === "petParent") {
       console.log("👩‍👧 Detected petParent registration");
-
+    
       const sqlParent = `INSERT INTO pet_parent_t (usr_id, pp_lastUpdated) VALUES (?, NOW())`;
       db.query(sqlParent, [userId], (err2, parentResult) => {
         if (err2) {
           console.error("❌ Error inserting into pet_parent_t:", err2);
           return res.status(500).json({ error: "Failed to insert pet_parent_t" });
         }
-
+    
         const pp_id = parentResult.insertId;
         console.log("✅ pet_parent_t inserted, pp_id =", pp_id);
-
-        // simplified log for brevity
-        console.log("🐶 Skipping full pet insert debug for now...");
-        return res.status(200).json({ message: "Pet parent registered successfully" });
+    
+        // 🐶 INSERT PET IMMEDIATELY
+        const sqlPet = `
+          INSERT INTO pet_t (
+            pp_id, pet_name, pet_species, pet_breed, pet_age, pet_gender,
+            pet_hasVaccination, pet_vaccinationDate,
+            pet_hasMedication, pet_medicationDetails,
+            pet_hasAllergies, pet_allergyDetails,
+            pet_dietType, pet_weight, pet_behavioralNotes, pet_lastUpdated
+          )
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+        `;
+    
+        const values = [
+          pp_id,
+          req.body.petName,
+          req.body.animalType,
+          req.body.breed,
+          req.body.age,
+          req.body.gender,
+          req.body.hasVaccination,
+          req.body.vaccinationDate || null,
+          req.body.hasMedication,
+          req.body.medicationDetails || null,
+          req.body.hasAllergies,
+          req.body.allergies || null,
+          req.body.dietType,
+          req.body.weight,
+          req.body.behavioralNotes
+        ];
+    
+        db.query(sqlPet, values, (err3, petResult) => {
+          if (err3) {
+            console.error("❌ Error inserting pet_t:", err3);
+            return res.status(500).json({ error: "Failed to insert pet_t" });
+          }
+    
+          console.log("✅ Pet inserted successfully with pet_id =", petResult.insertId);
+          return res.status(200).json({ message: "Pet parent and pet registered successfully!" });
+        });
       });
+    
+    
 
     // 🧩 VET ADMIN REGISTRATION
     } else if (userType === "vetAdmin") {
