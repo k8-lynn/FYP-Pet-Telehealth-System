@@ -2,7 +2,7 @@
 .vetadmin-dashboard-container {
   display: flex;
   min-height: 100vh;
-  background: linear-gradient(to top, #e8f4f8 0%, #fef9e7 50%, #fff5e1 100%);
+  background: linear-gradient(to top, #e8f4f8 0%, #f8f2fb 50%, #ffffff 100%);
   font-family: 'DM Sans', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   position: relative;
   overflow: hidden;
@@ -10,10 +10,16 @@
 
 .vetadmin-main-content {
   flex: 1;
-  padding: 2.5rem;
+  padding: 2.5rem 2.5rem 2.5rem 340px;
   max-width: 100%;
   position: relative;
   z-index: 1;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* When sidebar is collapsed - content expands */
+.vetadmin-sidebar.collapsed ~ .vetadmin-main-content {
+  padding-left: 140px;
 }
 
 /* Header */
@@ -24,7 +30,7 @@
   margin-bottom: 2.5rem;
 }
 
-.location-info {
+.vetadmin-dashboard-container .location-info {
   display: flex;
   align-items: center;
   gap: 0.75rem;
@@ -34,41 +40,44 @@
   border-radius: 14px;
 }
 
-.location-icon {
+.vetadmin-dashboard-container .location-icon {
   color: #91befe;
 }
 
-.location-text {
+.vetadmin-dashboard-container .location-text {
   font-size: 0.95rem;
   color: #1a2e35;
   font-weight: 700;
 }
 
 /* Stats Grid */
-.stats-grid {
+.vetadmin-dashboard-container .stats-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 1.75rem;
   margin-bottom: 2.5rem;
+  max-width: 100%;
 }
 
-.stat-card {
+.vetadmin-dashboard-container .stat-card {
   background: white;
   border-radius: 24px;
   padding: 2rem;
   border: 3px solid #e8f0f7;
   display: flex;
-  align-items: flex-start;
-  gap: 1.25rem;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 1rem;
   transition: all 0.25s ease;
 }
 
-.stat-card:hover {
+.vetadmin-dashboard-container .stat-card:hover {
   transform: translateY(-4px);
   border-color: #a8ceff;
 }
 
-.stat-icon {
+.vetadmin-dashboard-container .stat-icon {
   width: 56px;
   height: 56px;
   border-radius: 16px;
@@ -78,11 +87,11 @@
   flex-shrink: 0;
 }
 
-.stat-content {
+.vetadmin-dashboard-container .stat-content {
   flex: 1;
 }
 
-.stat-value {
+.vetadmin-dashboard-container .stat-value {
   font-size: 2rem;
   color: #1a2e35;
   font-weight: 800;
@@ -90,36 +99,37 @@
   margin: 0 0 0.25rem 0;
 }
 
-.stat-title {
-  font-size: 0.95rem;
+.vetadmin-dashboard-container .stat-title {
+  font-size: 0.9rem;
   color: #1a2e35;
   font-weight: 700;
   margin: 0 0 0.25rem 0;
+  line-height: 1.3;
 }
 
-.stat-subtitle {
-  font-size: 0.85rem;
+.vetadmin-dashboard-container .stat-subtitle {
+  font-size: 0.8rem;
   color: #64748b;
   font-weight: 600;
   margin: 0;
 }
 
 /* Dashboard Content Grid */
-.dashboard-content {
+.vetadmin-dashboard-container .dashboard-content {
   display: grid;
   grid-template-columns: 1fr 400px;
   gap: 1.75rem;
 }
 
 /* Appointments Section */
-.appointments-section {
+.vetadmin-dashboard-container .appointments-section {
   background: white;
   border-radius: 24px;
   padding: 2.25rem;
   border: 3px solid #e8f0f7;
 }
 
-.section-header {
+.vetadmin-dashboard-container .section-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -128,7 +138,7 @@
   border-bottom: 2px solid #f1f5f9;
 }
 
-.section-title {
+.vetadmin-dashboard-container .section-title {
   font-size: 1.6rem;
   color: #1a2e35;
   font-weight: 800;
@@ -136,7 +146,7 @@
   margin: 0;
 }
 
-.appointment-count {
+.vetadmin-dashboard-container .appointment-count {
   background: #f8fafc;
   border: 2px solid #e2e8f0;
   border-radius: 10px;
@@ -147,13 +157,13 @@
 }
 
 /* Appointments Table */
-.appointments-table {
+.vetadmin-dashboard-container .appointments-table {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
 }
 
-.table-header {
+.vetadmin-dashboard-container .table-header {
   display: grid;
   grid-template-columns: 100px 1fr 1fr 120px 1fr 100px;
   gap: 1rem;
@@ -162,7 +172,7 @@
   border-radius: 12px;
 }
 
-.table-header .table-cell {
+.vetadmin-dashboard-container .table-header .table-cell {
   font-size: 0.8rem;
   color: #64748b;
   font-weight: 800;
@@ -170,13 +180,13 @@
   letter-spacing: 0.06em;
 }
 
-.table-body {
+.vetadmin-dashboard-container .table-body {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
 }
 
-.table-row {
+.vetadmin-dashboard-container .table-row {
   display: grid;
   grid-template-columns: 100px 1fr 1fr 120px 1fr 100px;
   gap: 1rem;
@@ -186,32 +196,32 @@
   align-items: center;
 }
 
-.table-row:hover {
+.vetadmin-dashboard-container .table-row:hover {
   background: #f8fbff;
 }
 
-.table-cell {
+.vetadmin-dashboard-container .table-cell {
   font-size: 0.9rem;
   color: #1a2e35;
   font-weight: 600;
 }
 
-.appointment-time {
+.vetadmin-dashboard-container .appointment-time {
   color: #64748b;
   font-weight: 700;
   font-size: 0.9rem;
 }
 
-.pet-name {
+.vetadmin-dashboard-container .pet-name {
   color: #1a2e35;
   font-weight: 700;
 }
 
-.owner-name {
+.vetadmin-dashboard-container .owner-name {
   color: #64748b;
 }
 
-.appointment-type {
+.vetadmin-dashboard-container .appointment-type {
   display: inline-block;
   padding: 0.4rem 0.9rem;
   border-radius: 8px;
@@ -220,12 +230,12 @@
   text-align: center;
 }
 
-.vet-name {
+.vetadmin-dashboard-container .vet-name {
   color: #1a2e35;
   font-weight: 600;
 }
 
-.view-button {
+.vetadmin-dashboard-container .view-button {
   background: linear-gradient(135deg, #a8ceff 0%, #91befe 100%);
   color: white;
   border: none;
@@ -241,13 +251,13 @@
   transition: all 0.25s ease;
 }
 
-.view-button:hover {
+.vetadmin-dashboard-container .view-button:hover {
   transform: translateY(-2px);
   background: linear-gradient(135deg, #91befe 0%, #7aabf5 100%);
 }
 
 /* Activity Section */
-.activity-section {
+.vetadmin-dashboard-container .activity-section {
   background: white;
   border-radius: 24px;
   padding: 2.25rem;
@@ -256,19 +266,19 @@
   overflow-y: auto;
 }
 
-.activity-list {
+.vetadmin-dashboard-container .activity-list {
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
 }
 
-.activity-item {
+.vetadmin-dashboard-container .activity-item {
   display: flex;
   gap: 1rem;
   position: relative;
 }
 
-.activity-item:not(:last-child)::before {
+.vetadmin-dashboard-container .activity-item:not(:last-child)::before {
   content: '';
   position: absolute;
   left: 5px;
@@ -278,7 +288,7 @@
   background: #e8f0f7;
 }
 
-.activity-dot {
+.vetadmin-dashboard-container .activity-dot {
   width: 12px;
   height: 12px;
   border-radius: 50%;
@@ -288,25 +298,25 @@
   margin-top: 4px;
 }
 
-.activity-content {
+.vetadmin-dashboard-container .activity-content {
   flex: 1;
 }
 
-.activity-action {
+.vetadmin-dashboard-container .activity-action {
   font-size: 0.95rem;
   color: #1a2e35;
   font-weight: 700;
   margin: 0 0 0.25rem 0;
 }
 
-.activity-details {
+.vetadmin-dashboard-container .activity-details {
   font-size: 0.85rem;
   color: #64748b;
   font-weight: 600;
   margin: 0 0 0.5rem 0;
 }
 
-.activity-time {
+.vetadmin-dashboard-container .activity-time {
   font-size: 0.8rem;
   color: #94a3b8;
   font-weight: 600;
@@ -314,22 +324,33 @@
 
 /* Responsive Design */
 @media (max-width: 1400px) {
-  .stats-grid {
+  .vetadmin-dashboard-container .stats-grid {
     grid-template-columns: repeat(2, 1fr);
   }
   
-  .dashboard-content {
+  .vetadmin-dashboard-container .dashboard-content {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 1200px) {
+  .vetadmin-main-content {
+    padding-left: 340px;
+  }
+  
+  .vetadmin-sidebar.collapsed ~ .vetadmin-main-content {
+    padding-left: 140px;
   }
 }
 
 @media (max-width: 992px) {
   .vetadmin-main-content {
     padding: 2rem;
+    padding-left: 2.5rem;
   }
   
-  .table-header,
-  .table-row {
+  .vetadmin-dashboard-container .table-header,
+  .vetadmin-dashboard-container .table-row {
     grid-template-columns: 80px 1fr 1fr 100px 1fr 80px;
     font-size: 0.85rem;
   }
@@ -340,7 +361,7 @@
     padding: 1.5rem;
   }
   
-  .stats-grid {
+  .vetadmin-dashboard-container .stats-grid {
     grid-template-columns: 1fr;
   }
   
@@ -350,11 +371,11 @@
     align-items: stretch;
   }
   
-  .location-info {
+  .vetadmin-dashboard-container .location-info {
     justify-content: center;
   }
   
-  .section-title {
+  .vetadmin-dashboard-container .section-title {
     font-size: 1.4rem;
   }
 }

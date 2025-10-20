@@ -6,6 +6,7 @@ import Login from './login';
 import Register from './register';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import './styles/index.css'; // keep your styles
+import ProtectedRoute from './ProtectedRoute.jsx';  // ✅ Import it
 
 import PetOwnerDashboard from './petowner-dashboard';
 import PetOwnerMyPets from './petowner-mypets';
@@ -13,7 +14,7 @@ import PetOwnerReminders from './petowner-reminders';
 
 import VetAdminDashboard from './vetadmin-dashboard.jsx';
 
-
+import MyProfile from './myprofile.jsx';
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
@@ -22,10 +23,49 @@ ReactDOM.createRoot(document.getElementById('root')).render(
         <Route path="/" element={<App />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
-        <Route path="/petowner-dashboard" element={<PetOwnerDashboard />} />
-        <Route path="/petowner-mypets" element={<PetOwnerMyPets />} />
-        <Route path="/petowner-reminders" element={<PetOwnerReminders />} />
-        <Route path="/vetadmin-dashboard" element={<VetAdminDashboard />} />
+        <Route
+          path="/petowner-dashboard"
+          element={
+            <ProtectedRoute allowedType="petParent">
+              <PetOwnerDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/petowner-mypets"
+          element={
+            <ProtectedRoute allowedType="petParent">
+              <PetOwnerMyPets />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/petowner-reminders"
+          element={
+            <ProtectedRoute allowedType="petParent">
+              <PetOwnerReminders />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* ✅ Protect Vet Admin routes */}
+        <Route
+          path="/vetadmin-dashboard"
+          element={
+            <ProtectedRoute allowedType="vetAdmin">
+              <VetAdminDashboard />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/myprofile"
+          element={
+            <ProtectedRoute allowedType={["petParent", "vetAdmin"]}>
+              <MyProfile />
+            </ProtectedRoute>
+          }
+        />
         {/* Add more routes as needed */}
       </Routes>
     </BrowserRouter>

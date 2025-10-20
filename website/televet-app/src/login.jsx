@@ -30,9 +30,10 @@ const Login = () => {
       if (response.ok) {
         // ✅ Pet Parent Login
         if (data.userType === 'petParent' || data.user_type === 'petParent') {
-          localStorage.setItem('firstName', data.firstName);
-          localStorage.setItem('user_id', data.userId);
-          localStorage.setItem('userType', data.userType);
+          sessionStorage.setItem('firstName', data.firstName);
+          sessionStorage.setItem('userid', data.userId);
+          sessionStorage.setItem('userType', data.userType);
+
 
           setShowSuccess(true);
 
@@ -42,9 +43,10 @@ const Login = () => {
         } 
         // ✅ Vet Admin Login
         else if (data.userType === 'vetAdmin' || data.user_type === 'vetAdmin') {
-          localStorage.setItem('firstName', data.firstName);
-          localStorage.setItem('user_id', data.userId);
-          localStorage.setItem('userType', data.userType);
+          sessionStorage.setItem('firstName', data.firstName);
+          sessionStorage.setItem('userid', data.userId);
+          sessionStorage.setItem('userType', data.userType);
+
 
           setShowSuccess(true);
 

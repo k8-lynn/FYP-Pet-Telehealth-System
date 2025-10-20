@@ -1,3 +1,4 @@
+// televet-app/backend/index.js
 const express = require('express');
 const mysql = require('mysql2');
 const cors = require('cors');
@@ -352,3 +353,179 @@ app.delete('/api/pets/:pet_id', (req, res) => {
 // -------------------------------------------------------------
 app.get('/', (req, res) => res.send('🐾 Server is running...'));
 app.listen(process.env.PORT || 8080, () => console.log(`🚀 Server on port ${process.env.PORT}`));
+
+// Add these endpoints to your backend/index.js
+
+// -------------------------------------------------------------
+// 🟢 GET USER PROFILE (Pet Parent or Vet Admin)
+// -------------------------------------------------------------
+app.get('/api/profile/:usr_id', (req, res) => {
+  const { usr_id } = req.params;
+
+  // First get basic user info
+  const userSQL = 'SELECT usr_id, usr_firstName, usr_lastName, usr_email, usr_password, usr_type FROM user_t WHERE usr_id = ?';
+  
+  db.query(userSQL, [usr_id], (err, userResult) => {
+    if (err) {
+      console.error('❌ Error fetching user:', err);
+      return res.status(500).json({ error: 'Failed to fetch user data' });
+    }
+
+    if (userResult.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const user = userResult[0];
+
+    // If pet parent, get pet_parent_t data
+    if (user.usr_type === 'petParent') {
+      const parentSQL = 'SELECT pp_id, pp_reminder, pp_lastUpdated, pp_schedule FROM pet_parent_t WHERE usr_id = ?';
+      
+      db.query(parentSQL, [usr_id], (err2, parentResult) => {
+        if (err2) {
+          console.error('❌ Error fetching pet parent:', err2);
+          return res.status(500).json({ error: 'Failed to fetch pet parent data' });
+        }
+
+        if (parentResult.length === 0) {
+          return res.status(404).json({ error: 'Pet parent data not found' });
+        }
+
+        res.status(200).json({
+          ...user,
+          ...parentResult[0]
+        });
+      });
+    } 
+    // If vet admin, get vet_admin_t data
+    else if (user.usr_type === 'vetAdmin') {
+      const vetSQL = `
+        SELECT va_id, va_licenseNumber, va_licensingAuthority, va_yearsOfPractice, 
+               va_specialization, va_vetLocation, va_clinicName, va_clinicPhone, 
+               va_clinicEmail, va_consent, va_createdAt 
+        FROM vet_admin_t 
+        WHERE usr_id = ?
+      `;
+      
+      db.query(vetSQL, [usr_id], (err2, vetResult) => {
+        if (err2) {
+          console.error('❌ Error fetching vet admin:', err2);
+          return res.status(500).json({ error: 'Failed to fetch vet admin data' });
+        }
+
+        if (vetResult.length === 0) {
+          return res.status(404).json({ error: 'Vet admin data not found' });
+        }
+
+        res.status(200).json({
+          ...user,
+          ...vetResult[0]
+        });
+      });
+    } else {
+      return res.status(400).json({ error: 'Invalid user type' });
+    }
+  });
+});
+
+// -------------------------------------------------------------
+// 🟢 UPDATE USER PROFILE (Pet Parent)
+// -------------------------------------------------------------
+app.put('/api/profile/petparent/:usr_id', (req, res) => {
+  const { usr_id } = req.params;
+  const { usr_firstName, usr_lastName, usr_email, usr_password } = req.body;
+
+  // Update user_t table
+  const updateUserSQL = `
+    UPDATE user_t 
+    SET usr_firstName = ?, usr_lastName = ?, usr_email = ?, usr_password = ?
+    WHERE usr_id = ?
+  `;
+
+  db.query(updateUserSQL, [usr_firstName, usr_lastName, usr_email, usr_password, usr_id], (err, result) => {
+    if (err) {
+      console.error('❌ Error updating user:', err);
+      return res.status(500).json({ error: 'Failed to update user data' });
+    }
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Update pet_parent_t lastUpdated
+    const updateParentSQL = 'UPDATE pet_parent_t SET pp_lastUpdated = NOW() WHERE usr_id = ?';
+    db.query(updateParentSQL, [usr_id], (err2) => {
+      if (err2) {
+        console.error('❌ Error updating pet parent timestamp:', err2);
+      }
+      res.status(200).json({ message: 'Profile updated successfully' });
+    });
+  });
+});
+
+// -------------------------------------------------------------
+// 🟢 UPDATE USER PROFILE (Vet Admin)
+// -------------------------------------------------------------
+app.put('/api/profile/vetadmin/:usr_id', (req, res) => {
+  const { usr_id } = req.params;
+  const {
+    usr_firstName,
+    usr_lastName,
+    usr_email,
+    usr_password,
+    va_licenseNumber,
+    va_licensingAuthority,
+    va_yearsOfPractice,
+    va_specialization,
+    va_vetLocation,
+    va_clinicName,
+    va_clinicPhone,
+    va_clinicEmail
+  } = req.body;
+
+  // Update user_t table
+  const updateUserSQL = `
+    UPDATE user_t 
+    SET usr_firstName = ?, usr_lastName = ?, usr_email = ?, usr_password = ?
+    WHERE usr_id = ?
+  `;
+
+  db.query(updateUserSQL, [usr_firstName, usr_lastName, usr_email, usr_password, usr_id], (err, result) => {
+    if (err) {
+      console.error('❌ Error updating user:', err);
+      return res.status(500).json({ error: 'Failed to update user data' });
+    }
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Update vet_admin_t table
+    const updateVetSQL = `
+      UPDATE vet_admin_t 
+      SET va_licenseNumber = ?, va_licensingAuthority = ?, va_yearsOfPractice = ?,
+          va_specialization = ?, va_vetLocation = ?, va_clinicName = ?,
+          va_clinicPhone = ?, va_clinicEmail = ?
+      WHERE usr_id = ?
+    `;
+
+    db.query(updateVetSQL, [
+      va_licenseNumber,
+      va_licensingAuthority,
+      va_yearsOfPractice,
+      va_specialization,
+      va_vetLocation,
+      va_clinicName,
+      va_clinicPhone,
+      va_clinicEmail,
+      usr_id
+    ], (err2, vetResult) => {
+      if (err2) {
+        console.error('❌ Error updating vet admin:', err2);
+        return res.status(500).json({ error: 'Failed to update vet admin data' });
+      }
+
+      res.status(200).json({ message: 'Profile updated successfully' });
+    });
+  });
+});

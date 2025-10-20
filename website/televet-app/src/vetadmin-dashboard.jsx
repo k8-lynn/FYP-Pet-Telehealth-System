@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { PawPrint, Plus, Trash2, ChevronDown, X, Bell, MapPin, Calendar, Users, Stethoscope, Clock, Eye } from 'lucide-react';
 import PawPattern from "./components/PawPattern";
+import VetAdminNavbar from './components/vetadmin-navbar';
 import ProfileNotification from "./components/ProfileNotification";
 import './styles/vetadmin-dashboard.css';
 
 const VetAdminDashboard = () => {
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [firstName, setFirstName] = useState('');
 
   useEffect(() => {
@@ -153,6 +155,7 @@ const VetAdminDashboard = () => {
   return (
     <div className="vetadmin-dashboard-container">
       <PawPattern count={35} />
+      <VetAdminNavbar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
 
       <div className="vetadmin-main-content">
         {/* Header */}
