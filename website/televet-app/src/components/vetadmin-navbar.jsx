@@ -11,7 +11,7 @@ const VetAdminNavbar = ({ sidebarOpen, setSidebarOpen }) => {
   const navItems = [
     { icon: Home, label: 'Home', path: '/vetadmin-dashboard' },
     { icon: Calendar, label: 'Appointments', path: '/vetadmin-appointments' },
-    { icon: Stethoscope, label: 'All My Veterinarians', path: '/vetadmin-veterinarians' },
+    { icon: Stethoscope, label: 'All My Veterinarians', path: '/vetadmin-myveterinarians' },
     { icon: Users, label: 'All My Patients', path: '/vetadmin-patients' },
     { icon: Clock, label: 'Schedules', path: '/vetadmin-schedules' },
   ];

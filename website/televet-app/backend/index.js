@@ -404,6 +404,44 @@ app.get('/', (req, res) => res.send('🐾 Server is running...'));
 app.listen(process.env.PORT || 8080, () => console.log(`🚀 Server on port ${process.env.PORT}`));
 
 // Add these endpoints to your backend/index.js
+// 🟢 GET all veterinarians for a specific vet admin (by va_id)
+app.get('/api/veterinarians/:va_id', (req, res) => {
+  const { va_id } = req.params;
+
+  console.log("🐾 GET veterinarians for va_id =", va_id);
+
+  const sql = `
+    SELECT 
+      vt.vt_id, 
+      vt.vt_licenseNumber, 
+      vt.vt_licensingAuthority, 
+      vt.vt_yearsOfPractice,
+      vt.vt_specialization, 
+      vt.vt_vetLocation, 
+      vt.vt_clinicName, 
+      vt.vt_clinicPhone, 
+      vt.vt_clinicEmail,
+      vt.vt_patientsAssigned,
+      vt.vt_onDutyToday,
+      vt.vt_createdAt,
+      u.usr_firstName, 
+      u.usr_lastName, 
+      u.usr_email
+    FROM veterinarian_t vt
+    JOIN user_t u ON vt.usr_id = u.usr_id
+    WHERE vt.va_id = ?
+  `;
+
+  db.query(sql, [va_id], (err, result) => {
+    if (err) {
+      console.error('❌ Error fetching veterinarians:', err);
+      return res.status(500).json({ error: 'Failed to fetch veterinarians' });
+    }
+
+    console.log(`✅ Retrieved ${result.length} veterinarians for va_id ${va_id}`);
+    res.status(200).json(result);
+  });
+});
 
 // -------------------------------------------------------------
 // 🟢 GET USER PROFILE (Pet Parent or Vet Admin)
@@ -411,8 +449,12 @@ app.listen(process.env.PORT || 8080, () => console.log(`🚀 Server on port ${pr
 app.get('/api/profile/:usr_id', (req, res) => {
   const { usr_id } = req.params;
 
-  // First get basic user info
-  const userSQL = 'SELECT usr_id, usr_firstName, usr_lastName, usr_email, usr_password, usr_type FROM user_t WHERE usr_id = ?';
+  // Step 1️⃣: Get base user info
+  const userSQL = `
+    SELECT usr_id, usr_firstName, usr_lastName, usr_email, usr_password, usr_type 
+    FROM user_t 
+    WHERE usr_id = ?
+  `;
   
   db.query(userSQL, [usr_id], (err, userResult) => {
     if (err) {
@@ -421,14 +463,19 @@ app.get('/api/profile/:usr_id', (req, res) => {
     }
 
     if (userResult.length === 0) {
+      console.warn('⚠️ No user found for usr_id:', usr_id);
       return res.status(404).json({ error: 'User not found' });
     }
 
     const user = userResult[0];
 
-    // If pet parent, get pet_parent_t data
+    // Step 2️⃣: If Pet Parent
     if (user.usr_type === 'petParent') {
-      const parentSQL = 'SELECT pp_id, pp_reminder, pp_lastUpdated, pp_schedule FROM pet_parent_t WHERE usr_id = ?';
+      const parentSQL = `
+        SELECT pp_id, pp_reminder, pp_lastUpdated, pp_schedule 
+        FROM pet_parent_t 
+        WHERE usr_id = ?
+      `;
       
       db.query(parentSQL, [usr_id], (err2, parentResult) => {
         if (err2) {
@@ -437,6 +484,7 @@ app.get('/api/profile/:usr_id', (req, res) => {
         }
 
         if (parentResult.length === 0) {
+          console.warn('⚠️ No pet parent data found for usr_id:', usr_id);
           return res.status(404).json({ error: 'Pet parent data not found' });
         }
 
@@ -446,14 +494,24 @@ app.get('/api/profile/:usr_id', (req, res) => {
         });
       });
     } 
-    // If vet admin, get vet_admin_t data
+    
+    // Step 3️⃣: If Vet Admin
     else if (user.usr_type === 'vetAdmin') {
       const vetSQL = `
-        SELECT va_id, va_licenseNumber, va_licensingAuthority, va_yearsOfPractice, 
-               va_specialization, va_vetLocation, va_clinicName, va_clinicPhone, 
-               va_clinicEmail, va_consent, va_createdAt 
-        FROM vet_admin_t 
-        WHERE usr_id = ?
+        SELECT 
+          v.va_id, 
+          v.va_licenseNumber, 
+          v.va_licensingAuthority, 
+          v.va_yearsOfPractice, 
+          v.va_specialization, 
+          v.va_vetLocation, 
+          v.va_clinicName, 
+          v.va_clinicPhone, 
+          v.va_clinicEmail, 
+          v.va_consent, 
+          v.va_createdAt
+        FROM vet_admin_t v
+        WHERE v.usr_id = ?
       `;
       
       db.query(vetSQL, [usr_id], (err2, vetResult) => {
@@ -463,19 +521,27 @@ app.get('/api/profile/:usr_id', (req, res) => {
         }
 
         if (vetResult.length === 0) {
+          console.warn('⚠️ No vet admin data found for usr_id:', usr_id);
           return res.status(404).json({ error: 'Vet admin data not found' });
         }
 
-        res.status(200).json({
-          ...user,
-          ...vetResult[0]
-        });
+        const profile = { ...user, ...vetResult[0] };
+        console.log("✅ Sending Vet Admin Profile:", profile);
+
+        res.status(200).json(profile);
       });
-    } else {
+    } 
+    
+    // Step 4️⃣: Invalid user type
+    else {
+      console.error('⚠️ Invalid user type:', user.usr_type);
       return res.status(400).json({ error: 'Invalid user type' });
     }
   });
 });
+
+
+
 
 // -------------------------------------------------------------
 // 🟢 UPDATE USER PROFILE (Pet Parent)
@@ -511,6 +577,131 @@ app.put('/api/profile/petparent/:usr_id', (req, res) => {
     });
   });
 });
+
+
+
+// -------------------------------------------------------------
+// 🟢 REGISTER NEW VETERINARIAN
+// -------------------------------------------------------------
+app.post('/api/veterinarians', (req, res) => {
+  console.log("🚀 Incoming /api/veterinarians POST request");
+  console.log("🟢 Request body:", req.body);
+
+  const {
+    firstName,
+    lastName,
+    email,
+    password,
+    licenseNumber,
+    licensingAuthority,
+    yearsOfPractice,
+    specialization,
+    va_id
+  } = req.body;
+
+  // ✅ Step 0: Validate required fields
+  if (
+    !firstName || !lastName || !email || !password ||
+    !licenseNumber || !licensingAuthority || !yearsOfPractice || !va_id
+  ) {
+    console.error("❌ Missing required fields");
+    return res.status(400).json({ error: "Missing required fields" });
+  }
+
+  // ✅ Step 1: Get clinic info from the vet admin (auto-fill)
+  const sqlGetAdmin = `
+    SELECT va_vetLocation, va_clinicName, va_clinicPhone, va_clinicEmail
+    FROM vet_admin_t
+    WHERE va_id = ?
+  `;
+
+  db.query(sqlGetAdmin, [va_id], (err, adminResult) => {
+    if (err) {
+      console.error("❌ Error fetching vet admin info:", err);
+      return res.status(500).json({ error: "Failed to fetch vet admin info" });
+    }
+    if (adminResult.length === 0) {
+      console.error("❌ Vet admin not found");
+      return res.status(404).json({ error: "Vet admin not found" });
+    }
+
+    const { va_vetLocation, va_clinicName, va_clinicPhone, va_clinicEmail } = adminResult[0];
+
+    // ✅ Step 2: Insert into user_t (account for veterinarian)
+    const sqlUser = `
+      INSERT INTO user_t (usr_firstName, usr_lastName, usr_email, usr_password, usr_type)
+      VALUES (?, ?, ?, ?, 'veterinarian')
+    `;
+
+    db.query(sqlUser, [firstName, lastName, email, password], (err, userResult) => {
+      if (err) {
+        console.error("❌ Error inserting into user_t:", err);
+        return res.status(500).json({ error: "Failed to create user" });
+      }
+
+      const usr_id = userResult.insertId;
+
+      // ✅ Step 3: Insert into veterinarian_t
+      const sqlVet = `
+        INSERT INTO veterinarian_t (
+          usr_id, va_id,
+          vt_licenseNumber, vt_licensingAuthority, vt_yearsOfPractice, vt_specialization,
+          vt_vetLocation, vt_clinicName, vt_clinicPhone, vt_clinicEmail, vt_consent
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'yes')
+      `;
+
+      db.query(
+        sqlVet,
+        [
+          usr_id,
+          va_id,
+          licenseNumber,
+          licensingAuthority,
+          yearsOfPractice,
+          specialization || null,
+          va_vetLocation,
+          va_clinicName,
+          va_clinicPhone,
+          va_clinicEmail
+        ],
+        (err, vetResult) => {
+          if (err) {
+            console.error("❌ Error inserting into veterinarian_t:", err);
+            return res.status(500).json({ error: "Failed to create veterinarian record" });
+          }
+
+          console.log("✅ Veterinarian successfully created:", {
+            usr_id,
+            vt_id: vetResult.insertId,
+          });
+
+          res.status(201).json({
+            message: "Veterinarian successfully registered",
+            veterinarian: {
+              vt_id: vetResult.insertId,
+              usr_id,
+              firstName,
+              lastName,
+              email,
+              licenseNumber,
+              licensingAuthority,
+              yearsOfPractice,
+              specialization,
+              clinic: {
+                name: va_clinicName,
+                location: va_vetLocation,
+                phone: va_clinicPhone,
+                email: va_clinicEmail
+              }
+            }
+          });
+        }
+      );
+    });
+  });
+});
+
 
 // -------------------------------------------------------------
 // 🟢 UPDATE USER PROFILE (Vet Admin)

@@ -1,0 +1,606 @@
+/* Page Header */
+.myveterinarians-page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2.5rem;
+    padding: 2rem;
+    background: white;
+    border-radius: 24px;
+    border: 3px solid #e8f0f7;
+  }
+  
+  .myveterinarians-page-title {
+    font-size: 2.25rem;
+    color: #1a2e35;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    margin: 0 0 0.5rem 0;
+  }
+  
+  .myveterinarians-page-subtitle {
+    font-size: 1rem;
+    color: #64748b;
+    font-weight: 600;
+    margin: 0;
+  }
+  
+  .myveterinarians-add-button {
+    background: linear-gradient(135deg, #a8ceff 0%, #91befe 100%);
+    color: white;
+    border: none;
+    border-radius: 14px;
+    padding: 1rem 2rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 1rem;
+    font-weight: 700;
+    transition: all 0.25s ease;
+  }
+  
+  .myveterinarians-add-button:hover {
+    transform: translateY(-2px);
+    background: linear-gradient(135deg, #91befe 0%, #7aabf5 100%);
+    box-shadow: 0 8px 20px rgba(145, 190, 254, 0.4);
+  }
+  
+  /* Table Section */
+  .myveterinarians-table-section {
+    background: white;
+    border-radius: 24px;
+    padding: 2.25rem;
+    border: 3px solid #e8f0f7;
+  }
+  
+  .myveterinarians-empty {
+    text-align: center;
+    padding: 4rem 2rem;
+  }
+  
+  .myveterinarians-empty h3 {
+    font-size: 1.5rem;
+    color: #1a2e35;
+    font-weight: 800;
+    margin: 0 0 0.5rem 0;
+  }
+  
+  .myveterinarians-empty p {
+    font-size: 1rem;
+    color: #64748b;
+    font-weight: 600;
+    margin: 0;
+  }
+  
+  /* Table */
+  .myveterinarians-table {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  
+  .myveterinarians-table-header {
+    display: grid;
+    grid-template-columns: 60px 2fr 1.5fr 1.2fr 1fr 1.8fr;
+    gap: 1rem;
+    padding: 0.75rem 1rem;
+    background: #f8fafc;
+    border-radius: 12px;
+    align-items: center;
+  }
+  
+  .myveterinarians-table-header > div {
+    font-size: 0.8rem;
+    color: #64748b;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  
+  .myveterinarians-table-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  
+  .myveterinarians-table-row {
+    display: grid;
+    grid-template-columns: 60px 2fr 1.5fr 1.2fr 1fr 1.8fr;
+    gap: 1rem;
+    padding: 1rem;
+    border-radius: 12px;
+    transition: all 0.2s ease;
+    align-items: center;
+  }
+  
+  .myveterinarians-table-row:hover {
+    background: #f8fbff;
+  }
+  
+  .table-cell-number {
+    font-size: 0.9rem;
+    color: #64748b;
+    font-weight: 700;
+  }
+  
+  .table-cell-name {
+    font-size: 0.95rem;
+    color: #1a2e35;
+    font-weight: 600;
+  }
+  
+  .table-cell-name strong {
+    font-weight: 700;
+    color: #1a2e35;
+  }
+  
+  .table-cell-specialization {
+    font-size: 0.9rem;
+    color: #64748b;
+    font-weight: 600;
+  }
+  
+  .table-cell-patients {
+    font-size: 0.9rem;
+    color: #1a2e35;
+    font-weight: 700;
+    text-align: center;
+  }
+  
+  .table-cell-duty {
+    display: flex;
+    justify-content: center;
+  }
+  
+  .duty-badge {
+    padding: 0.4rem 0.9rem;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    text-align: center;
+  }
+  
+  .duty-yes {
+    background: #d1fae520;
+    color: #10b981;
+    border: 2px solid #10b98140;
+  }
+  
+  .duty-no {
+    background: #fee2e220;
+    color: #ef4444;
+    border: 2px solid #ef444440;
+  }
+  
+  .table-cell-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    justify-content: flex-end;
+  }
+  
+  .assign-button {
+    background: linear-gradient(135deg, #a8ceff 0%, #91befe 100%);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    padding: 0.6rem 1rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+    font-weight: 700;
+    transition: all 0.25s ease;
+  }
+  
+  .assign-button:hover {
+    transform: translateY(-2px);
+    background: linear-gradient(135deg, #91befe 0%, #7aabf5 100%);
+  }
+  
+  /* Menu Dropdown */
+  .menu-wrapper {
+    position: relative;
+  }
+  
+  .menu-button {
+    background: #f8fafc;
+    color: #64748b;
+    border: 2px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 0.5rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+  }
+  
+  .menu-button:hover {
+    background: #e2e8f0;
+    color: #1a2e35;
+  }
+  
+  .menu-dropdown {
+    position: absolute;
+    top: calc(100% + 0.5rem);
+    right: 0;
+    background: white;
+    border: 2px solid #e8f0f7;
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(26, 46, 53, 0.15);
+    z-index: 100;
+    min-width: 160px;
+    overflow: hidden;
+  }
+  
+  .menu-item {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: none;
+    background: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #1a2e35;
+    transition: all 0.2s ease;
+    text-align: left;
+  }
+  
+  .menu-item:hover {
+    background: #f8fbff;
+  }
+  
+  .menu-item.delete {
+    color: #ef4444;
+  }
+  
+  .menu-item.delete:hover {
+    background: #fee;
+  }
+  
+  /* Modal */
+  .myveterinarians-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(26, 46, 53, 0.7);
+    backdrop-filter: blur(8px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 2rem;
+  }
+  
+  .myveterinarians-modal-content {
+    background: white;
+    border-radius: 24px;
+    border: 3px solid #e8f0f7;
+    max-width: 800px;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 60px rgba(26, 46, 53, 0.3);
+  }
+  
+  .myveterinarians-modal-content.view-modal {
+    max-width: 700px;
+  }
+  
+  .myveterinarians-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 2rem 2rem 1.5rem 2rem;
+    border-bottom: 2px solid #e8f0f7;
+    position: sticky;
+    top: 0;
+    background: white;
+    z-index: 1;
+  }
+  
+  .myveterinarians-modal-title {
+    font-size: 1.75rem;
+    color: #1a2e35;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    margin: 0;
+  }
+  
+  .myveterinarians-modal-close {
+    background: #f8fafc;
+    color: #64748b;
+    border: 2px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 0.5rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+  }
+  
+  .myveterinarians-modal-close:hover {
+    background: #fee;
+    color: #ef4444;
+    border-color: #fecaca;
+  }
+  
+  .myveterinarians-modal-form {
+    padding: 2rem;
+  }
+  
+  .myveterinarians-form-section {
+    margin-bottom: 2rem;
+  }
+  
+  .myveterinarians-form-section-title {
+    font-size: 1.25rem;
+    color: #1a2e35;
+    font-weight: 800;
+    margin: 0 0 1.25rem 0;
+    padding-bottom: 0.75rem;
+    border-bottom: 2px solid #e8f0f7;
+  }
+  
+  .myveterinarians-form-row {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.25rem;
+    margin-bottom: 1.25rem;
+  }
+  
+  .myveterinarians-form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  
+  .myveterinarians-form-group label {
+    font-size: 0.9rem;
+    color: #1a2e35;
+    font-weight: 700;
+  }
+  
+  .myveterinarians-form-group input,
+  .myveterinarians-form-group select {
+    padding: 0.875rem 1.125rem;
+    border: 2px solid #e8f0f7;
+    border-radius: 12px;
+    font-size: 0.95rem;
+    color: #1a2e35;
+    font-weight: 600;
+    font-family: inherit;
+    transition: all 0.2s ease;
+    background: white;
+  }
+  
+  .myveterinarians-form-group input:focus,
+  .myveterinarians-form-group select:focus {
+    outline: none;
+    border-color: #91befe;
+    box-shadow: 0 0 0 3px rgba(145, 190, 254, 0.1);
+  }
+  
+  .myveterinarians-clinic-info {
+    background: linear-gradient(135deg, #f8fbff 0%, #ffffff 100%);
+    border: 2px solid #e8f0f7;
+    border-radius: 16px;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+  }
+  
+  .myveterinarians-clinic-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+  }
+  
+  .myveterinarians-clinic-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 0.9rem;
+    color: #64748b;
+    font-weight: 600;
+  }
+  
+  .myveterinarians-clinic-item svg {
+    color: #91befe;
+    flex-shrink: 0;
+  }
+  
+  .myveterinarians-modal-footer {
+    display: flex;
+    gap: 1rem;
+    justify-content: flex-end;
+    padding-top: 1.5rem;
+    border-top: 2px solid #e8f0f7;
+  }
+  
+  .myveterinarians-cancel-button {
+    background: #f8fafc;
+    color: #64748b;
+    border: 2px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 0.875rem 2rem;
+    cursor: pointer;
+    font-size: 0.95rem;
+    font-weight: 700;
+    font-family: inherit;
+    transition: all 0.2s ease;
+  }
+  
+  .myveterinarians-cancel-button:hover {
+    background: #e2e8f0;
+  }
+  
+  .myveterinarians-submit-button {
+    background: linear-gradient(135deg, #a8ceff 0%, #91befe 100%);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    padding: 0.875rem 2rem;
+    cursor: pointer;
+    font-size: 0.95rem;
+    font-weight: 700;
+    font-family: inherit;
+    transition: all 0.25s ease;
+  }
+  
+  .myveterinarians-submit-button:hover {
+    transform: translateY(-2px);
+    background: linear-gradient(135deg, #91befe 0%, #7aabf5 100%);
+    box-shadow: 0 8px 20px rgba(145, 190, 254, 0.4);
+  }
+  
+  /* Responsive Design */
+  @media (max-width: 1200px) {
+    .myveterinarians-grid {
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    }
+  }
+  
+  @media (max-width: 768px) {
+    .myveterinarians-page-header {
+      flex-direction: column;
+      gap: 1.5rem;
+      align-items: stretch;
+    }
+  
+    .myveterinarians-add-button {
+      justify-content: center;
+    }
+  
+    .myveterinarians-grid {
+      grid-template-columns: 1fr;
+    }
+  
+    .myveterinarians-form-row {
+      grid-template-columns: 1fr;
+    }
+  
+    .myveterinarians-clinic-grid {
+      grid-template-columns: 1fr;
+    }
+  
+    .myveterinarians-modal-content {
+      max-width: 100%;
+      margin: 1rem;
+    }
+  
+    .myveterinarians-modal-footer {
+      flex-direction: column;
+    }
+  
+    .myveterinarians-cancel-button,
+    .myveterinarians-submit-button {
+      width: 100%;
+    }
+  }
+
+  /* View Modal Specific Styles */
+  .view-modal-body {
+    padding: 2rem;
+  }
+  
+  .view-section {
+    margin-bottom: 2rem;
+    padding-bottom: 2rem;
+    border-bottom: 2px solid #e8f0f7;
+  }
+  
+  .view-section:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+    padding-bottom: 0;
+  }
+  
+  .view-section h3 {
+    font-size: 1.1rem;
+    color: #1a2e35;
+    font-weight: 800;
+    margin: 0 0 1.25rem 0;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  
+  .view-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.25rem;
+  }
+  
+  .view-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 1rem;
+    background: linear-gradient(135deg, #f8fbff 0%, #ffffff 100%);
+    border: 2px solid #e8f0f7;
+    border-radius: 12px;
+  }
+  
+  .view-item strong {
+    font-size: 0.8rem;
+    color: #64748b;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  
+  .view-item:not(:has(strong)) {
+    font-size: 0.95rem;
+    color: #1a2e35;
+    font-weight: 600;
+  }
+  
+  @media (max-width: 768px) {
+    .myveterinarians-page-header {
+      flex-direction: column;
+      gap: 1.5rem;
+      align-items: stretch;
+    }
+  
+    .myveterinarians-add-button {
+      justify-content: center;
+    }
+  
+    .myveterinarians-grid {
+      grid-template-columns: 1fr;
+    }
+  
+    .myveterinarians-form-row {
+      grid-template-columns: 1fr;
+    }
+  
+    .myveterinarians-clinic-grid {
+      grid-template-columns: 1fr;
+    }
+  
+    .view-grid {
+      grid-template-columns: 1fr;
+    }
+  
+    .myveterinarians-modal-content {
+      max-width: 100%;
+      margin: 1rem;
+    }
+  
+    .myveterinarians-modal-footer {
+      flex-direction: column;
+    }
+  
+    .myveterinarians-cancel-button,
+    .myveterinarians-submit-button {
+      width: 100%;
+    }
+  }

@@ -13,6 +13,8 @@ import PetOwnerMyPets from './petowner-mypets';
 import PetOwnerReminders from './petowner-reminders';
 
 import VetAdminDashboard from './vetadmin-dashboard.jsx';
+import VetAdminVeterinarians from './vetadmin-myveterinarians.jsx';
+
 
 import MyProfile from './myprofile.jsx';
 
@@ -54,6 +56,16 @@ ReactDOM.createRoot(document.getElementById('root')).render(
           element={
             <ProtectedRoute allowedType="vetAdmin">
               <VetAdminDashboard />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* ✅ Protect Vet Admin routes */}
+        <Route
+          path="/vetadmin-myveterinarians"
+          element={
+            <ProtectedRoute allowedType="vetAdmin">
+              <VetAdminVeterinarians />
             </ProtectedRoute>
           }
         />
