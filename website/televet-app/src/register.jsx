@@ -106,34 +106,58 @@ const Register = () => {
 
   const handleSubmitFinal = async (e) => {
     e.preventDefault();
-
+  
     if (!consentChecked) {
       alert("Please confirm the consent checkbox before submitting.");
       return;
     }
-
+  
+    let lat = null, lon = null;
+  
+    // 🗺️ If vetLocation is filled, geocode it to lat/lon
+    if (formData.userType === "vet" && formData.vetLocation) {
+      try {
+        const geoRes = await fetch(
+          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(formData.vetLocation)}`
+        );
+        const geoData = await geoRes.json();
+  
+        if (geoData.length > 0) {
+          lat = parseFloat(geoData[0].lat);
+          lon = parseFloat(geoData[0].lon);
+        } else {
+          console.warn("⚠️ No coordinates found for this address.");
+        }
+      } catch (error) {
+        console.error("❌ Nominatim geocoding failed:", error);
+      }
+    }
+  
     // 🟢 Prepare the data correctly for backend
     const formattedData = {
       ...formData,
+      va_lat: lat,
+      va_lon: lon,
       userType: formData.userType === "vet" ? "vetAdmin" : "petParent",
       gender: formData.gender === "male" ? "m" : "f",
       age: parseInt(formData.age, 10),
     };
-
+  
     try {
-      const response = await fetch('http://localhost:5000/api/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formattedData)
+      const response = await fetch("http://localhost:5000/api/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formattedData),
       });
-
+  
       const data = await response.json();
       alert(data.message || "Registered!");
     } catch (err) {
-      console.error('Error:', err);
+      console.error("Error:", err);
       alert("Failed to register");
     }
   };
+  
 
 
   // Get step labels based on user type

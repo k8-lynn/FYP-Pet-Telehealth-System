@@ -1,0 +1,874 @@
+/* My Vet Dashboard Container */
+.myvet-dashboard-container {
+    display: flex;
+    min-height: 100vh;
+    background: linear-gradient(to top, #e8f4f8 0%, #fef9e7 50%, #fff5e1 100%);
+    font-family: 'DM Sans', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .myvet-main-content {
+    flex: 1;
+    padding: 2.5rem 2.5rem 2.5rem 300px; /* default left padding matches sidebar width */
+    max-width: 100%;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    z-index: 1;
+  }
+  
+  /* When sidebar is collapsed - content expands */
+  .sidebar.collapsed ~ .myvet-main-content {
+    padding-left: 100px; /* collapsed sidebar width + some margin */
+  }
+  
+
+  
+  
+  /* Success Notification */
+  .myvet-success-notification {
+    position: fixed;
+    top: 2rem;
+    right: 2rem;
+    background: white;
+    border: 3px solid #10b981;
+    border-radius: 16px;
+    padding: 1.25rem 1.75rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    box-shadow: 0 12px 32px rgba(16, 185, 129, 0.2);
+    animation: slideInRight 0.3s ease-out;
+    z-index: 2000;
+    font-weight: 700;
+    color: #10b981;
+    font-size: 1rem;
+  }
+  
+  .myvet-success-notification svg {
+    flex-shrink: 0;
+  }
+  
+  @keyframes slideInRight {
+    from {
+      transform: translateX(100%);
+      opacity: 0;
+    }
+    to {
+      transform: translateX(0);
+      opacity: 1;
+    }
+  }
+  
+  /* Empty State */
+  .myvet-empty-state {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 70vh;
+  }
+  
+  .myvet-empty-card {
+    background: white;
+    border-radius: 32px;
+    padding: 4rem 3rem;
+    text-align: center;
+    border: 3px solid #e8f0f7;
+    max-width: 500px;
+    box-shadow: 0 8px 24px rgba(26, 46, 53, 0.08);
+  }
+  
+  .myvet-empty-icon {
+    color: #91befe;
+    margin-bottom: 1.5rem;
+  }
+  
+  .myvet-empty-card h2 {
+    font-size: 2rem;
+    color: #1a2e35;
+    font-weight: 800;
+    margin: 0 0 1rem 0;
+    letter-spacing: -0.03em;
+  }
+  
+  .myvet-empty-card p {
+    font-size: 1.05rem;
+    color: #64748b;
+    font-weight: 600;
+    margin: 0 0 2rem 0;
+  }
+  
+  .myvet-find-button {
+    background: linear-gradient(135deg, #a8ceff 0%, #91befe 100%);
+    color: white;
+    border: none;
+    border-radius: 16px;
+    padding: 1.25rem 2.5rem;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 1.05rem;
+    font-weight: 700;
+    transition: all 0.25s ease;
+    letter-spacing: -0.01em;
+  }
+  
+  .myvet-find-button:hover {
+    transform: translateY(-3px);
+    background: linear-gradient(135deg, #91befe 0%, #7aabf5 100%);
+    box-shadow: 0 8px 20px rgba(145, 190, 254, 0.4);
+  }
+  
+  /* Content Wrapper */
+  .myvet-content-wrapper {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+  
+  /* Info Section */
+  .myvet-info-section {
+    display: flex;
+    flex-direction: column;
+    gap: 1.75rem;
+  }
+  
+  .myvet-header-card {
+    background: white;
+    border-radius: 24px;
+    padding: 2.5rem;
+    border: 3px solid #e8f0f7;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+  }
+  
+  .myvet-header-content {
+    flex: 1;
+  }
+  
+  .myvet-clinic-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: linear-gradient(135deg, #e8f4f8 0%, #d1e7f0 100%);
+    color: #0369a1;
+    padding: 0.5rem 1rem;
+    border-radius: 12px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 1.25rem;
+  }
+  
+  .myvet-clinic-name {
+    font-size: 2.25rem;
+    color: #1a2e35;
+    font-weight: 800;
+    margin: 0 0 0.5rem 0;
+    letter-spacing: -0.03em;
+  }
+  
+  .myvet-clinic-location {
+    font-size: 1.05rem;
+    color: #64748b;
+    font-weight: 600;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  
+  .myvet-change-button {
+    background: #f8fafc;
+    color: #64748b;
+    border: 2px solid #e2e8f0;
+    border-radius: 14px;
+    padding: 0.875rem 1.5rem;
+    cursor: pointer;
+    font-size: 0.95rem;
+    font-weight: 700;
+    transition: all 0.2s ease;
+    font-family: inherit;
+  }
+  
+  .myvet-change-button:hover {
+    background: #fee;
+    color: #ef4444;
+    border-color: #fecaca;
+    transform: translateY(-2px);
+  }
+  
+  .myvet-details-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.5rem;
+  }
+  
+  .myvet-detail-card {
+    background: white;
+    border-radius: 20px;
+    padding: 1.75rem;
+    border: 3px solid #e8f0f7;
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+    transition: all 0.2s ease;
+  }
+  
+  .myvet-detail-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(26, 46, 53, 0.08);
+  }
+  
+  .myvet-detail-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  
+  .myvet-detail-icon.phone {
+    background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+    color: #10b981;
+  }
+  
+  .myvet-detail-icon.email {
+    background: linear-gradient(135deg, #ddd6fe 0%, #c4b5fd 100%);
+    color: #8b5cf6;
+  }
+  
+  .myvet-detail-icon.location {
+    background: linear-gradient(135deg, #fecaca 0%, #fca5a5 100%);
+    color: #ef4444;
+  }
+  
+  .myvet-detail-content {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+  
+  .myvet-detail-label {
+    font-size: 0.8rem;
+    color: #64748b;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  
+  .myvet-detail-value {
+    font-size: 0.95rem;
+    color: #1a2e35;
+    font-weight: 700;
+  }
+  
+  /* Booking Section */
+  .myvet-booking-section {
+    display: flex;
+    flex-direction: column;
+    gap: 1.75rem;
+  }
+  
+  .myvet-availability-card {
+    background: white;
+    border-radius: 24px;
+    padding: 2.25rem;
+    border: 3px solid #e8f0f7;
+  }
+  
+  .myvet-section-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1.75rem;
+    padding-bottom: 1.25rem;
+    border-bottom: 2px solid #f1f5f9;
+  }
+  
+  .myvet-section-header svg {
+    color: #91befe;
+  }
+  
+  .myvet-section-header h3 {
+    font-size: 1.6rem;
+    color: #1a2e35;
+    font-weight: 800;
+    margin: 0;
+    letter-spacing: -0.03em;
+  }
+  
+  .myvet-schedule-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+  
+  .myvet-schedule-item {
+    display: grid;
+    grid-template-columns: 120px 1fr auto;
+    gap: 1rem;
+    padding: 1rem 1.25rem;
+    background: #f8fbff;
+    border-radius: 14px;
+    align-items: center;
+    transition: all 0.2s ease;
+  }
+  
+  .myvet-schedule-item:hover {
+    background: #e8f4f8;
+  }
+  
+  .myvet-schedule-day {
+    font-size: 0.95rem;
+    color: #1a2e35;
+    font-weight: 800;
+  }
+  
+  .myvet-schedule-time {
+    font-size: 0.9rem;
+    color: #64748b;
+    font-weight: 600;
+  }
+  
+  .myvet-schedule-status {
+    padding: 0.4rem 0.9rem;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    text-align: center;
+  }
+  
+  .myvet-schedule-status.available {
+    background: #d1fae520;
+    color: #10b981;
+    border: 2px solid #10b98140;
+  }
+  
+  .myvet-schedule-status.limited {
+    background: #fef3c720;
+    color: #f59e0b;
+    border: 2px solid #f59e0b40;
+  }
+  
+  .myvet-schedule-status.closed {
+    background: #fee2e220;
+    color: #ef4444;
+    border: 2px solid #ef444440;
+  }
+  
+  .myvet-appointment-card {
+    background: linear-gradient(135deg, #a8ceff 0%, #91befe 100%);
+    border-radius: 24px;
+    padding: 2.5rem;
+    text-align: center;
+    color: white;
+    border: none;
+  }
+  
+  .myvet-appointment-icon {
+    margin-bottom: 1rem;
+    opacity: 0.9;
+  }
+  
+  .myvet-appointment-card h3 {
+    font-size: 1.75rem;
+    font-weight: 800;
+    margin: 0 0 0.75rem 0;
+    letter-spacing: -0.02em;
+  }
+  
+  .myvet-appointment-card p {
+    font-size: 1rem;
+    font-weight: 600;
+    margin: 0 0 2rem 0;
+    opacity: 0.95;
+  }
+  
+  .myvet-book-button {
+    background: white;
+    color: #1a2e35;
+    border: none;
+    border-radius: 14px;
+    padding: 1.1rem 2.25rem;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 1rem;
+    font-weight: 700;
+    transition: all 0.25s ease;
+    font-family: inherit;
+  }
+  
+  .myvet-book-button:hover {
+    transform: translateY(-3px) scale(1.05);
+    box-shadow: 0 8px 20px rgba(255, 255, 255, 0.3);
+  }
+  
+  /* Modal */
+  .myvet-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(26, 46, 53, 0.7);
+    backdrop-filter: blur(8px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 2rem;
+    animation: fadeIn 0.3s ease;
+  }
+  
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+  
+  .myvet-modal-content {
+    background: white;
+    border-radius: 32px;
+    max-width: 700px;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 60px rgba(26, 46, 53, 0.3);
+    position: relative;
+    animation: slideUp 0.3s ease;
+  }
+  
+  @keyframes slideUp {
+    from {
+      transform: translateY(50px);
+      opacity: 0;
+    }
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+  
+  .myvet-modal-close {
+    position: absolute;
+    top: 1.5rem;
+    right: 1.5rem;
+    background: #f8fafc;
+    color: #64748b;
+    border: 2px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 0.6rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    z-index: 10;
+  }
+  
+  .myvet-modal-close:hover {
+    background: #fee;
+    color: #ef4444;
+    border-color: #fecaca;
+    transform: rotate(90deg);
+  }
+  
+  .myvet-modal-header {
+    padding: 3rem 3rem 2rem 3rem;
+    text-align: center;
+    background: linear-gradient(135deg, #e8f4f8 0%, #d1e7f0 100%);
+    border-radius: 32px 32px 0 0;
+  }
+  
+  .myvet-modal-icon {
+    color: #0369a1;
+    margin-bottom: 1.25rem;
+  }
+  
+  .myvet-modal-header h2 {
+    font-size: 2rem;
+    color: #1a2e35;
+    font-weight: 800;
+    margin: 0 0 0.75rem 0;
+    letter-spacing: -0.03em;
+  }
+  
+  .myvet-modal-header p {
+    font-size: 1rem;
+    color: #64748b;
+    font-weight: 600;
+    margin: 0;
+  }
+  
+  .myvet-search-controls {
+    padding: 2.5rem 3rem;
+  }
+  
+  .myvet-search-bar {
+    position: relative;
+    margin-bottom: 1.25rem;
+  }
+  
+  .myvet-search-icon {
+    position: absolute;
+    left: 1.25rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #64748b;
+    pointer-events: none;
+  }
+  
+  .myvet-search-bar input {
+    width: 100%;
+    padding: 1.1rem 1.25rem 1.1rem 3.5rem;
+    border: 3px solid #e8f0f7;
+    border-radius: 16px;
+    font-size: 1rem;
+    color: #1a2e35;
+    font-weight: 600;
+    font-family: inherit;
+    transition: all 0.2s ease;
+  }
+  
+  .myvet-search-bar input:focus {
+    outline: none;
+    border-color: #91befe;
+    box-shadow: 0 0 0 4px rgba(145, 190, 254, 0.1);
+  }
+  
+  .myvet-search-bar input::placeholder {
+    color: #94a3b8;
+  }
+  
+  .myvet-search-buttons {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+  }
+  
+  .myvet-search-button,
+  .myvet-location-button {
+    padding: 1.1rem 1.5rem;
+    border: none;
+    border-radius: 14px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    font-size: 0.95rem;
+    font-weight: 700;
+    transition: all 0.25s ease;
+    font-family: inherit;
+  }
+  
+  .myvet-search-button {
+    background: linear-gradient(135deg, #a8ceff 0%, #91befe 100%);
+    color: white;
+  }
+  
+  .myvet-search-button:hover {
+    transform: translateY(-2px);
+    background: linear-gradient(135deg, #91befe 0%, #7aabf5 100%);
+    box-shadow: 0 8px 20px rgba(145, 190, 254, 0.4);
+  }
+  
+  .myvet-location-button {
+    background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+    color: #10b981;
+  }
+  
+  .myvet-location-button:hover {
+    transform: translateY(-2px);
+    background: linear-gradient(135deg, #a7f3d0 0%, #86efac 100%);
+    box-shadow: 0 8px 20px rgba(16, 185, 129, 0.3);
+  }
+  
+  /* Loading State */
+  .myvet-loading {
+    padding: 3rem;
+    text-align: center;
+  }
+  
+  .myvet-loading-spinner {
+    width: 48px;
+    height: 48px;
+    border: 4px solid #e8f0f7;
+    border-top-color: #91befe;
+    border-radius: 50%;
+    margin: 0 auto 1.5rem;
+    animation: spin 0.8s linear infinite;
+  }
+  
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+  
+  .myvet-loading p {
+    font-size: 1rem;
+    color: #64748b;
+    font-weight: 600;
+  }
+  
+  .myvet-no-results {
+    padding: 3rem;
+    text-align: center;
+  }
+  
+  .myvet-no-results p {
+    font-size: 1rem;
+    color: #94a3b8;
+    font-weight: 600;
+  }
+  
+  /* Results */
+  .myvet-results {
+    padding: 0 3rem 3rem 3rem;
+  }
+  
+  .myvet-results-title {
+    font-size: 1.25rem;
+    color: #1a2e35;
+    font-weight: 800;
+    margin: 0 0 1.5rem 0;
+    letter-spacing: -0.02em;
+  }
+  
+  .myvet-vets-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    margin-bottom: 2rem;
+  }
+  
+  .myvet-vet-card {
+    background: white;
+    border: 3px solid #e8f0f7;
+    border-radius: 20px;
+    padding: 1.75rem;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    position: relative;
+  }
+  
+  .myvet-vet-card:hover {
+    border-color: #91befe;
+    transform: translateY(-3px);
+    box-shadow: 0 8px 24px rgba(145, 190, 254, 0.2);
+  }
+  
+  .myvet-vet-card.selected {
+    border-color: #10b981;
+    background: linear-gradient(135deg, #f0fdf4 0%, #ffffff 100%);
+    box-shadow: 0 8px 24px rgba(16, 185, 129, 0.15);
+  }
+  
+  .myvet-vet-card.recommended {
+    border-color: #fbbf24;
+    background: linear-gradient(135deg, #fffbeb 0%, #ffffff 100%);
+  }
+  
+  .myvet-recommended-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+    color: #d97706;
+    padding: 0.4rem 0.9rem;
+    border-radius: 10px;
+    font-size: 0.8rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 1rem;
+  }
+  
+  .myvet-vet-card h4 {
+    font-size: 1.35rem;
+    color: #1a2e35;
+    font-weight: 800;
+    margin: 0 0 1rem 0;
+    letter-spacing: -0.02em;
+  }
+  
+  .myvet-vet-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+  }
+  
+  .myvet-vet-detail {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 0.9rem;
+    color: #64748b;
+    font-weight: 600;
+  }
+  
+  .myvet-vet-detail svg {
+    color: #91befe;
+    flex-shrink: 0;
+  }
+  
+  .myvet-vet-distance {
+    display: inline-flex;
+    background: #e8f4f8;
+    color: #0369a1;
+    padding: 0.5rem 1rem;
+    border-radius: 10px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    align-self: flex-start;
+  }
+  
+  .myvet-register-button {
+    width: 100%;
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: white;
+    border: none;
+    border-radius: 16px;
+    padding: 1.25rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    font-size: 1.05rem;
+    font-weight: 700;
+    transition: all 0.25s ease;
+    font-family: inherit;
+    letter-spacing: -0.01em;
+  }
+  
+  .myvet-register-button:hover {
+    transform: translateY(-3px);
+    background: linear-gradient(135deg, #059669 0%, #047857 100%);
+    box-shadow: 0 8px 20px rgba(16, 185, 129, 0.4);
+  }
+  
+  /* Responsive Design */
+  @media (max-width: 1200px) {
+    .myvet-main-content {
+      padding-left: 340px;
+    }
+    
+    .myvet-content-wrapper {
+      grid-template-columns: 1fr;
+    }
+  }
+  
+  @media (max-width: 992px) {
+    .myvet-main-content {
+      padding-left: 2.5rem;
+    }
+    
+    .myvet-details-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+  
+  @media (max-width: 768px) {
+    .myvet-main-content {
+      padding: 1.5rem;
+    }
+  
+    .myvet-empty-card {
+      padding: 3rem 2rem;
+    }
+  
+    .myvet-empty-card h2 {
+      font-size: 1.5rem;
+    }
+  
+    .myvet-header-card {
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+  
+    .myvet-change-button {
+      width: 100%;
+    }
+  
+    .myvet-clinic-name {
+      font-size: 1.75rem;
+    }
+  
+    .myvet-modal-content {
+      margin: 1rem;
+      border-radius: 24px;
+    }
+  
+    .myvet-modal-header {
+      padding: 2.5rem 2rem 1.5rem 2rem;
+      border-radius: 24px 24px 0 0;
+    }
+  
+    .myvet-modal-header h2 {
+      font-size: 1.5rem;
+    }
+  
+    .myvet-search-controls {
+      padding: 2rem;
+    }
+  
+    .myvet-search-buttons {
+      grid-template-columns: 1fr;
+    }
+  
+    .myvet-results {
+      padding: 0 2rem 2rem 2rem;
+    }
+  
+    .myvet-schedule-item {
+      grid-template-columns: 1fr;
+      gap: 0.5rem;
+    }
+  
+    .myvet-schedule-day {
+      font-weight: 800;
+    }
+  
+    .myvet-schedule-time {
+      margin-left: 0;
+    }
+  
+    .myvet-schedule-status {
+      justify-self: start;
+    }
+  }
+  
+  @media (max-width: 576px) {
+    .myvet-success-notification {
+      top: 1rem;
+      right: 1rem;
+      left: 1rem;
+      font-size: 0.9rem;
+      padding: 1rem 1.25rem;
+    }
+  
+    .myvet-detail-card {
+      padding: 1.25rem;
+    }
+  
+    .myvet-detail-icon {
+      width: 40px;
+      height: 40px;
+    }
+  }

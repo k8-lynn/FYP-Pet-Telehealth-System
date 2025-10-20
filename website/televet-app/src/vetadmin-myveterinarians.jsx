@@ -271,30 +271,29 @@ const VetAdminMyVeterinarians = () => {
 
             <form onSubmit={handleSubmit} className="myveterinarians-modal-form">
               <div className="myveterinarians-form-section">
-                <h3 className="myveterinarians-form-section-title">Personal Information</h3>
-                <div className="myveterinarians-form-row">
-                <div className="myveterinarians-form-group">
-                    <label>Years of Practice</label>
-                    <input
-                        type="number"
-                        name="yearsOfPractice"
-                        value={formData.yearsOfPractice}
+                  <h3 className="myveterinarians-form-section-title">Personal Information</h3>
+                  <div className="myveterinarians-form-row">
+                    <div className="myveterinarians-form-group">
+                      <label>First Name *</label>
+                      <input
+                        type="text"
+                        name="firstName"
+                        value={formData.firstName}
                         onChange={handleInputChange}
-                        min="0"
-                    />
+                        required
+                      />
                     </div>
                     <div className="myveterinarians-form-group">
-                    <label>Specialization *</label>
-                    <input
+                      <label>Last Name *</label>
+                      <input
                         type="text"
-                        name="specialization"
-                        value={formData.specialization}
+                        name="lastName"
+                        value={formData.lastName}
                         onChange={handleInputChange}
-                        placeholder="e.g., Surgery, Dentistry"
                         required
-                    />
+                      />
                     </div>
-                </div>
+                  </div>
 
                 <div className="myveterinarians-form-row">
                   <div className="myveterinarians-form-group">

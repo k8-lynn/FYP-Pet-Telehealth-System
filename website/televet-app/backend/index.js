@@ -1,9 +1,19 @@
 // televet-app/backend/index.js
-const express = require('express');
-const mysql = require('mysql2');
-const cors = require('cors');
-require('dotenv').config();
+import express from 'express';
+import mysql from 'mysql2';
+import cors from 'cors';
+import dotenv from 'dotenv';
+import haversine from 'haversine-distance';
 
+// ✅ Load environment variables
+dotenv.config();
+
+// ✅ Fetch example (Node 18+ has fetch built-in)
+const response = await fetch('https://nominatim.openstreetmap.org/search?format=json&q=Manila');
+const data = await response.json();
+console.log('🌍 Example Nominatim result:', data[0]);
+
+// ✅ Express setup
 const app = express();
 app.use(cors());
 app.use(express.json());
@@ -207,10 +217,12 @@ app.post('/api/register', (req, res) => {
           va_clinicName,
           va_clinicPhone,
           va_clinicEmail,
+          va_lat, 
+          va_lon,
           va_consent,
           va_createdAt
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
       `;
 
       console.log("🧾 Inserting vet admin data for userId:", userId);
@@ -235,6 +247,9 @@ app.post('/api/register', (req, res) => {
         req.body.clinicName,
         req.body.clinicPhone,
         req.body.clinicEmail,
+        req.body.va_lat || null,   // ✅ latitude
+        req.body.va_lon || null,   // ✅ longitude
+        req.body.consent || 'yes',  // ✅ consent
         'yes'
       ], (errVet, vetResult) => {
         if (errVet) {
@@ -508,6 +523,8 @@ app.get('/api/profile/:usr_id', (req, res) => {
           v.va_clinicName, 
           v.va_clinicPhone, 
           v.va_clinicEmail, 
+          va_lat,
+          va_lon,
           v.va_consent, 
           v.va_createdAt
         FROM vet_admin_t v
@@ -767,5 +784,39 @@ app.put('/api/profile/vetadmin/:usr_id', (req, res) => {
 
       res.status(200).json({ message: 'Profile updated successfully' });
     });
+  });
+});
+
+app.get("/api/vets-nearby", (req, res) => {
+  const { lat, lon } = req.query;
+
+  if (!lat || !lon) {
+    return res.status(400).json({ error: "Missing latitude or longitude" });
+  }
+
+  const sql = `
+    SELECT va_id, va_clinicName, va_vetLocation, va_clinicPhone, va_clinicEmail, va_lat, va_lon
+    FROM vet_admin_t
+    WHERE va_lat IS NOT NULL AND va_lon IS NOT NULL
+  `;
+
+  db.query(sql, (err, vets) => {
+    if (err) return res.status(500).json({ error: "DB error" });
+
+    if (!vets || vets.length === 0) {
+      return res.status(404).json({ message: "No vets found in the database." });
+    }
+
+    const withDistances = vets.map(vet => {
+      const distance = haversine(
+        { lat: parseFloat(lat), lon: parseFloat(lon) },
+        { lat: vet.va_lat, lon: vet.va_lon }
+      );
+      return { ...vet, distance: distance / 1000 }; // meters → km
+    });
+
+    const sorted = withDistances.sort((a, b) => a.distance - b.distance);
+
+    res.json(sorted.slice(0, 10));
   });
 });
