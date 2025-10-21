@@ -16,22 +16,101 @@ const MyVet = () => {
   const [loading, setLoading] = useState(false);
   const [showSearchModal, setShowSearchModal] = useState(false);
   const [showSuccessNotification, setShowSuccessNotification] = useState(false);
+  const [clinicHours, setClinicHours] = useState(null);
+
+  
 
   useEffect(() => {
     const storedName = sessionStorage.getItem('firstName');
     if (storedName) setFirstName(storedName);
   }, []);
 
-  // Mock availability data
-  const mockAvailability = [
-    { day: "Monday", time: "9:00 AM - 5:00 PM", status: "Available" },
-    { day: "Tuesday", time: "9:00 AM - 5:00 PM", status: "Available" },
-    { day: "Wednesday", time: "9:00 AM - 5:00 PM", status: "Available" },
-    { day: "Thursday", time: "9:00 AM - 5:00 PM", status: "Available" },
-    { day: "Friday", time: "9:00 AM - 5:00 PM", status: "Available" },
-    { day: "Saturday", time: "10:00 AM - 2:00 PM", status: "Limited" },
-    { day: "Sunday", time: "Closed", status: "Closed" }
-  ];
+  useEffect(() => {
+    const fetchAssignedClinic = async () => {
+      const usr_id = sessionStorage.getItem('userid');
+      if (!usr_id) return;
+  
+      try {
+        const res = await fetch(`http://localhost:5000/api/user-clinic/${usr_id}`);
+        const data = await res.json();
+  
+        if (data.clinic) {
+          console.log("📍 Assigned clinic found:", data.clinic);
+          const vetRes = await fetch(`http://localhost:5000/api/vet-by-name/${encodeURIComponent(data.clinic)}`);
+          const vetData = await vetRes.json();
+  
+          if (vetRes.ok && vetData) {
+            // 🧭 Get user's current location for distance calculation
+            if (navigator.geolocation) {
+              navigator.geolocation.getCurrentPosition(
+                (pos) => {
+                  const { latitude, longitude } = pos.coords;
+                  const distance = calculateDistance(latitude, longitude, vetData.va_lat, vetData.va_lon);
+                  vetData.distance = distance;
+                  setRegisteredVet(vetData);
+                },
+                (err) => {
+                  console.warn("⚠️ Could not get user location:", err);
+                  setRegisteredVet(vetData); // Still show vet without distance
+                }
+              );
+            } else {
+              setRegisteredVet(vetData);
+            }
+  
+            // 📅 Fetch clinic hours (MOVED OUTSIDE geolocation check)
+            if (vetData.clinic_id) {
+              try {
+                const hoursRes = await fetch(`http://localhost:5000/api/clinic-hours/${vetData.clinic_id}`);
+                console.log("🟢 Fetching clinic hours from:", `http://localhost:5000/api/clinic-hours/${vetData.clinic_id}`);
+              
+                const hoursData = await hoursRes.json();
+                console.log("📦 Raw clinic hours response:", hoursData);
+              
+                if (hoursRes.ok && hoursData) {
+                  console.log("✅ Clinic hours successfully retrieved:", hoursData);
+                  setClinicHours(hoursData);
+                } else {
+                  console.warn("⚠️ No clinic hours found or response not OK.");
+                  setClinicHours(null);
+                }
+              } catch (err) {
+                console.error("❌ Error fetching clinic hours:", err);
+                setClinicHours(null);
+              }
+            } else {
+              console.warn("⚠️ No clinic_id found for this vet");
+              setClinicHours(null);
+            }
+  
+          } else {
+            console.warn("⚠️ Vet not found for:", data.clinic);
+          }
+        }
+      } catch (error) {
+        console.error("❌ Error fetching assigned clinic:", error);
+      }
+    };
+  
+    fetchAssignedClinic();
+  }, []);
+  
+  // 📏 Haversine formula for distance in km
+  const calculateDistance = (lat1, lon1, lat2, lon2) => {
+    const R = 6371; // km
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(lat1 * Math.PI / 180) *
+      Math.cos(lat2 * Math.PI / 180) *
+      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+  };
+  
+  
+
 
   const handleUseLocation = () => {
     if (navigator.geolocation) {
@@ -84,22 +163,52 @@ const MyVet = () => {
     setSelectedVet(vet);
   };
 
-  const handleRegisterVet = () => {
+  const handleRegisterVet = async () => {
     if (selectedVet) {
-      setRegisteredVet(selectedVet);
-      setShowSuccessNotification(true);
-      setShowSearchModal(false);
-      setVets([]);
-      setSelectedVet(null);
-      setLocation("");
-      
-      // Hide notification after 3 seconds
-      setTimeout(() => {
-        setShowSuccessNotification(false);
-      }, 3000);
+      try {
+        // 🧍‍♀️ Get logged-in user ID from sessionStorage
+        const usr_id = sessionStorage.getItem('userid');
+        if (!usr_id) {
+          alert("User not logged in.");
+          return;
+        }
+  
+        // 📨 Send the clinic name to backend
+        const res = await fetch("http://localhost:5000/api/assign-clinic", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            usr_id,
+            clinicName: selectedVet.va_clinicName
+          }),
+        });
+  
+        const data = await res.json();
+  
+        if (res.ok) {
+          console.log("✅ Backend update:", data.message);
+          setRegisteredVet(selectedVet);
+          setShowSuccessNotification(true);
+          setShowSearchModal(false);
+          setVets([]);
+          setSelectedVet(null);
+          setLocation("");
+  
+          // Hide notification after 3 seconds
+          setTimeout(() => {
+            setShowSuccessNotification(false);
+          }, 3000);
+        } else {
+          console.error("❌ Failed to update:", data.error);
+          alert("Failed to register clinic. Please try again.");
+        }
+      } catch (error) {
+        console.error("❌ Error:", error);
+        alert("An error occurred while registering the clinic.");
+      }
     }
   };
-
+  
   return (
     <div className="myvet-dashboard-container">
       <PawPattern count={35} />
@@ -198,16 +307,45 @@ const MyVet = () => {
                   <h3>Clinic Hours</h3>
                 </div>
                 <div className="myvet-schedule-list">
-                  {mockAvailability.map((schedule, index) => (
-                    <div key={index} className="myvet-schedule-item">
-                      <span className="myvet-schedule-day">{schedule.day}</span>
-                      <span className="myvet-schedule-time">{schedule.time}</span>
-                      <span className={`myvet-schedule-status ${schedule.status.toLowerCase()}`}>
-                        {schedule.status}
-                      </span>
-                    </div>
-                  ))}
-                </div>
+                {!clinicHours ? (
+                  <p className="myvet-no-hours">No set clinic hours yet.</p>
+                ) : (
+                  Object.entries({
+                    Monday: clinicHours.monday_hours,
+                    Tuesday: clinicHours.tuesday_hours,
+                    Wednesday: clinicHours.wednesday_hours,
+                    Thursday: clinicHours.thursday_hours,
+                    Friday: clinicHours.friday_hours,
+                    Saturday: clinicHours.saturday_hours,
+                    Sunday: clinicHours.sunday_hours,
+                  }).map(([day, hours], index) => {
+                    // Check if hours exists and is not closed
+                    const isClosed = !hours || hours.status === 'Closed' || !hours.opening || !hours.closing;
+                    const timeDisplay = isClosed 
+                      ? "Closed" 
+                      : `${hours.opening} - ${hours.closing}`;
+                    
+                    // Use the actual status from the database
+                    const status = isClosed ? "Closed" : hours.status;
+                    
+                    // Determine CSS class based on status
+                    const statusClass = isClosed ? "closed" : 
+                                      status === "Limited" ? "limited" : 
+                                      "available";
+                    
+                    return (
+                      <div key={index} className="myvet-schedule-item">
+                        <span className="myvet-schedule-day">{day}</span>
+                        <span className="myvet-schedule-time">{timeDisplay}</span>
+                        <span className={`myvet-schedule-status ${statusClass}`}>
+                          {status}
+                        </span>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+
               </div>
 
               {/* Book Appointment Card */}

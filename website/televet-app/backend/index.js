@@ -149,7 +149,11 @@ app.post('/api/register', (req, res) => {
     if (userType === "petParent") {
       console.log("👩‍👧 Detected petParent registration");
     
-      const sqlParent = `INSERT INTO pet_parent_t (usr_id, pp_lastUpdated) VALUES (?, NOW())`;
+      const sqlParent = `
+      INSERT INTO pet_parent_t (usr_id, pp_lastUpdated, createdAt)
+      VALUES (?, NOW(), NOW())
+    `;
+
       db.query(sqlParent, [userId], (err2, parentResult) => {
         if (err2) {
           console.error("❌ Error inserting into pet_parent_t:", err2);
@@ -206,61 +210,87 @@ app.post('/api/register', (req, res) => {
     } else if (userType === "vetAdmin") {
       console.log("👨‍⚕️ Detected vetAdmin registration, preparing vet_admin_t insert...");
 
+      const lat = req.body.va_lat || req.body.latitude || null;
+      const lon = req.body.va_lon || req.body.longitude || null;
+
+
       const sqlVetAdmin = `
-        INSERT INTO vet_admin_t (
-          usr_id,
-          va_licenseNumber,
-          va_licensingAuthority,
-          va_yearsOfPractice,
-          va_specialization,
-          va_vetLocation,
-          va_clinicName,
-          va_clinicPhone,
-          va_clinicEmail,
-          va_lat, 
-          va_lon,
-          va_consent,
-          va_createdAt
+      INSERT INTO vet_admin_t (
+        usr_id,
+        va_licenseNumber,
+        va_licensingAuthority,
+        va_yearsOfPractice,
+        va_specialization,
+        va_vetLocation,
+        va_clinicName,
+        va_clinicPhone,
+        va_clinicEmail,
+        va_lat, 
+        va_lon,
+        va_consent,
+        va_createdAt
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+    `;
+
+    db.query(sqlVetAdmin, [
+      userId,
+      req.body.licenseNumber,
+      req.body.licensingAuthority,
+      req.body.yearsOfPractice,
+      req.body.specialization || null,
+      req.body.vetLocation,
+      req.body.clinicName,
+      req.body.clinicPhone,
+      req.body.clinicEmail,
+      lat,
+      lon,
+      req.body.consent || 'yes'
+    ], (errVet, vetResult) => {
+      if (errVet) {
+        console.error("❌ Error inserting into vet_admin_t:", errVet);
+        return res.status(500).json({ error: "Failed to register vet admin" });
+      }
+
+      const va_id = vetResult.insertId;
+      console.log("✅ vet_admin_t inserted successfully, va_id =", va_id);
+
+      // 🏥 Automatically insert into clinic_t
+      const sqlClinic = `
+        INSERT INTO clinic_t (
+          va_id,
+          clinic_name,
+          clinic_location,
+          clinic_phone,
+          clinic_email,
+          clinic_lat,
+          clinic_lon,
+          clinic_status,
+          clinic_rating,
+          clinic_lastUpdated
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+        VALUES (?, ?, ?, ?, ?, ?, ?, 'open', 0.0, NOW())
       `;
 
-      console.log("🧾 Inserting vet admin data for userId:", userId);
-      console.log({
-        licenseNumber: req.body.licenseNumber,
-        licensingAuthority: req.body.licensingAuthority,
-        yearsOfPractice: req.body.yearsOfPractice,
-        specialization: req.body.specialization,
-        vetLocation: req.body.vetLocation,
-        clinicName: req.body.clinicName,
-        clinicPhone: req.body.clinicPhone,
-        clinicEmail: req.body.clinicEmail
-      });
-
-      db.query(sqlVetAdmin, [
-        userId,
-        req.body.licenseNumber,
-        req.body.licensingAuthority,
-        req.body.yearsOfPractice,
-        req.body.specialization || null,
-        req.body.vetLocation,
+      db.query(sqlClinic, [
+        va_id,
         req.body.clinicName,
+        req.body.vetLocation,
         req.body.clinicPhone,
         req.body.clinicEmail,
-        req.body.va_lat || null,   // ✅ latitude
-        req.body.va_lon || null,   // ✅ longitude
-        req.body.consent || 'yes',  // ✅ consent
-        'yes'
-      ], (errVet, vetResult) => {
-        if (errVet) {
-          console.error("❌ Error inserting into vet_admin_t:", errVet);
-          return res.status(500).json({ error: "Failed to register vet admin" });
+        lat,
+        lon
+      ], (errClinic) => {
+        if (errClinic) {
+          console.error("❌ Error inserting into clinic_t:", errClinic);
+          return res.status(500).json({ error: "Vet admin created, but failed to create clinic record" });
         }
 
-        console.log("✅ vet_admin_t inserted successfully, va_id =", vetResult.insertId);
-        return res.status(200).json({ message: "Vet admin registered successfully!" });
+        console.log("✅ Clinic record successfully created for va_id =", va_id);
+        return res.status(200).json({ message: "Vet admin and clinic registered successfully!" });
       });
-    } else {
+    });
+  } else {
       console.warn("⚠️ Unknown userType detected:", userType);
       return res.status(400).json({ error: "Invalid userType" });
     }
@@ -487,8 +517,8 @@ app.get('/api/profile/:usr_id', (req, res) => {
     // Step 2️⃣: If Pet Parent
     if (user.usr_type === 'petParent') {
       const parentSQL = `
-        SELECT pp_id, pp_reminder, pp_lastUpdated, pp_schedule 
-        FROM pet_parent_t 
+        SELECT pp_id, pp_assignedClinic, pp_reminder, pp_lastUpdated, pp_schedule, createdAt
+        FROM pet_parent_t
         WHERE usr_id = ?
       `;
       
@@ -820,3 +850,553 @@ app.get("/api/vets-nearby", (req, res) => {
     res.json(sorted.slice(0, 10));
   });
 });
+
+//BACKEND
+// 🟢 ASSIGN PET PARENT TO A CLINIC 
+app.put('/api/assign-clinic', (req, res) => {
+  const { usr_id, clinicName } = req.body;
+
+  if (!usr_id || !clinicName) {
+    return res.status(400).json({ error: "Missing usr_id or clinicName" });
+  }
+
+  const sql = `
+    UPDATE pet_parent_t
+    SET pp_assignedClinic = ?, pp_lastUpdated = NOW()
+    WHERE usr_id = ?
+  `;
+
+  db.query(sql, [clinicName, usr_id], (err, result) => {
+    if (err) {
+      console.error("❌ Error assigning clinic:", err);
+      return res.status(500).json({ error: "Failed to assign clinic" });
+    }
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: "Pet parent not found" });
+    }
+
+    console.log(`✅ Pet parent ${usr_id} assigned to clinic ${clinicName}`);
+    res.status(200).json({ message: "✅ Successfully registered into clinic!" });
+  });
+});
+
+// GET /api/user-clinic/:usr_id
+app.get("/api/user-clinic/:usr_id", (req, res) => {
+  const { usr_id } = req.params;
+
+  db.query(
+    "SELECT pp_assignedClinic FROM pet_parent_t WHERE usr_id = ?",
+    [usr_id],
+    (err, result) => {
+      if (err) {
+        console.error(err);
+        return res.status(500).json({ error: "Database error" });
+      }
+
+      if (result.length === 0 || !result[0].pp_assignedClinic) {
+        return res.json({ clinic: null });
+      }
+
+      res.json({ clinic: result[0].pp_assignedClinic });
+    }
+  );
+});
+
+// GET /api/vet-by-name/:name
+// GET /api/vet-by-name/:name
+app.get("/api/vet-by-name/:name", (req, res) => {
+  const { name } = req.params;
+
+  const sql = `
+    SELECT 
+      va.va_id,
+      va.va_clinicName,
+      va.va_vetLocation,
+      va.va_clinicPhone,
+      va.va_clinicEmail,
+      va.va_lat,
+      va.va_lon,
+      c.clinic_id
+    FROM vet_admin_t va
+    INNER JOIN clinic_t c ON va.va_id = c.va_id  -- Changed from LEFT JOIN to INNER JOIN
+    WHERE va.va_clinicName = ? 
+    LIMIT 1
+  `;
+
+  db.query(sql, [name], (err, result) => {
+    if (err) {
+      console.error("❌ Database error:", err);
+      return res.status(500).json({ error: "Database error" });
+    }
+
+    if (result.length === 0) {
+      console.warn(`⚠️ Vet not found for clinic name: ${name}`);
+      return res.status(404).json({ error: "Vet not found" });
+    }
+
+    res.json(result[0]);
+  });
+});
+
+
+// Add these endpoints to your backend/index.js file
+// Add these endpoints to your backend/index.js file
+// Add these endpoints to your backend/index.js file
+
+// -------------------------------------------------------------
+// 🟢 GET CLINIC INFO BY VET ADMIN ID
+// -------------------------------------------------------------
+app.get('/api/clinic/:va_id', (req, res) => {
+  const { va_id } = req.params;
+
+  const sql = `
+    SELECT 
+      clinic_id, 
+      va_id, 
+      clinic_name, 
+      clinic_location, 
+      clinic_phone, 
+      clinic_email,
+      clinic_lat,
+      clinic_lon,
+      clinic_openingHours,
+      clinic_daysOpen,
+      clinic_availableSlots,
+      clinic_totalCapacity,
+      clinic_currentPatients,
+      clinic_status,
+      clinic_rating,
+      clinic_lastUpdated
+    FROM clinic_t
+    WHERE va_id = ?
+  `;
+
+  db.query(sql, [va_id], (err, result) => {
+    if (err) {
+      console.error('❌ Error fetching clinic:', err);
+      return res.status(500).json({ error: 'Failed to fetch clinic data' });
+    }
+
+    if (result.length === 0) {
+      console.warn('⚠️ No clinic found for va_id:', va_id);
+      return res.status(404).json({ error: 'Clinic not found' });
+    }
+
+    console.log('✅ Clinic data retrieved for va_id:', va_id);
+    res.status(200).json(result[0]);
+  });
+});
+
+
+
+// -------------------------------------------------------------
+// 🟢 GET CLINIC HOURS BY CLINIC ID
+// -------------------------------------------------------------
+app.get('/api/clinic-hours/:clinic_id', (req, res) => {
+  const { clinic_id } = req.params;
+
+  const sql = `
+    SELECT 
+      clinic_hours_id,
+      clinic_id,
+      monday_hours,
+      tuesday_hours,
+      wednesday_hours,
+      thursday_hours,
+      friday_hours,
+      saturday_hours,
+      sunday_hours,
+      last_updated
+    FROM clinic_hours_t
+    WHERE clinic_id = ?
+  `;
+
+  db.query(sql, [clinic_id], (err, result) => {
+    if (err) {
+      console.error('❌ Error fetching clinic hours:', err);
+      return res.status(500).json({ error: 'Failed to fetch clinic hours' });
+    }
+
+    if (result.length === 0) {
+      console.log('⚠️ No clinic hours found for clinic_id:', clinic_id);
+      return res.status(200).json(null);
+    }
+
+    // Parse JSON strings in the response
+    const hoursData = result[0];
+    const daysOfWeek = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+    
+    daysOfWeek.forEach(day => {
+      const field = `${day}_hours`;
+      if (hoursData[field]) {
+        try {
+          // Already parsed by MySQL if it's an object, otherwise parse it
+          if (typeof hoursData[field] === 'string') {
+            hoursData[field] = JSON.parse(hoursData[field]);
+          }
+        } catch (e) {
+          console.warn(`⚠️ Could not parse ${field}:`, hoursData[field]);
+        }
+      }
+    });
+
+    console.log('✅ Clinic hours retrieved for clinic_id:', clinic_id);
+    res.status(200).json(hoursData);
+  });
+});
+
+// -------------------------------------------------------------
+// 🟢 UPDATE OR CREATE CLINIC HOURS
+// -------------------------------------------------------------
+app.put('/api/clinic-hours/:clinic_id', (req, res) => {
+  const { clinic_id } = req.params;
+  const {
+    monday_hours,
+    tuesday_hours,
+    wednesday_hours,
+    thursday_hours,
+    friday_hours,
+    saturday_hours,
+    sunday_hours
+  } = req.body;
+
+  // First, check if clinic hours already exist
+  const checkSQL = 'SELECT clinic_hours_id FROM clinic_hours_t WHERE clinic_id = ?';
+
+  db.query(checkSQL, [clinic_id], (err, result) => {
+    if (err) {
+      console.error('❌ Error checking clinic hours:', err);
+      return res.status(500).json({ error: 'Database error' });
+    }
+
+    if (result.length === 0) {
+      // INSERT new clinic hours
+      const insertSQL = `
+        INSERT INTO clinic_hours_t (
+          clinic_id,
+          monday_hours,
+          tuesday_hours,
+          wednesday_hours,
+          thursday_hours,
+          friday_hours,
+          saturday_hours,
+          sunday_hours
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      `;
+
+      db.query(insertSQL, [
+        clinic_id,
+        monday_hours || null,
+        tuesday_hours || null,
+        wednesday_hours || null,
+        thursday_hours || null,
+        friday_hours || null,
+        saturday_hours || null,
+        sunday_hours || null
+      ], (err2) => {
+        if (err2) {
+          console.error('❌ Error inserting clinic hours:', err2);
+          return res.status(500).json({ error: 'Failed to create clinic hours' });
+        }
+
+        console.log('✅ Clinic hours created for clinic_id:', clinic_id);
+        res.status(200).json({ message: 'Clinic hours created successfully' });
+      });
+    } else {
+      // UPDATE existing clinic hours
+      const updateSQL = `
+        UPDATE clinic_hours_t
+        SET 
+          monday_hours = ?,
+          tuesday_hours = ?,
+          wednesday_hours = ?,
+          thursday_hours = ?,
+          friday_hours = ?,
+          saturday_hours = ?,
+          sunday_hours = ?,
+          last_updated = NOW()
+        WHERE clinic_id = ?
+      `;
+
+      db.query(updateSQL, [
+        monday_hours || null,
+        tuesday_hours || null,
+        wednesday_hours || null,
+        thursday_hours || null,
+        friday_hours || null,
+        saturday_hours || null,
+        sunday_hours || null,
+        clinic_id
+      ], (err2) => {
+        if (err2) {
+          console.error('❌ Error updating clinic hours:', err2);
+          return res.status(500).json({ error: 'Failed to update clinic hours' });
+        }
+
+        console.log('✅ Clinic hours updated for clinic_id:', clinic_id);
+        res.status(200).json({ message: 'Clinic hours updated successfully' });
+      });
+    }
+  });
+});
+
+// -------------------------------------------------------------
+// 🟢 UPDATE CLINIC STATUS (OPEN/CLOSED)
+// -------------------------------------------------------------
+app.put('/api/clinic-status/:clinic_id', (req, res) => {
+  const { clinic_id } = req.params;
+  const { status } = req.body;
+
+  if (!status || !['open', 'closed', 'temporarily closed'].includes(status)) {
+    return res.status(400).json({ error: 'Invalid status value' });
+  }
+
+  const sql = `
+    UPDATE clinic_t
+    SET clinic_status = ?, clinic_lastUpdated = NOW()
+    WHERE clinic_id = ?
+  `;
+
+  db.query(sql, [status, clinic_id], (err, result) => {
+    if (err) {
+      console.error('❌ Error updating clinic status:', err);
+      return res.status(500).json({ error: 'Failed to update clinic status' });
+    }
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'Clinic not found' });
+    }
+
+    console.log(`✅ Clinic status updated to ${status} for clinic_id:`, clinic_id);
+    res.status(200).json({ message: 'Clinic status updated successfully', status });
+  });
+});
+
+// -------------------------------------------------------------
+// 🟢 GET CLINIC SLOTS BY CLINIC ID
+// -------------------------------------------------------------
+app.get('/api/clinic-slots/:clinic_id', (req, res) => {
+  const { clinic_id } = req.params;
+
+  const sql = `
+    SELECT 
+      clinic_slots_id,
+      clinic_id,
+      slots,
+      last_updated
+    FROM clinic_slots_t
+    WHERE clinic_id = ?
+  `;
+
+  db.query(sql, [clinic_id], (err, result) => {
+    if (err) {
+      console.error('❌ Error fetching clinic slots:', err);
+      return res.status(500).json({ error: 'Failed to fetch clinic slots' });
+    }
+
+    if (result.length === 0) {
+      console.log('⚠️ No clinic slots found for clinic_id:', clinic_id);
+      return res.status(200).json(null);
+    }
+
+    const slotsData = result[0];
+    
+    // Parse JSON if it's a string
+    if (slotsData.slots && typeof slotsData.slots === 'string') {
+      try {
+        slotsData.slots = JSON.parse(slotsData.slots);
+      } catch (e) {
+        console.warn('⚠️ Could not parse slots:', slotsData.slots);
+      }
+    }
+
+    console.log('✅ Clinic slots retrieved for clinic_id:', clinic_id);
+    res.status(200).json(slotsData);
+  });
+});
+
+// -------------------------------------------------------------
+// 🟢 UPDATE OR CREATE CLINIC SLOTS
+// -------------------------------------------------------------
+app.put('/api/clinic-slots/:clinic_id', (req, res) => {
+  const { clinic_id } = req.params;
+  const { slots } = req.body;
+
+  if (!slots) {
+    return res.status(400).json({ error: 'Slots data is required' });
+  }
+
+  // Convert slots array to JSON string
+  const slotsJSON = JSON.stringify(slots);
+
+  // Check if slots already exist
+  const checkSQL = 'SELECT clinic_slots_id FROM clinic_slots_t WHERE clinic_id = ?';
+
+  db.query(checkSQL, [clinic_id], (err, result) => {
+    if (err) {
+      console.error('❌ Error checking clinic slots:', err);
+      return res.status(500).json({ error: 'Database error' });
+    }
+
+    if (result.length === 0) {
+      // INSERT new clinic slots
+      const insertSQL = `
+        INSERT INTO clinic_slots_t (clinic_id, slots)
+        VALUES (?, ?)
+      `;
+
+      db.query(insertSQL, [clinic_id, slotsJSON], (err2) => {
+        if (err2) {
+          console.error('❌ Error inserting clinic slots:', err2);
+          return res.status(500).json({ error: 'Failed to create clinic slots' });
+        }
+
+        console.log('✅ Clinic slots created for clinic_id:', clinic_id);
+        res.status(200).json({ message: 'Clinic slots created successfully' });
+      });
+    } else {
+      // UPDATE existing clinic slots
+      const updateSQL = `
+        UPDATE clinic_slots_t
+        SET slots = ?, last_updated = NOW()
+        WHERE clinic_id = ?
+      `;
+
+      db.query(updateSQL, [slotsJSON, clinic_id], (err2) => {
+        if (err2) {
+          console.error('❌ Error updating clinic slots:', err2);
+          return res.status(500).json({ error: 'Failed to update clinic slots' });
+        }
+
+        console.log('✅ Clinic slots updated for clinic_id:', clinic_id);
+        res.status(200).json({ message: 'Clinic slots updated successfully' });
+      });
+    }
+  });
+});
+// -------------------------------------------------------------
+// 🟢 GENERATE DEFAULT SLOTS FROM CLINIC HOURS
+// -------------------------------------------------------------
+app.post('/api/clinic-slots/generate/:clinic_id', (req, res) => {
+  const { clinic_id } = req.params;
+
+  // First, get clinic hours
+  const hoursSQL = 'SELECT * FROM clinic_hours_t WHERE clinic_id = ?';
+  
+  db.query(hoursSQL, [clinic_id], (err, hoursResult) => {
+    if (err) {
+      console.error('❌ Error fetching clinic hours:', err);
+      return res.status(500).json({ error: 'Failed to fetch clinic hours' });
+    }
+
+    if (hoursResult.length === 0) {
+      return res.status(404).json({ error: 'Clinic hours not found. Please set clinic hours first.' });
+    }
+
+    const hoursData = hoursResult[0];
+    
+    // Get today's day of week
+    const today = new Date();
+    const daysOfWeek = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    const todayName = daysOfWeek[today.getDay()];
+    
+    const todayHoursField = `${todayName}_hours`;
+    let todayHours = hoursData[todayHoursField];
+
+    // Parse if it's a string
+    if (typeof todayHours === 'string') {
+      try {
+        todayHours = JSON.parse(todayHours);
+      } catch (e) {
+        todayHours = null;
+      }
+    }
+
+    if (!todayHours || todayHours.status === 'Closed' || !todayHours.opening || !todayHours.closing) {
+      return res.status(400).json({ error: 'Clinic is closed today or hours not set' });
+    }
+
+    // Generate time slots
+    const slots = generateTimeSlots(todayHours.opening, todayHours.closing);
+    
+    // Save to database
+    const slotsJSON = JSON.stringify(slots);
+    const checkSQL = 'SELECT clinic_slots_id FROM clinic_slots_t WHERE clinic_id = ?';
+
+    db.query(checkSQL, [clinic_id], (err2, checkResult) => {
+      if (err2) {
+        console.error('❌ Error checking clinic slots:', err2);
+        return res.status(500).json({ error: 'Database error' });
+      }
+
+      if (checkResult.length === 0) {
+        // INSERT
+        const insertSQL = 'INSERT INTO clinic_slots_t (clinic_id, slots) VALUES (?, ?)';
+        db.query(insertSQL, [clinic_id, slotsJSON], (err3) => {
+          if (err3) {
+            console.error('❌ Error inserting slots:', err3);
+            return res.status(500).json({ error: 'Failed to create slots' });
+          }
+          console.log('✅ Default slots generated for clinic_id:', clinic_id);
+          res.status(200).json({ message: 'Default slots generated successfully', slots });
+        });
+      } else {
+        // UPDATE
+        const updateSQL = 'UPDATE clinic_slots_t SET slots = ?, last_updated = NOW() WHERE clinic_id = ?';
+        db.query(updateSQL, [slotsJSON, clinic_id], (err3) => {
+          if (err3) {
+            console.error('❌ Error updating slots:', err3);
+            return res.status(500).json({ error: 'Failed to update slots' });
+          }
+          console.log('✅ Default slots updated for clinic_id:', clinic_id);
+          res.status(200).json({ message: 'Default slots generated successfully', slots });
+        });
+      }
+    });
+  });
+});
+
+// Helper function to generate time slots
+function generateTimeSlots(openingTime, closingTime) {
+  const slots = [];
+  let slotId = 1;
+
+  // Convert time to 24-hour format for comparison
+  const parseTime = (timeStr) => {
+    const [time, period] = timeStr.split(' ');
+    let [hours, minutes] = time.split(':').map(Number);
+    
+    if (period === 'PM' && hours !== 12) hours += 12;
+    if (period === 'AM' && hours === 12) hours = 0;
+    
+    return hours * 60 + minutes; // Return minutes from midnight
+  };
+
+  const formatTime = (minutes) => {
+    let hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    const period = hours >= 12 ? 'PM' : 'AM';
+    
+    if (hours > 12) hours -= 12;
+    if (hours === 0) hours = 12;
+    
+    return `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')} ${period}`;
+  };
+
+  const startMinutes = parseTime(openingTime);
+  const endMinutes = parseTime(closingTime);
+  const interval = 30; // 30-minute intervals
+
+  for (let minutes = startMinutes; minutes < endMinutes; minutes += interval) {
+    slots.push({
+      id: slotId++,
+      time: formatTime(minutes),
+      status: 'available',
+      patient: null
+    });
+  }
+
+  return slots;
+}
