@@ -983,6 +983,7 @@
     background: #f0f9ff;
     border-radius: 14px;
     border: 2px solid #e0f2fe;
+    gap: 1.5rem; 
   }
   
   .schedule-today-stats-left {
@@ -1019,13 +1020,13 @@
     color: white;
     border: none;
     border-radius: 14px;
-    padding: 1rem 2rem;
+    padding: 0.75rem 1.5rem;  /* Change from 1rem 2rem */
     cursor: pointer;
     display: flex;
     align-items: center;
     gap: 0.75rem;
     font-weight: 700;
-    font-size: 1rem;
+    font-size: 0.9rem;  /* Change from 1rem */
     transition: all 0.25s ease;
     font-family: inherit;
     box-shadow: 0 4px 15px rgba(145, 190, 254, 0.3);
@@ -1662,4 +1663,290 @@
 
 .schedule-vets-list::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
+}
+
+/* Weekly View Styles */
+.schedule-calendar-weekly {
+  margin-top: 1.5rem;
+}
+
+.schedule-calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 1rem;
+}
+
+.schedule-calendar-day {
+  background: white;
+  border: 3px solid #e8f0f7;
+  border-radius: 16px;
+  padding: 1.25rem;
+  transition: all 0.2s ease;
+  min-height: 180px;
+  display: flex;
+  flex-direction: column;
+}
+
+.schedule-calendar-day.clickable {
+  cursor: pointer;
+}
+
+.schedule-calendar-day.clickable:hover {
+  border-color: #91befe;
+  transform: translateY(-4px);
+  box-shadow: 0 8px 20px rgba(145, 190, 254, 0.2);
+}
+
+.schedule-calendar-day-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 2px solid #f1f5f9;
+}
+
+.schedule-day-name {
+  font-size: 0.9rem;
+  font-weight: 800;
+  color: #1a2e35;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.schedule-day-date {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: #91befe;
+}
+
+.schedule-calendar-day-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+/* No Slots Badge */
+.schedule-no-slots-badge {
+  text-align: center;
+  padding: 1rem;
+  background: #f8fafc;
+  border: 2px dashed #cbd5e1;
+  border-radius: 12px;
+  color: #64748b;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+/* Day Stats */
+.schedule-day-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.schedule-day-stat {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  border-radius: 10px;
+  transition: all 0.2s ease;
+}
+
+.schedule-day-stat.available {
+  background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+  border: 2px solid #10b981;
+}
+
+.schedule-day-stat.booked {
+  background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+  border: 2px solid #ef4444;
+}
+
+.schedule-day-stat.pending {
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  border: 2px solid #f59e0b;
+}
+
+.stat-count {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: #1a2e35;
+}
+
+.schedule-day-stat.available .stat-count {
+  color: #065f46;
+}
+
+.schedule-day-stat.booked .stat-count {
+  color: #991b1b;
+}
+
+.schedule-day-stat.pending .stat-count {
+  color: #92400e;
+}
+
+.stat-label {
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #64748b;
+}
+
+/* Monthly View Styles */
+.schedule-calendar-monthly {
+  margin-top: 1.5rem;
+}
+
+.schedule-calendar-month-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 0.5rem;
+}
+
+.schedule-month-day-header {
+  text-align: center;
+  padding: 1rem;
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  background: #f8fbff;
+  border-radius: 10px;
+}
+
+.schedule-month-day {
+  background: white;
+  border: 2px solid #e8f0f7;
+  border-radius: 12px;
+  padding: 0.75rem;
+  min-height: 100px;
+  transition: all 0.2s ease;
+  position: relative;
+  cursor: pointer;
+}
+
+.schedule-month-day.empty {
+  background: transparent;
+  border: none;
+  cursor: default;
+}
+
+.schedule-month-day.clickable:hover {
+  border-color: #91befe;
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(145, 190, 254, 0.15);
+}
+
+.schedule-month-day.today {
+  border-color: #91befe;
+  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+  box-shadow: 0 4px 12px rgba(145, 190, 254, 0.2);
+}
+
+.schedule-month-day-number {
+  display: block;
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #1a2e35;
+  margin-bottom: 0.5rem;
+}
+
+.schedule-month-day.today .schedule-month-day-number {
+  color: #0369a1;
+}
+
+.schedule-month-day-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+/* Month Day Dots/Mini Stats */
+.schedule-month-day-dots {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.schedule-month-stat-mini {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.5rem;
+  background: #f8fafc;
+  border-radius: 6px;
+}
+
+.available-dot,
+.booked-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.available-dot {
+  background: #10b981;
+  box-shadow: 0 0 6px rgba(16, 185, 129, 0.4);
+}
+
+.booked-dot {
+  background: #ef4444;
+  box-shadow: 0 0 6px rgba(239, 68, 68, 0.4);
+}
+
+.schedule-month-stat-mini span:last-child {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #1a2e35;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 1024px) {
+  .schedule-calendar-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+  
+  .schedule-calendar-day {
+    min-height: 150px;
+  }
+}
+
+@media (max-width: 768px) {
+  .schedule-calendar-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .schedule-calendar-day {
+    min-height: 140px;
+  }
+  
+  .schedule-calendar-month-grid {
+    gap: 0.35rem;
+  }
+  
+  .schedule-month-day {
+    min-height: 80px;
+    padding: 0.5rem;
+  }
+  
+  .schedule-day-stat {
+    padding: 0.5rem 0.75rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .schedule-calendar-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .schedule-month-day-dots {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
 }

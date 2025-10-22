@@ -35,7 +35,13 @@ const VetAdminSchedules = () => {
   const [selectedVeterinarian, setSelectedVeterinarian] = useState(null);
 
   // Time slots state - default slots for today
-const [timeSlots, setTimeSlots] = useState([]);
+  const [timeSlots, setTimeSlots] = useState({}); // Now an object: { 'YYYY-MM-DD': [...slots] }
+  const [selectedDate, setSelectedDate] = useState(null); // For tracking which date is being managed
+  const [showDateSlotModal, setShowDateSlotModal] = useState(false); // Modal for managing specific date
+  const [weekSlotCounts, setWeekSlotCounts] = useState({}); // Store counts for weekly view
+  const [monthSlotCounts, setMonthSlotCounts] = useState({}); // Store counts for monthly view
+
+
 
 
   const [hoursForm, setHoursForm] = useState({
@@ -64,6 +70,15 @@ const [timeSlots, setTimeSlots] = useState([]);
 
   const statusOptions = ['Available', 'Limited', 'Closed'];
 
+  const formatDateKey = (date) => {
+    // Create using local date parts, not UTC
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+  
+
   useEffect(() => {
     const storedName = sessionStorage.getItem('firstName');
     const userId = sessionStorage.getItem('userid');
@@ -79,6 +94,26 @@ const [timeSlots, setTimeSlots] = useState([]);
       fetchVeterinarians(va_id);
     }
   }, [va_id]);
+
+  useEffect(() => {
+    if (!clinic_id) return;
+    
+    if (viewMode === 'today') {
+      const todayKey = formatDateKey(currentDate);
+      fetchClinicSlotsByDate(clinic_id, currentDate);
+    } else if (viewMode === 'weekly') {
+      const weekDays = getWeekDays(currentDate);
+      const startDate = weekDays[0];
+      const endDate = weekDays[6];
+      fetchClinicSlotsRange(clinic_id, startDate, endDate);
+    } else if (viewMode === 'monthly') {
+      const year = currentDate.getFullYear();
+      const month = currentDate.getMonth();
+      const startDate = new Date(year, month, 1);
+      const endDate = new Date(year, month + 1, 0);
+      fetchClinicSlotsRange(clinic_id, startDate, endDate);
+    }
+  }, [clinic_id, currentDate, viewMode]);
   
   const fetchVeterinarians = async (vaId) => {
     try {
@@ -176,21 +211,50 @@ const [timeSlots, setTimeSlots] = useState([]);
     }
   };
 
-  const fetchClinicSlots = async (clinicId) => {
+  const fetchClinicSlotsByDate = async (clinicId, date) => {
+    const dateKey = formatDateKey(date);
     try {
-      const res = await fetch(`http://localhost:5000/api/clinic-slots/${clinicId}`);
+      const res = await fetch(`http://localhost:5000/api/clinic-slots/${clinicId}/date/${dateKey}`);
       const data = await res.json();
       
       if (data && data.slots) {
-        setTimeSlots(data.slots);
-        setSlotsGenerated(true);
+        setTimeSlots(prev => ({
+          ...prev,
+          [dateKey]: data.slots
+        }));
       } else {
-        setTimeSlots([]);
-        setSlotsGenerated(false);
+        setTimeSlots(prev => ({
+          ...prev,
+          [dateKey]: []
+        }));
       }
     } catch (error) {
-      console.error("Error fetching clinic slots:", error);
-      setTimeSlots([]);
+      console.error("Error fetching clinic slots for date:", error);
+      setTimeSlots(prev => ({
+        ...prev,
+        [dateKey]: []
+      }));
+    }
+  };
+  
+  const fetchClinicSlotsRange = async (clinicId, startDate, endDate) => {
+    const startKey = formatDateKey(startDate);
+    const endKey = formatDateKey(endDate);
+    
+    try {
+      const res = await fetch(`http://localhost:5000/api/clinic-slots/${clinicId}/range?startDate=${startKey}&endDate=${endKey}`);
+      const data = await res.json();
+      
+      if (data && data.slots) {
+        // data.slots should be an object: { 'YYYY-MM-DD': { available, booked, pending, total } }
+        if (viewMode === 'weekly') {
+          setWeekSlotCounts(data.slots);
+        } else if (viewMode === 'monthly') {
+          setMonthSlotCounts(data.slots);
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching clinic slots range:", error);
     }
   };
 
@@ -219,6 +283,55 @@ const [timeSlots, setTimeSlots] = useState([]);
     } catch (error) {
       console.error("Error generating slots:", error);
       alert("An error occurred while generating slots");
+    } finally {
+      setSlotsLoading(false);
+    }
+  };
+
+  const handleGenerateWeekSlots = async () => {
+    if (!clinic_id) {
+      alert("Clinic not found");
+      return;
+    }
+  
+    const weekDays = getWeekDays(currentDate);
+    setSlotsLoading(true);
+    
+    try {
+      const promises = weekDays.map(day => {
+        const dateKey = formatDateKey(day);
+        return fetch(`http://localhost:5000/api/clinic-slots/generate/${clinic_id}/date/${dateKey}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' }
+        });
+      });
+  
+      const responses = await Promise.all(promises);
+      
+      // Parse all responses to get the generated slots
+      const slotsData = await Promise.all(responses.map(res => res.json()));
+      
+      // Update timeSlots state with all generated slots
+      const newTimeSlots = {};
+      weekDays.forEach((day, index) => {
+        const dateKey = formatDateKey(day);
+        if (slotsData[index] && slotsData[index].slots) {
+          newTimeSlots[dateKey] = slotsData[index].slots;
+        }
+      });
+      
+      setTimeSlots(prev => ({
+        ...prev,
+        ...newTimeSlots
+      }));
+      
+      alert("Time slots generated for the entire week!");
+      
+      // Refresh the range view counts
+      fetchClinicSlotsRange(clinic_id, weekDays[0], weekDays[6]);
+    } catch (error) {
+      console.error("Error generating week slots:", error);
+      alert("An error occurred while generating week slots");
     } finally {
       setSlotsLoading(false);
     }
@@ -310,11 +423,14 @@ const [timeSlots, setTimeSlots] = useState([]);
   const getWeekDays = (date) => {
     const week = [];
     const startOfWeek = new Date(date);
+    // Use setHours to normalize the time to avoid timezone issues
+    startOfWeek.setHours(0, 0, 0, 0);
     startOfWeek.setDate(date.getDate() - date.getDay() + 1);
-
+  
     for (let i = 0; i < 7; i++) {
       const day = new Date(startOfWeek);
       day.setDate(startOfWeek.getDate() + i);
+      day.setHours(0, 0, 0, 0); // Normalize time
       week.push(day);
     }
     return week;
@@ -324,18 +440,24 @@ const [timeSlots, setTimeSlots] = useState([]);
     const year = date.getFullYear();
     const month = date.getMonth();
     const firstDay = new Date(year, month, 1);
+    firstDay.setHours(0, 0, 0, 0); // Normalize time
+    
     const lastDay = new Date(year, month + 1, 0);
+    lastDay.setHours(0, 0, 0, 0); // Normalize time
+    
     const days = [];
-
+  
     const startDay = firstDay.getDay() === 0 ? 6 : firstDay.getDay() - 1;
     for (let i = 0; i < startDay; i++) {
       days.push(null);
     }
-
+  
     for (let i = 1; i <= lastDay.getDate(); i++) {
-      days.push(new Date(year, month, i));
+      const day = new Date(year, month, i);
+      day.setHours(0, 0, 0, 0); // Normalize time
+      days.push(day);
     }
-
+  
     return days;
   };
 
@@ -369,28 +491,36 @@ const [timeSlots, setTimeSlots] = useState([]);
       return;
     }
   
+    // Use selectedDate if in date modal, otherwise use currentDate
+    const targetDate = selectedDate || currentDate;
+    const dateKey = formatDateKey(targetDate);
+    const existingSlots = timeSlots[dateKey] || [];
+  
     const newSlot = {
-      id: timeSlots.length > 0 ? Math.max(...timeSlots.map(s => s.id)) + 1 : 1,
+      id: existingSlots.length > 0 ? Math.max(...existingSlots.map(s => s.id)) + 1 : 1,
       time: newSlotTime,
       status: 'available',
       patient: null
     };
   
-    const updatedSlots = [...timeSlots, newSlot].sort((a, b) => {
+    const updatedSlots = [...existingSlots, newSlot].sort((a, b) => {
       const timeA = new Date('1970/01/01 ' + a.time);
       const timeB = new Date('1970/01/01 ' + b.time);
       return timeA - timeB;
     });
   
     try {
-      const res = await fetch(`http://localhost:5000/api/clinic-slots/${clinic_id}`, {
+      const res = await fetch(`http://localhost:5000/api/clinic-slots/${clinic_id}/date/${dateKey}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ slots: updatedSlots })
       });
   
       if (res.ok) {
-        setTimeSlots(updatedSlots);
+        setTimeSlots(prev => ({
+          ...prev,
+          [dateKey]: updatedSlots
+        }));
         setNewSlotTime('');
         setShowSlotModal(false);
         alert('Time slot added successfully!');
@@ -403,23 +533,75 @@ const [timeSlots, setTimeSlots] = useState([]);
     }
   };
 
+  const handleGenerateDefaultSlotsForDate = async (date) => {
+    if (!clinic_id) {
+      alert("Clinic not found");
+      return;
+    }
+  
+    const dateKey = formatDateKey(date);
+    setSlotsLoading(true);
+    
+    try {
+      const res = await fetch(`http://localhost:5000/api/clinic-slots/generate/${clinic_id}/date/${dateKey}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+  
+      const data = await res.json();
+      
+      if (res.ok) {
+        setTimeSlots(prev => ({
+          ...prev,
+          [dateKey]: data.slots
+        }));
+        alert("Default time slots generated successfully!");
+        
+        // Refresh the range view if in weekly/monthly
+        if (viewMode === 'weekly') {
+          const weekDays = getWeekDays(currentDate);
+          fetchClinicSlotsRange(clinic_id, weekDays[0], weekDays[6]);
+        } else if (viewMode === 'monthly') {
+          const year = currentDate.getFullYear();
+          const month = currentDate.getMonth();
+          fetchClinicSlotsRange(clinic_id, new Date(year, month, 1), new Date(year, month + 1, 0));
+        }
+      } else {
+        alert(data.error || "Failed to generate slots");
+      }
+    } catch (error) {
+      console.error("Error generating slots:", error);
+      alert("An error occurred while generating slots");
+    } finally {
+      setSlotsLoading(false);
+    }
+  };
+
   const handleDeleteSlot = async (slotId) => {
     if (!clinic_id) {
       alert('Clinic not found');
       return;
     }
   
-    const updatedSlots = timeSlots.filter(slot => slot.id !== slotId);
+    // Use selectedDate or currentDate
+    const targetDate = selectedDate || currentDate;
+    const dateKey = formatDateKey(targetDate);
+    const existingSlots = timeSlots[dateKey] || [];
+    
+    const updatedSlots = existingSlots.filter(slot => slot.id !== slotId);
   
     try {
-      const res = await fetch(`http://localhost:5000/api/clinic-slots/${clinic_id}`, {
+      const res = await fetch(`http://localhost:5000/api/clinic-slots/${clinic_id}/date/${dateKey}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ slots: updatedSlots })
       });
   
       if (res.ok) {
-        setTimeSlots(updatedSlots);
+        setTimeSlots(prev => ({
+          ...prev,
+          [dateKey]: updatedSlots
+        }));
         setSlotToDelete(null);
         alert('Time slot deleted successfully!');
       } else {
@@ -443,7 +625,12 @@ const [timeSlots, setTimeSlots] = useState([]);
       return;
     }
   
-    const updatedSlots = timeSlots.map(s => 
+    // Use selectedDate or currentDate
+    const targetDate = selectedDate || currentDate;
+    const dateKey = formatDateKey(targetDate);
+    const existingSlots = timeSlots[dateKey] || [];
+  
+    const updatedSlots = existingSlots.map(s => 
       s.id === slot.id 
         ? { 
             ...s, 
@@ -455,14 +642,17 @@ const [timeSlots, setTimeSlots] = useState([]);
     );
   
     try {
-      const res = await fetch(`http://localhost:5000/api/clinic-slots/${clinic_id}`, {
+      const res = await fetch(`http://localhost:5000/api/clinic-slots/${clinic_id}/date/${dateKey}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ slots: updatedSlots })
       });
   
       if (res.ok) {
-        setTimeSlots(updatedSlots);
+        setTimeSlots(prev => ({
+          ...prev,
+          [dateKey]: updatedSlots
+        }));
         setSelectedPendingSlot(null);
         setSelectedVeterinarian(null);
         alert('Appointment approved and assigned successfully!');
@@ -474,10 +664,12 @@ const [timeSlots, setTimeSlots] = useState([]);
       alert('An error occurred');
     }
   };
-  
-  const availableCount = timeSlots.filter(s => s.status === 'available').length;
-  const takenCount = timeSlots.filter(s => s.status === 'taken').length;
-  const pendingCount = timeSlots.filter(s => s.status === 'pending').length;
+
+  const todayKey = formatDateKey(currentDate);
+  const todaySlots = timeSlots[todayKey] || [];
+  const availableCount = todaySlots.filter(s => s.status === 'available').length;
+  const takenCount = todaySlots.filter(s => s.status === 'taken').length;
+  const pendingCount = todaySlots.filter(s => s.status === 'pending').length;
 
 
   return (
@@ -638,7 +830,7 @@ const [timeSlots, setTimeSlots] = useState([]);
 
           {viewMode === 'today' && (
           <div>
-            {timeSlots.length === 0 ? (
+            {todaySlots.length === 0 ? (
               <div className="schedule-hours-empty">
                 <Clock size={48} />
                 <p>No time slots available</p>
@@ -666,7 +858,7 @@ const [timeSlots, setTimeSlots] = useState([]);
             ) : (
               <>
                 <div className="schedule-today-stats">
-                <div className="schedule-today-stats-left">
+                  <div className="schedule-today-stats-left">
                     <div className="schedule-today-stat-item available">
                       <span>Available</span>
                       <div>{availableCount}</div>
@@ -708,7 +900,7 @@ const [timeSlots, setTimeSlots] = useState([]);
                 </div>
 
                 <div className="schedule-slots-grid">
-                  {timeSlots.map(slot => (
+                  {todaySlots.map(slot => (
                     <div 
                       key={slot.id}
                       className={`schedule-time-slot ${slot.status} ${isEditMode ? 'edit-mode' : ''}`}
@@ -739,43 +931,111 @@ const [timeSlots, setTimeSlots] = useState([]);
           </div>
         )}
 
+
         {viewMode === 'weekly' && (
-        <div className="schedule-calendar-weekly">
-            <div className="schedule-calendar-grid">
-            {getWeekDays(currentDate).map((day, index) => (
-                <div key={index} className="schedule-calendar-day">
-                <div className="schedule-calendar-day-header">
-                    <span className="schedule-day-name">{dayLabels[index]}</span>
-                    <span className="schedule-day-date">{day.getDate()}</span>
-                </div>
-                <div className="schedule-calendar-day-content"></div>
-                </div>
-            ))}
+          <div className="schedule-calendar-weekly">
+            <div style={{ padding: '1rem', display: 'flex', justifyContent: 'center', marginBottom: '1rem' }}>
+              <button 
+                className="schedule-hours-btn"
+                onClick={handleGenerateWeekSlots}
+                disabled={slotsLoading}
+              >
+                <Calendar size={18} />
+                {slotsLoading ? 'Generating...' : 'Generate Slots for This Week'}
+              </button>
             </div>
-        </div>
+            <div className="schedule-calendar-grid">
+              {getWeekDays(currentDate).map((day, index) => {
+                
+                const dateKey = formatDateKey(day);
+                const dayCounts = weekSlotCounts[dateKey] || { available: 0, booked: 0, pending: 0, total: 0 };
+                
+                return (
+                  <div 
+                    key={index} 
+                    className="schedule-calendar-day clickable"
+                    onClick={() => {
+                      setSelectedDate(day);
+                      setShowDateSlotModal(true);
+                    }}
+                  >
+                    <div className="schedule-calendar-day-header">
+                      <span className="schedule-day-name">{dayLabels[index]}</span>
+                      <span className="schedule-day-date">{day.getDate()}</span>
+                    </div>
+                    <div className="schedule-calendar-day-content">
+                      {dayCounts.total === 0 ? (
+                        <div className="schedule-no-slots-badge">No slots set</div>
+                      ) : (
+                        <div className="schedule-day-stats">
+                          <div className="schedule-day-stat available">
+                            <span className="stat-count">{dayCounts.available}</span>
+                            <span className="stat-label">Available</span>
+                          </div>
+                          <div className="schedule-day-stat booked">
+                            <span className="stat-count">{dayCounts.booked}</span>
+                            <span className="stat-label">Booked</span>
+                          </div>
+                          {dayCounts.pending > 0 && (
+                            <div className="schedule-day-stat pending">
+                              <span className="stat-count">{dayCounts.pending}</span>
+                              <span className="stat-label">Pending</span>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         )}
 
         {viewMode === 'monthly' && (
-        <div className="schedule-calendar-monthly">
+          <div className="schedule-calendar-monthly">
             <div className="schedule-calendar-month-grid">
-            {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => (
+              {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => (
                 <div key={day} className="schedule-month-day-header">{day}</div>
-            ))}
-            {getMonthDays(currentDate).map((day, index) => (
-                <div 
-                key={index} 
-                className={`schedule-month-day ${!day ? 'empty' : ''} ${day && day.toDateString() === new Date().toDateString() ? 'today' : ''}`}
-                >
-                {day && (
-                    <>
+              ))}
+              {getMonthDays(currentDate).map((day, index) => {
+                if (!day) {
+                  return <div key={index} className="schedule-month-day empty"></div>;
+                }
+                
+                const dateKey = formatDateKey(day);
+                const dayCounts = monthSlotCounts[dateKey] || { available: 0, booked: 0, pending: 0, total: 0 };
+                const isToday = day.toDateString() === new Date().toDateString();
+                
+                return (
+                  <div 
+                    key={index} 
+                    className={`schedule-month-day ${isToday ? 'today' : ''} clickable`}
+                    onClick={() => {
+                      setSelectedDate(day);
+                      setShowDateSlotModal(true);
+                    }}
+                  >
                     <span className="schedule-month-day-number">{day.getDate()}</span>
-                    <div className="schedule-month-day-content"></div>
-                    </>
-                )}
-                </div>
-            ))}
+                    <div className="schedule-month-day-content">
+                      {dayCounts.total > 0 && (
+                        <div className="schedule-month-day-dots">
+                          <div className="schedule-month-stat-mini">
+                            <span className="available-dot"></span>
+                            <span>{dayCounts.available}</span>
+                          </div>
+                          <div className="schedule-month-stat-mini">
+                            <span className="booked-dot"></span>
+                            <span>{dayCounts.booked}</span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
-        </div>
+          </div>
         )}
 
         </div>
@@ -915,6 +1175,112 @@ const [timeSlots, setTimeSlots] = useState([]);
             </div>
             </div>
         </div>
+        )}
+
+        {showDateSlotModal && selectedDate && (
+          <div className="schedule-modal-overlay" onClick={() => setShowDateSlotModal(false)}>
+            <div className="schedule-modal-content schedule-date-modal" onClick={(e) => e.stopPropagation()}>
+              <button className="schedule-modal-close" onClick={() => setShowDateSlotModal(false)}>
+                <X size={24} />
+              </button>
+
+              <div className="schedule-modal-header">
+                <Calendar size={48} />
+                <h2>Manage Time Slots</h2>
+                <p>{selectedDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</p>
+              </div>
+
+              <div className="schedule-modal-body">
+                {(() => {
+                  const dateKey = formatDateKey(selectedDate);
+                  const dateSlots = timeSlots[dateKey] || [];
+                  
+                  if (dateSlots.length === 0) {
+                    return (
+                      <div className="schedule-hours-empty">
+                        <Clock size={48} />
+                        <p>No time slots set for this date</p>
+                        <div style={{ marginTop: '1.5rem', display: 'flex', gap: '1rem', justifyContent: 'center' }}>
+                          <button 
+                            className="schedule-hours-btn"
+                            onClick={() => handleGenerateDefaultSlotsForDate(selectedDate)}
+                          >
+                            <Clock size={18} />
+                            Generate Slots for This Day
+                          </button>
+                          <button 
+                            className="schedule-add-slot-btn"
+                            onClick={() => {
+                              setShowDateSlotModal(false);
+                              setShowSlotModal(true);
+                            }}
+                          >
+                            <Plus size={18} />
+                            Add Slot Manually
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  }
+                  
+                  const available = dateSlots.filter(s => s.status === 'available').length;
+                  const booked = dateSlots.filter(s => s.status === 'taken').length;
+                  const pending = dateSlots.filter(s => s.status === 'pending').length;
+                  
+                  return (
+                    <>
+                      <div className="schedule-today-stats">
+                        <div className="schedule-today-stats-left">
+                          <div className="schedule-today-stat-item available">
+                            <span>Available</span>
+                            <div>{available}</div>
+                          </div>
+                          <div className="schedule-today-stat-item booked">
+                            <span>Booked</span>
+                            <div>{booked}</div>
+                          </div>
+                          <div className="schedule-today-stat-item pending">
+                            <span>Pending</span>
+                            <div>{pending}</div>
+                          </div>
+                        </div>
+                        <button 
+                          className="schedule-add-slot-btn"
+                          onClick={() => {
+                            setShowDateSlotModal(false);
+                            setShowSlotModal(true);
+                          }}
+                        >
+                          <Plus size={18} />
+                          Add Time Slot
+                        </button>
+                      </div>
+
+                      <div className="schedule-slots-grid" style={{ maxHeight: '400px', overflowY: 'auto' }}>
+                        {dateSlots.map(slot => (
+                          <div 
+                            key={slot.id}
+                            className={`schedule-time-slot ${slot.status}`}
+                            onClick={() => slot.status === 'pending' && setSelectedPendingSlot(slot)}
+                          >
+                            <div className="schedule-slot-header">
+                              <span className="schedule-slot-time">{slot.time}</span>
+                              <div className="schedule-slot-indicator"></div>
+                            </div>
+                            {slot.patient ? (
+                              <div className="schedule-slot-patient">{slot.patient}</div>
+                            ) : (
+                              <div className="schedule-slot-available">Available</div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  );
+                })()}
+              </div>
+            </div>
+          </div>
         )}
 
         {/* Approval Modal */}
