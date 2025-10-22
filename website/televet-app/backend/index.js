@@ -4,19 +4,44 @@ import mysql from 'mysql2';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import haversine from 'haversine-distance';
+import { createServer } from 'http';
+import { Server } from 'socket.io';
 
-// ✅ Load environment variables
 dotenv.config();
 
-// ✅ Fetch example (Node 18+ has fetch built-in)
-const response = await fetch('https://nominatim.openstreetmap.org/search?format=json&q=Manila');
-const data = await response.json();
-console.log('🌍 Example Nominatim result:', data[0]);
-
-// ✅ Express setup
 const app = express();
 app.use(cors());
 app.use(express.json());
+
+// ✅ Create HTTP server & Socket.IO instance
+const server = createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: "http://localhost:5173", // ✅ your actual Vite React app
+    methods: ["GET", "POST", "PUT"],
+    credentials: true
+  }
+});
+
+
+// ✅ Log connections
+io.on('connection', (socket) => {
+  console.log('🧩 A user connected:', socket.id);
+  
+  // Send a test event to confirm connection
+  socket.emit('welcome', { message: 'Connected successfully!' });
+  
+  socket.on('disconnect', (reason) => {
+    console.log('❌ User disconnected:', socket.id, 'Reason:', reason);
+  });
+  
+  socket.on('error', (error) => {
+    console.error('Socket error:', error);
+  });
+});
+
+// ✅ Make io accessible inside routes
+app.set('io', io);
 
 // ✅ Database connection
 const db = mysql.createConnection({
@@ -27,12 +52,13 @@ const db = mysql.createConnection({
 });
 
 db.connect(err => {
-  if (err) {
-    console.error('❌ Database connection error:', err);
-  } else {
-    console.log('✅ Connected to MySQL DB');
-  }
+  if (err) console.error('❌ Database connection error:', err);
+  else console.log('✅ Connected to MySQL DB');
 });
+
+// ✅ Start server
+const PORT = process.env.PORT || 5000;
+server.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
 
 // -------------------------------------------------------------
 // 🟢 USER LOGIN
@@ -1049,8 +1075,10 @@ app.get('/api/clinic-hours/:clinic_id', (req, res) => {
 // -------------------------------------------------------------
 // 🟢 UPDATE OR CREATE CLINIC HOURS
 // -------------------------------------------------------------
+// 🟢 UPDATE OR CREATE CLINIC HOURS (with Socket.IO real-time emit)
 app.put('/api/clinic-hours/:clinic_id', (req, res) => {
   const { clinic_id } = req.params;
+  const io = req.app.get('io'); // ✅ Socket.IO instance
   const {
     monday_hours,
     tuesday_hours,
@@ -1061,7 +1089,6 @@ app.put('/api/clinic-hours/:clinic_id', (req, res) => {
     sunday_hours
   } = req.body;
 
-  // First, check if clinic hours already exist
   const checkSQL = 'SELECT clinic_hours_id FROM clinic_hours_t WHERE clinic_id = ?';
 
   db.query(checkSQL, [clinic_id], (err, result) => {
@@ -1070,8 +1097,8 @@ app.put('/api/clinic-hours/:clinic_id', (req, res) => {
       return res.status(500).json({ error: 'Database error' });
     }
 
+    // 🆕 CASE 1: No existing hours → INSERT
     if (result.length === 0) {
-      // INSERT new clinic hours
       const insertSQL = `
         INSERT INTO clinic_hours_t (
           clinic_id,
@@ -1102,10 +1129,28 @@ app.put('/api/clinic-hours/:clinic_id', (req, res) => {
         }
 
         console.log('✅ Clinic hours created for clinic_id:', clinic_id);
-        res.status(200).json({ message: 'Clinic hours created successfully' });
+
+        // ✅ Emit to all clients (real-time update)
+        io.emit('clinicHoursUpdated', {
+          clinic_id: parseInt(clinic_id),
+          action: 'created',
+          hours: {
+            monday_hours,
+            tuesday_hours,
+            wednesday_hours,
+            thursday_hours,
+            friday_hours,
+            saturday_hours,
+            sunday_hours
+          },
+          timestamp: new Date().toISOString()
+        });
+
+        return res.status(200).json({ message: 'Clinic hours created successfully' });
       });
+
+    // 📝 CASE 2: Already exists → UPDATE
     } else {
-      // UPDATE existing clinic hours
       const updateSQL = `
         UPDATE clinic_hours_t
         SET 
@@ -1136,18 +1181,87 @@ app.put('/api/clinic-hours/:clinic_id', (req, res) => {
         }
 
         console.log('✅ Clinic hours updated for clinic_id:', clinic_id);
-        res.status(200).json({ message: 'Clinic hours updated successfully' });
+
+        // ✅ FETCH THE COMPLETE UPDATED DATA
+        const fetchSQL = 'SELECT * FROM clinic_hours_t WHERE clinic_id = ?';
+        db.query(fetchSQL, [clinic_id], (err3, fetchResult) => {
+          if (err3 || fetchResult.length === 0) {
+            console.error('❌ Error fetching updated hours:', err3);
+            return res.status(200).json({ message: 'Clinic hours updated successfully' });
+          }
+
+          const updatedHours = fetchResult[0];
+          
+          // Parse JSON strings before emitting
+          const daysOfWeek = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+          daysOfWeek.forEach(day => {
+            const field = `${day}_hours`;
+            if (updatedHours[field] && typeof updatedHours[field] === 'string') {
+              try {
+                updatedHours[field] = JSON.parse(updatedHours[field]);
+              } catch (e) {
+                updatedHours[field] = null;
+              }
+            }
+          });
+
+          // ✅ Emit COMPLETE data
+          io.emit('clinicHoursUpdated', {
+            clinic_id: parseInt(clinic_id),
+            action: 'updated',
+            hours: updatedHours, // Send the FULL object
+            timestamp: new Date().toISOString()
+          });
+
+          return res.status(200).json({ message: 'Clinic hours updated successfully' });
+        });
       });
     }
   });
 });
 
 // -------------------------------------------------------------
-// 🟢 UPDATE CLINIC STATUS (OPEN/CLOSED)
+// 🟢 GET CLINIC STATUS BY CLINIC ID
+// -------------------------------------------------------------
+app.get('/api/clinic-status/:clinic_id', (req, res) => {
+  const { clinic_id } = req.params;
+
+  const sql = `
+    SELECT 
+      clinic_id,
+      clinic_status,
+      clinic_lastUpdated
+    FROM clinic_t
+    WHERE clinic_id = ?
+  `;
+
+  db.query(sql, [clinic_id], (err, result) => {
+    if (err) {
+      console.error('❌ Error fetching clinic status:', err);
+      return res.status(500).json({ error: 'Failed to fetch clinic status' });
+    }
+
+    if (result.length === 0) {
+      console.log('⚠️ No clinic found for clinic_id:', clinic_id);
+      return res.status(404).json({ error: 'Clinic not found' });
+    }
+
+    console.log('✅ Clinic status retrieved for clinic_id:', clinic_id);
+    res.status(200).json({
+      clinic_id: result[0].clinic_id,
+      status: result[0].clinic_status,
+      lastUpdated: result[0].clinic_lastUpdated
+    });
+  });
+});
+
+// -------------------------------------------------------------
+// 🟢 UPDATE CLINIC STATUS (WITH SOCKET.IO EMIT)
 // -------------------------------------------------------------
 app.put('/api/clinic-status/:clinic_id', (req, res) => {
   const { clinic_id } = req.params;
   const { status } = req.body;
+  const io = req.app.get('io'); // Get io instance
 
   if (!status || !['open', 'closed', 'temporarily closed'].includes(status)) {
     return res.status(400).json({ error: 'Invalid status value' });
@@ -1170,6 +1284,14 @@ app.put('/api/clinic-status/:clinic_id', (req, res) => {
     }
 
     console.log(`✅ Clinic status updated to ${status} for clinic_id:`, clinic_id);
+    
+    // 🔔 Emit Socket.IO event to all connected clients
+    io.emit('clinicStatusUpdated', { 
+      clinic_id: parseInt(clinic_id), 
+      status,
+      timestamp: new Date().toISOString()
+    });
+
     res.status(200).json({ message: 'Clinic status updated successfully', status });
   });
 });
@@ -1447,6 +1569,7 @@ app.get('/api/clinic-slots/:clinic_id/date/:date', (req, res) => {
 app.put('/api/clinic-slots/:clinic_id/date/:date', (req, res) => {
   const { clinic_id, date } = req.params;
   const { slots } = req.body;
+  const io = req.app.get('io'); // ✅ Get io instance
 
   if (!slots) {
     return res.status(400).json({ error: 'Slots data is required' });
@@ -1454,7 +1577,6 @@ app.put('/api/clinic-slots/:clinic_id/date/:date', (req, res) => {
 
   const slotsJSON = JSON.stringify(slots);
 
-  // Check if slots exist for this date
   const checkSQL = 'SELECT clinic_slots_id FROM clinic_slots_t WHERE clinic_id = ? AND slot_date = ?';
 
   db.query(checkSQL, [clinic_id, date], (err, result) => {
@@ -1464,7 +1586,6 @@ app.put('/api/clinic-slots/:clinic_id/date/:date', (req, res) => {
     }
 
     if (result.length === 0) {
-      // INSERT new clinic slots for this date
       const insertSQL = `
         INSERT INTO clinic_slots_t (clinic_id, slot_date, slots)
         VALUES (?, ?, ?)
@@ -1477,10 +1598,13 @@ app.put('/api/clinic-slots/:clinic_id/date/:date', (req, res) => {
         }
 
         console.log('✅ Clinic slots created for date:', date);
+
+        // 🟢 Emit Socket.IO event
+        io.emit('slotUpdated', { clinic_id, date, action: 'created' });
+
         res.status(200).json({ message: 'Clinic slots created successfully' });
       });
     } else {
-      // UPDATE existing clinic slots for this date
       const updateSQL = `
         UPDATE clinic_slots_t
         SET slots = ?, last_updated = NOW()
@@ -1494,11 +1618,16 @@ app.put('/api/clinic-slots/:clinic_id/date/:date', (req, res) => {
         }
 
         console.log('✅ Clinic slots updated for date:', date);
+
+        // 🟢 Emit Socket.IO event
+        io.emit('slotUpdated', { clinic_id, date, action: 'updated' });
+
         res.status(200).json({ message: 'Clinic slots updated successfully' });
       });
     }
   });
 });
+
 
 // GET /api/clinic-slots/:clinic_id/range
 app.get('/api/clinic-slots/:clinic_id/range', (req, res) => {
@@ -1623,6 +1752,10 @@ app.post('/api/clinic-slots/generate/:clinic_id/date/:date', (req, res) => {
             return res.status(500).json({ error: 'Failed to create slots' });
           }
           console.log('✅ Default slots generated for date:', date);
+          // ✅ ADD THIS: Emit socket event
+          const io = req.app.get('io');
+          io.emit('slotUpdated', { clinic_id, date, action: 'generated' });
+          
           res.status(200).json({ message: 'Default slots generated successfully', slots });
         });
       } else {
@@ -1634,6 +1767,9 @@ app.post('/api/clinic-slots/generate/:clinic_id/date/:date', (req, res) => {
             return res.status(500).json({ error: 'Failed to update slots' });
           }
           console.log('✅ Default slots updated for date:', date);
+          const io = req.app.get('io');
+          io.emit('slotUpdated', { clinic_id, date, action: 'regenerated' });
+          
           res.status(200).json({ message: 'Default slots generated successfully', slots });
         });
       }

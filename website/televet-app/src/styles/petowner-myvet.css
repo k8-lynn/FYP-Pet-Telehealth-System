@@ -194,6 +194,7 @@
     font-weight: 700;
     transition: all 0.2s ease;
     font-family: inherit;
+    white-space: nowrap; /* ✅ Add this line */
   }
   
   .myvet-change-button:hover {
@@ -872,3 +873,116 @@
       height: 40px;
     }
   }
+/* Header with Status Layout */
+.myvet-header-with-status {
+  display: flex;
+  flex-direction: column; /* ✅ Stack address + status vertically */
+  align-items: flex-start; /* ✅ Align everything to the left */
+  width: 100%;
+  gap: 0.75rem; /* small spacing between address and status */
+  margin-bottom: 0rem;
+}
+
+.myvet-header-content {
+  flex: 1;
+  width: 100%;
+}
+
+/* Status Toggle Styles */
+.myvet-status-toggle {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  justify-content: flex-start; /* ✅ Left align */
+  width: auto; /* prevent stretching */
+  margin-top: 2rem;
+}
+
+/* Status Button (consistent look) */
+.myvet-status-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.875rem 1.5rem;
+  border-radius: 14px;
+  border: 2px solid;
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+  white-space: nowrap;
+}
+
+/* States */
+.myvet-status-btn.open {
+  background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+  color: #10b981;
+  border-color: #10b981;
+}
+
+.myvet-status-btn.closed {
+  background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+  color: #ef4444;
+  border-color: #ef4444;
+}
+
+.myvet-status-btn.temporarily.closed {
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  color: #f59e0b;
+  border-color: #f59e0b;
+}
+
+/* Status Indicator */
+.myvet-status-indicator {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  animation: pulse 2s infinite;
+}
+
+.myvet-status-btn.open .myvet-status-indicator {
+  background: #10b981;
+}
+
+.myvet-status-btn.closed .myvet-status-indicator {
+  background: #ef4444;
+}
+
+.myvet-status-btn.temporarily.closed .myvet-status-indicator {
+  background: #f59e0b;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* Responsive adjustments */
+@media (max-width: 1024px) {
+  .myvet-header-with-status {
+    gap: 0.75rem;
+  }
+
+  .myvet-status-toggle {
+    justify-content: flex-start;
+  }
+
+  .myvet-status-btn {
+    width: auto;
+    padding: 0.75rem 1.25rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .myvet-status-toggle {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+
+  .myvet-status-btn {
+    width: auto;
+    font-size: 0.9rem;
+  }
+}

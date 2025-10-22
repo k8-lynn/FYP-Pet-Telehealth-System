@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { MapPin, Search, Clock, Phone, Mail, Calendar, CheckCircle, X } from 'lucide-react';
+import io from 'socket.io-client';
 import './styles/petowner-myvet.css';
 import PawPattern from "./components/PawPattern";
 import PetOwnerNavbar from './components/petowner-navbar';
@@ -19,8 +20,62 @@ const MyVet = () => {
   const [showSuccessNotification, setShowSuccessNotification] = useState(false);
   const [clinicHours, setClinicHours] = useState(null);
   const [showBookingModal, setShowBookingModal] = useState(false);
+  const [clinicStatus, setClinicStatus] = useState('closed'); // 'open', 'closed', 'temporarily closed'
 
-  
+  // Socket.IO connection
+  useEffect(() => {
+    const socket = io('http://localhost:5000');
+
+    socket.on('connect', () => {
+      console.log('✅ Connected to Socket.IO server');
+    });
+
+    socket.on('clinicStatusUpdated', (data) => {
+      console.log('🔔 Clinic status updated:', data);
+      // Update status if it's for our registered clinic
+      if (registeredVet && data.clinic_id === registeredVet.clinic_id) {
+        setClinicStatus(data.status);
+      }
+      
+    });
+
+    socket.on('clinicHoursUpdated', (data) => {
+      console.log('🔔 Clinic hours updated:', data);
+      // Update hours if it's for our registered clinic
+      if (registeredVet && data.clinic_id === registeredVet.clinic_id) {
+        // ✅ Parse JSON strings in the hours data
+        const parsedHours = {};
+        const daysOfWeek = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+        
+        daysOfWeek.forEach(day => {
+          const field = `${day}_hours`;
+          if (data.hours[field]) {
+            try {
+              // Parse if it's a string, otherwise use as-is
+              parsedHours[field] = typeof data.hours[field] === 'string' 
+                ? JSON.parse(data.hours[field]) 
+                : data.hours[field];
+            } catch (e) {
+              console.warn(`⚠️ Could not parse ${field}:`, data.hours[field]);
+              parsedHours[field] = null;
+            }
+          } else {
+            parsedHours[field] = null;
+          }
+        });
+        
+        setClinicHours(parsedHours);
+      }
+    });
+
+    socket.on('disconnect', () => {
+      console.log('❌ Disconnected from Socket.IO server');
+    });
+
+    return () => {
+      socket.disconnect();
+    };
+  }, [registeredVet]);
 
   useEffect(() => {
     const storedName = sessionStorage.getItem('firstName');
@@ -42,7 +97,7 @@ const MyVet = () => {
           const vetData = await vetRes.json();
   
           if (vetRes.ok && vetData) {
-            // 🧭 Get user's current location for distance calculation
+            // Get user's current location for distance calculation
             if (navigator.geolocation) {
               navigator.geolocation.getCurrentPosition(
                 (pos) => {
@@ -53,21 +108,18 @@ const MyVet = () => {
                 },
                 (err) => {
                   console.warn("⚠️ Could not get user location:", err);
-                  setRegisteredVet(vetData); // Still show vet without distance
+                  setRegisteredVet(vetData);
                 }
               );
             } else {
               setRegisteredVet(vetData);
             }
   
-            // 📅 Fetch clinic hours (MOVED OUTSIDE geolocation check)
+            // Fetch clinic hours
             if (vetData.clinic_id) {
               try {
                 const hoursRes = await fetch(`http://localhost:5000/api/clinic-hours/${vetData.clinic_id}`);
-                console.log("🟢 Fetching clinic hours from:", `http://localhost:5000/api/clinic-hours/${vetData.clinic_id}`);
-              
                 const hoursData = await hoursRes.json();
-                console.log("📦 Raw clinic hours response:", hoursData);
               
                 if (hoursRes.ok && hoursData) {
                   console.log("✅ Clinic hours successfully retrieved:", hoursData);
@@ -80,13 +132,19 @@ const MyVet = () => {
                 console.error("❌ Error fetching clinic hours:", err);
                 setClinicHours(null);
               }
-            } else {
-              console.warn("⚠️ No clinic_id found for this vet");
-              setClinicHours(null);
+
+              // Fetch clinic status
+              try {
+                const statusRes = await fetch(`http://localhost:5000/api/clinic-status/${vetData.clinic_id}`);
+                const statusData = await statusRes.json();
+                
+                if (statusRes.ok && statusData.status) {
+                  setClinicStatus(statusData.status);
+                }
+              } catch (err) {
+                console.error("❌ Error fetching clinic status:", err);
+              }
             }
-  
-          } else {
-            console.warn("⚠️ Vet not found for:", data.clinic);
           }
         }
       } catch (error) {
@@ -97,9 +155,8 @@ const MyVet = () => {
     fetchAssignedClinic();
   }, []);
   
-  // 📏 Haversine formula for distance in km
   const calculateDistance = (lat1, lon1, lat2, lon2) => {
-    const R = 6371; // km
+    const R = 6371;
     const dLat = (lat2 - lat1) * Math.PI / 180;
     const dLon = (lon2 - lon1) * Math.PI / 180;
     const a =
@@ -112,7 +169,7 @@ const MyVet = () => {
   };
   
   
-
+  
 
   const handleUseLocation = () => {
     if (navigator.geolocation) {
@@ -168,14 +225,12 @@ const MyVet = () => {
   const handleRegisterVet = async () => {
     if (selectedVet) {
       try {
-        // 🧍‍♀️ Get logged-in user ID from sessionStorage
         const usr_id = sessionStorage.getItem('userid');
         if (!usr_id) {
           alert("User not logged in.");
           return;
         }
   
-        // 📨 Send the clinic name to backend
         const res = await fetch("http://localhost:5000/api/assign-clinic", {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
@@ -196,7 +251,6 @@ const MyVet = () => {
           setSelectedVet(null);
           setLocation("");
   
-          // Hide notification after 3 seconds
           setTimeout(() => {
             setShowSuccessNotification(false);
           }, 3000);
@@ -219,7 +273,6 @@ const MyVet = () => {
       <div className="myvet-main-content">
         <ProfileNotification firstName={firstName} />
 
-        {/* Success Notification */}
         {showSuccessNotification && (
           <div className="myvet-success-notification">
             <CheckCircle size={24} />
@@ -227,7 +280,6 @@ const MyVet = () => {
           </div>
         )}
 
-        {/* Main Content */}
         {!registeredVet ? (
           <div className="myvet-empty-state">
             <div className="myvet-empty-card">
@@ -245,9 +297,11 @@ const MyVet = () => {
           </div>
         ) : (
           <div className="myvet-content-wrapper">
+            
             {/* Vet Info Card */}
             <div className="myvet-info-section">
               <div className="myvet-header-card">
+                <div className="myvet-header-with-status">
                 <div className="myvet-header-content">
                   <div className="myvet-clinic-badge">
                     <MapPin size={20} />
@@ -255,7 +309,25 @@ const MyVet = () => {
                   </div>
                   <h1 className="myvet-clinic-name">{registeredVet.va_clinicName}</h1>
                   <p className="myvet-clinic-location">{registeredVet.va_vetLocation}</p>
+
+                  {/* ✅ Clinic Status Toggle goes here */}
+                  <div className="myvet-status-toggle">
+                    <div className={`myvet-status-btn ${clinicStatus}`}>
+                      <div className="myvet-status-indicator"></div>
+                      {clinicStatus === 'open'
+                        ? 'Open'
+                        : clinicStatus === 'temporarily closed'
+                        ? 'Temp. Closed'
+                        : 'Closed'}
+                    </div>
+                  </div>
+                  
                 </div>
+                  
+                  
+
+                </div>
+                
                 <button 
                   className="myvet-change-button"
                   onClick={() => {
@@ -302,7 +374,6 @@ const MyVet = () => {
 
             {/* Availability & Booking */}
             <div className="myvet-booking-section">
-              {/* Availability Schedule */}
               <div className="myvet-availability-card">
                 <div className="myvet-section-header">
                   <Clock size={24} />
@@ -321,16 +392,12 @@ const MyVet = () => {
                     Saturday: clinicHours.saturday_hours,
                     Sunday: clinicHours.sunday_hours,
                   }).map(([day, hours], index) => {
-                    // Check if hours exists and is not closed
                     const isClosed = !hours || hours.status === 'Closed' || !hours.opening || !hours.closing;
                     const timeDisplay = isClosed 
                       ? "Closed" 
                       : `${hours.opening} - ${hours.closing}`;
                     
-                    // Use the actual status from the database
                     const status = isClosed ? "Closed" : hours.status;
-                    
-                    // Determine CSS class based on status
                     const statusClass = isClosed ? "closed" : 
                                       status === "Limited" ? "limited" : 
                                       "available";
@@ -347,12 +414,10 @@ const MyVet = () => {
                   })
                 )}
               </div>
-
               </div>
 
-              {/* Book Appointment Card */}
               <div className="myvet-appointment-card">
-              <div className="myvet-appointment-icon">
+                <div className="myvet-appointment-icon">
                   <Calendar size={48} />
                 </div>
                 <h3>Book an Appointment</h3>
@@ -369,7 +434,6 @@ const MyVet = () => {
           </div>
         )}
 
-        {/* Search Modal */}
         {showSearchModal && (
           <div className="myvet-modal-overlay" onClick={() => setShowSearchModal(false)}>
             <div className="myvet-modal-content" onClick={(e) => e.stopPropagation()}>
@@ -477,7 +541,7 @@ const MyVet = () => {
           </div>
         )}
       </div>
-      {/* Booking Modal */}
+
       {showBookingModal && registeredVet && (
         <div className="myvet-modal-overlay" onClick={() => setShowBookingModal(false)}>
           <div onClick={(e) => e.stopPropagation()}>

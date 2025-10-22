@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Calendar, Clock, CheckCircle, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import "../styles/bookAppointment.css";
+import { io } from "socket.io-client";
 
 const BookAppointment = ({ clinicId, onClose }) => {
   const [viewMode, setViewMode] = useState('today');
@@ -15,6 +16,7 @@ const BookAppointment = ({ clinicId, onClose }) => {
   const [bookingSuccess, setBookingSuccess] = useState(false);
   const [appointmentType, setAppointmentType] = useState('');
   const [appointmentDescription, setAppointmentDescription] = useState('');
+  const socketRef = useRef(null);
 
   const appointmentTypes = [
     { value: 'Check-up', color: '#a8ceff' },
@@ -24,18 +26,7 @@ const BookAppointment = ({ clinicId, onClose }) => {
     { value: 'Emergency', color: '#ff8b8b' }
   ];
 
-  useEffect(() => {
-    if (clinicId) {
-      if (viewMode === 'today') {
-        fetchDaySlots(currentDate);
-      } else if (viewMode === 'weekly') {
-        fetchWeeklySlots(currentDate);
-      } else if (viewMode === 'monthly') {
-        fetchMonthlySlots(currentDate);
-      }
-    }
-  }, [clinicId, currentDate, viewMode]);
-
+  // ✅ FORMAT DATE HELPER (moved up to be used in socket handler)
   const formatDateForAPI = (date) => {
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -43,6 +34,7 @@ const BookAppointment = ({ clinicId, onClose }) => {
     return `${year}-${month}-${day}`;
   };
 
+  // ✅ Fetch functions
   const fetchDaySlots = async (date) => {
     setLoading(true);
     try {
@@ -67,10 +59,10 @@ const BookAppointment = ({ clinicId, onClose }) => {
     setLoading(true);
     try {
       const startOfWeek = new Date(date);
-      startOfWeek.setDate(date.getDate() - date.getDay()); // Sunday
+      startOfWeek.setDate(date.getDate() - date.getDay());
       
       const endOfWeek = new Date(startOfWeek);
-      endOfWeek.setDate(startOfWeek.getDate() + 6); // Saturday
+      endOfWeek.setDate(startOfWeek.getDate() + 6);
 
       const startDate = formatDateForAPI(startOfWeek);
       const endDate = formatDateForAPI(endOfWeek);
@@ -112,6 +104,105 @@ const BookAppointment = ({ clinicId, onClose }) => {
     }
   };
 
+  // ✅ Initial data fetch
+  useEffect(() => {
+    if (clinicId) {
+      if (viewMode === 'today') {
+        fetchDaySlots(currentDate);
+      } else if (viewMode === 'weekly') {
+        fetchWeeklySlots(currentDate);
+      } else if (viewMode === 'monthly') {
+        fetchMonthlySlots(currentDate);
+      }
+    }
+  }, [clinicId, currentDate, viewMode]);
+
+  // ✅ Socket.IO connection - Initialize ONCE and keep alive
+  useEffect(() => {
+    if (!clinicId) return;
+
+    // Create socket connection
+    socketRef.current = io("http://localhost:5000", {
+      transports: ["websocket"],
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000,
+    });
+
+    const socket = socketRef.current;
+
+    socket.on("connect", () => {
+      console.log("✅ Connected to Socket.IO:", socket.id);
+    });
+
+    socket.on("welcome", (data) => {
+      console.log("📩 Welcome message:", data);
+    });
+
+    socket.on("connect_error", (error) => {
+      console.error("❌ Socket connection error:", error);
+    });
+
+    socket.on("disconnect", (reason) => {
+      console.log("❌ Disconnected from Socket.IO:", reason);
+    });
+
+    // ✅ CRITICAL: Listen for slot updates
+    socket.on("slotUpdated", (data) => {
+      console.log("📡 Slot update received:", data);
+
+      // Check if the update is for the current clinic
+      if (data.clinic_id == clinicId) {
+        console.log("🔄 Refreshing slots for clinic:", clinicId);
+        
+        // Refresh based on current view mode
+        if (viewMode === "today") {
+          fetchDaySlots(currentDate);
+        } else if (viewMode === "weekly") {
+          fetchWeeklySlots(currentDate);
+        } else if (viewMode === "monthly") {
+          fetchMonthlySlots(currentDate);
+        }
+      }
+    });
+
+    // ✅ Cleanup: Only disconnect when component unmounts
+    return () => {
+      console.log("🧹 Cleaning up socket connection");
+      socket.removeAllListeners();
+      socket.disconnect();
+      socketRef.current = null;
+    };
+  }, [clinicId]); // ✅ Only re-run if clinicId changes
+
+  // ✅ Update socket listener when view changes (but don't recreate socket)
+  useEffect(() => {
+    if (!socketRef.current) return;
+
+    const socket = socketRef.current;
+
+    const handleSlotUpdate = (data) => {
+      console.log("📡 View-specific slot update:", data);
+
+      if (data.clinic_id == clinicId) {
+        if (viewMode === "today") {
+          fetchDaySlots(currentDate);
+        } else if (viewMode === "weekly") {
+          fetchWeeklySlots(currentDate);
+        } else if (viewMode === "monthly") {
+          fetchMonthlySlots(currentDate);
+        }
+      }
+    };
+
+    // Remove old listener and add new one
+    socket.off("slotUpdated");
+    socket.on("slotUpdated", handleSlotUpdate);
+
+    return () => {
+      socket.off("slotUpdated", handleSlotUpdate);
+    };
+  }, [clinicId, viewMode, currentDate]);
+
   const handleSlotClick = (slot, date = null) => {
     if (slot.status === 'available') {
       setSelectedSlot(slot);
@@ -140,13 +231,11 @@ const BookAppointment = ({ clinicId, onClose }) => {
     const dateStr = formatDateForAPI(selectedDate);
 
     try {
-      // Fetch current slots for the date
       const res = await fetch(`http://localhost:5000/api/clinic-slots/${clinicId}/date/${dateStr}`);
       const data = await res.json();
       
       let currentSlots = data?.slots || [];
 
-      // Update the selected slot
       const updatedSlots = currentSlots.map(slot => 
         slot.id === selectedSlot.id 
           ? { 
@@ -170,14 +259,7 @@ const BookAppointment = ({ clinicId, onClose }) => {
         setShowConfirmModal(false);
         setBookingSuccess(true);
         
-        // Refresh the view
-        if (viewMode === 'today') {
-          fetchDaySlots(currentDate);
-        } else if (viewMode === 'weekly') {
-          fetchWeeklySlots(currentDate);
-        } else {
-          fetchMonthlySlots(currentDate);
-        }
+        // Note: No need to manually refresh - socket will handle it!
         
         setTimeout(() => {
           setBookingSuccess(false);
@@ -286,12 +368,10 @@ const BookAppointment = ({ clinicId, onClose }) => {
     
     const days = [];
     
-    // Empty cells for days before month starts
     for (let i = 0; i < startDate; i++) {
       days.push(<div key={`empty-${i}`} className="book-calendar-day empty"></div>);
     }
     
-    // Days of the month
     for (let day = 1; day <= daysInMonth; day++) {
       const date = new Date(year, month, day);
       const dateStr = formatDateForAPI(date);
@@ -310,18 +390,17 @@ const BookAppointment = ({ clinicId, onClose }) => {
           <span className="book-calendar-day-number">{day}</span>
           {daySlots.total > 0 && (
             <div className="book-calendar-day-info">
-            <div className="book-calendar-slots">
-              <div className="book-calendar-slot available">
-                <span className="dot"></span>
-                <span className="count">{daySlots.available}</span>
-              </div>
-              <div className="book-calendar-slot booked">
-                <span className="dot"></span>
-                <span className="count">{daySlots.booked + daySlots.pending}</span>
+              <div className="book-calendar-slots">
+                <div className="book-calendar-slot available">
+                  <span className="dot"></span>
+                  <span className="count">{daySlots.available}</span>
+                </div>
+                <div className="book-calendar-slot booked">
+                  <span className="dot"></span>
+                  <span className="count">{daySlots.booked + daySlots.pending}</span>
+                </div>
               </div>
             </div>
-          </div>
-          
           )}
         </div>
       );
@@ -338,27 +417,24 @@ const BookAppointment = ({ clinicId, onClose }) => {
           {days}
         </div>
         <div className="book-calendar-legend">
-        <div className="book-legend-item">
+          <div className="book-legend-item">
             <span className="dot available"></span>
             <label>Available</label>
-            </div>
-            <div className="book-legend-item">
+          </div>
+          <div className="book-legend-item">
             <span className="dot booked"></span>
             <label>Booked</label>
-            </div>
-
+          </div>
         </div>
       </div>
     );
   };
 
   const availableCount = timeSlots.filter(s => s.status === 'available').length;
-const takenCount = timeSlots.filter(s => s.status === 'taken' || s.status === 'booked').length;
-
+  const takenCount = timeSlots.filter(s => s.status === 'taken' || s.status === 'booked').length;
 
   return (
     <div className="book-appointment-container">
-      {/* Header */}
       <div className="book-appointment-header">
         <div className="book-appointment-title">
           <Calendar size={28} />
@@ -369,7 +445,6 @@ const takenCount = timeSlots.filter(s => s.status === 'taken' || s.status === 'b
         </button>
       </div>
 
-      {/* View Mode Selector */}
       <div className="book-view-selector">
         <button 
           className={`book-view-btn ${viewMode === 'today' ? 'active' : ''}`}
@@ -391,7 +466,6 @@ const takenCount = timeSlots.filter(s => s.status === 'taken' || s.status === 'b
         </button>
       </div>
 
-      {/* Date Navigation */}
       <div className="book-date-nav">
         <button className="book-nav-btn" onClick={() => navigateDate(-1)}>
           <ChevronLeft size={20} />
@@ -402,7 +476,6 @@ const takenCount = timeSlots.filter(s => s.status === 'taken' || s.status === 'b
         </button>
       </div>
 
-      {/* Content Area */}
       <div className="book-content-area">
         {loading ? (
           <div className="book-loading">
@@ -413,7 +486,6 @@ const takenCount = timeSlots.filter(s => s.status === 'taken' || s.status === 'b
           <>
             {viewMode === 'today' && (
               <>
-                {/* Stats */}
                 {timeSlots.length > 0 && (
                   <div className="book-stats">
                     <div className="book-stat-item available">
@@ -427,7 +499,6 @@ const takenCount = timeSlots.filter(s => s.status === 'taken' || s.status === 'b
                   </div>
                 )}
 
-                {/* Time Slots */}
                 <div className="book-slots-container">
                   {timeSlots.length === 0 ? (
                     <div className="book-empty">
@@ -468,7 +539,6 @@ const takenCount = timeSlots.filter(s => s.status === 'taken' || s.status === 'b
         )}
       </div>
 
-      {/* Confirmation Modal */}
       {showConfirmModal && selectedSlot && (
         <div className="book-modal-overlay">
           <div className="book-modal-content">
@@ -494,7 +564,6 @@ const takenCount = timeSlots.filter(s => s.status === 'taken' || s.status === 'b
                 })}</span>
               </div>
 
-              {/* Appointment Type Selection */}
               <div className="book-appointment-type-section">
                 <label className="book-type-label">
                   Appointment Type <span className="required">*</span>
@@ -516,7 +585,6 @@ const takenCount = timeSlots.filter(s => s.status === 'taken' || s.status === 'b
                 </div>
               </div>
 
-              {/* Description Field */}
               <div className="book-description-section">
                 <label className="book-description-label">
                   Description (Optional)
@@ -560,7 +628,6 @@ const takenCount = timeSlots.filter(s => s.status === 'taken' || s.status === 'b
         </div>
       )}
 
-      {/* Success Message */}
       {bookingSuccess && (
         <div className="book-success-toast pending">
           <Clock size={24} />

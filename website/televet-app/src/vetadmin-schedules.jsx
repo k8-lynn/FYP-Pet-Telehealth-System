@@ -1,6 +1,7 @@
 //vetadmin-schedules
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react"; // Add useRef here
 import { Calendar, Clock, Edit3, ChevronLeft, ChevronRight, Users, TrendingUp, X, Save, MapPin, Plus, CheckCircle } from 'lucide-react';
+import { io } from "socket.io-client";
 
 import './styles/vetadmin-schedules.css';
 import VetAdminNavbar from './components/vetadmin-navbar';
@@ -33,6 +34,7 @@ const VetAdminSchedules = () => {
   const [selectedPendingSlot, setSelectedPendingSlot] = useState(null);
   const [veterinarians, setVeterinarians] = useState([]);
   const [selectedVeterinarian, setSelectedVeterinarian] = useState(null);
+  const socketRef = useRef(null);
 
   // Time slots state - default slots for today
   const [timeSlots, setTimeSlots] = useState({}); // Now an object: { 'YYYY-MM-DD': [...slots] }
@@ -114,6 +116,83 @@ const VetAdminSchedules = () => {
       fetchClinicSlotsRange(clinic_id, startDate, endDate);
     }
   }, [clinic_id, currentDate, viewMode]);
+
+  // ✅ Socket.IO connection for real-time updates
+useEffect(() => {
+  if (!clinic_id) return;
+
+  socketRef.current = io("http://localhost:5000", {
+    transports: ["websocket"],
+    reconnectionAttempts: 5,
+    reconnectionDelay: 1000,
+  });
+
+  const socket = socketRef.current;
+
+  socket.on("connect", () => {
+    console.log("✅ Vet Admin connected to Socket.IO:", socket.id);
+  });
+
+  socket.on("slotUpdated", (data) => {
+    console.log("📡 Vet Admin received slot update:", data);
+
+    if (data.clinic_id == clinic_id) {
+      console.log("🔄 Refreshing vet admin view for clinic:", clinic_id);
+      
+      // Refresh based on current view mode
+      if (viewMode === "today") {
+        fetchClinicSlotsByDate(clinic_id, currentDate);
+      } else if (viewMode === "weekly") {
+        const weekDays = getWeekDays(currentDate);
+        fetchClinicSlotsRange(clinic_id, weekDays[0], weekDays[6]);
+      } else if (viewMode === "monthly") {
+        const year = currentDate.getFullYear();
+        const month = currentDate.getMonth();
+        fetchClinicSlotsRange(clinic_id, new Date(year, month, 1), new Date(year, month + 1, 0));
+      }
+    }
+  });
+
+  socket.on("connect_error", (error) => {
+    console.error("❌ Vet Admin socket error:", error);
+  });
+
+  return () => {
+    console.log("🧹 Cleaning up vet admin socket");
+    socket.removeAllListeners();
+    socket.disconnect();
+    socketRef.current = null;
+  };
+}, [clinic_id]);
+
+// ✅ Update socket listener when view changes
+useEffect(() => {
+  if (!socketRef.current || !clinic_id) return;
+
+  const socket = socketRef.current;
+
+  const handleSlotUpdate = (data) => {
+    if (data.clinic_id == clinic_id) {
+      if (viewMode === "today") {
+        fetchClinicSlotsByDate(clinic_id, currentDate);
+      } else if (viewMode === "weekly") {
+        const weekDays = getWeekDays(currentDate);
+        fetchClinicSlotsRange(clinic_id, weekDays[0], weekDays[6]);
+      } else if (viewMode === "monthly") {
+        const year = currentDate.getFullYear();
+        const month = currentDate.getMonth();
+        fetchClinicSlotsRange(clinic_id, new Date(year, month, 1), new Date(year, month + 1, 0));
+      }
+    }
+  };
+
+  socket.off("slotUpdated");
+  socket.on("slotUpdated", handleSlotUpdate);
+
+  return () => {
+    socket.off("slotUpdated", handleSlotUpdate);
+  };
+}, [clinic_id, viewMode, currentDate]);
   
   const fetchVeterinarians = async (vaId) => {
     try {
