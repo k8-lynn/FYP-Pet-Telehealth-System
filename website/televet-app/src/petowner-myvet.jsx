@@ -4,6 +4,7 @@ import './styles/petowner-myvet.css';
 import PawPattern from "./components/PawPattern";
 import PetOwnerNavbar from './components/petowner-navbar';
 import ProfileNotification from "./components/ProfileNotification";
+import BookAppointment from './components/bookAppointment';
 
 const MyVet = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -17,6 +18,7 @@ const MyVet = () => {
   const [showSearchModal, setShowSearchModal] = useState(false);
   const [showSuccessNotification, setShowSuccessNotification] = useState(false);
   const [clinicHours, setClinicHours] = useState(null);
+  const [showBookingModal, setShowBookingModal] = useState(false);
 
   
 
@@ -350,12 +352,17 @@ const MyVet = () => {
 
               {/* Book Appointment Card */}
               <div className="myvet-appointment-card">
-                <Calendar size={48} className="myvet-appointment-icon" />
-                <h3>Ready to Schedule?</h3>
-                <p>Book an appointment with {registeredVet.va_clinicName}</p>
-                <button className="myvet-book-button">
+              <div className="myvet-appointment-icon">
+                  <Calendar size={48} />
+                </div>
+                <h3>Book an Appointment</h3>
+                <p>Schedule your next visit with us</p>
+                <button 
+                  className="myvet-book-button"
+                  onClick={() => setShowBookingModal(true)}
+                >
                   <Calendar size={20} />
-                  Book Appointment
+                  Book Now
                 </button>
               </div>
             </div>
@@ -470,6 +477,17 @@ const MyVet = () => {
           </div>
         )}
       </div>
+      {/* Booking Modal */}
+      {showBookingModal && registeredVet && (
+        <div className="myvet-modal-overlay" onClick={() => setShowBookingModal(false)}>
+          <div onClick={(e) => e.stopPropagation()}>
+            <BookAppointment 
+              clinicId={registeredVet.clinic_id} 
+              onClose={() => setShowBookingModal(false)}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 };

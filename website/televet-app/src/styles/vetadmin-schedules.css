@@ -1372,12 +1372,294 @@
     }
   }
 
-  /* buttonzzzz
-
-  /* ===== Icon Fix for Empty Schedule Buttons ===== */
 .schedule-hours-empty button svg {
   flex-shrink: 0;       /* prevent shrinking inside flex */
   width: 1.125em;       /* adjust size as needed */
   height: 1.125em;      /* adjust size as needed */
   color: white;         /* icon color */
+}
+
+/* Add after existing stat styles */
+.schedule-today-stat-item.pending div {
+  color: #f59e0b;
+}
+
+/* Add after existing slot styles */
+.schedule-time-slot.pending {
+  background: #fffbeb;
+  border-color: #fde68a;
+  cursor: pointer;
+}
+
+.schedule-time-slot.pending:hover {
+  box-shadow: 0 8px 20px rgba(245, 158, 11, 0.15);
+}
+
+.schedule-time-slot.pending .schedule-slot-indicator {
+  background: #f59e0b;
+}
+
+.schedule-slot-pending {
+  font-size: 0.85rem;
+  color: #f59e0b;
+  font-weight: 700;
+}
+
+/* Approval Modal Styles */
+.schedule-approval-modal {
+  background: white;
+  border-radius: 24px;
+  max-width: 600px;
+  width: 90%;
+  max-height: 85vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(26, 46, 53, 0.3);
+  position: relative;
+}
+
+.schedule-approval-header {
+  padding: 2.5rem 2.5rem 1.5rem 2.5rem;
+  text-align: center;
+  background: linear-gradient(135deg, #e8f4f8 0%, #d1e7f0 100%);
+  border-radius: 24px 24px 0 0;
+}
+
+.schedule-approval-header svg {
+  color: #0369a1;
+  margin-bottom: 1rem;
+}
+
+.schedule-approval-header h2 {
+  font-size: 1.75rem;
+  color: #1a2e35;
+  font-weight: 800;
+  margin: 0 0 0.5rem 0;
+  letter-spacing: -0.03em;
+}
+
+.schedule-approval-header p {
+  font-size: 1rem;
+  color: #64748b;
+  font-weight: 600;
+  margin: 0;
+}
+
+.schedule-approval-body {
+  padding: 2rem 2.5rem 2.5rem 2.5rem;
+}
+
+.schedule-approval-info {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.schedule-approval-info-item {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  background: #f8fbff;
+  border-radius: 14px;
+  border: 2px solid #e8f0f7;
+}
+
+.schedule-approval-info-item svg {
+  color: #91befe;
+  flex-shrink: 0;
+}
+
+.schedule-approval-info-item div {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.info-label {
+  font-size: 0.8rem;
+  color: #64748b;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.info-value {
+  font-size: 1rem;
+  color: #1a2e35;
+  font-weight: 700;
+}
+
+.schedule-vet-selection {
+  margin-bottom: 2rem;
+}
+
+.schedule-vet-label {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 1.1rem;
+  color: #1a2e35;
+  font-weight: 800;
+  margin-bottom: 1.25rem;
+}
+
+.schedule-vet-label svg {
+  color: #91befe;
+}
+
+.schedule-no-vets {
+  padding: 2rem;
+  text-align: center;
+  background: #f8fbff;
+  border-radius: 14px;
+  border: 2px dashed #e8f0f7;
+}
+
+.schedule-no-vets p {
+  font-size: 1rem;
+  color: #1a2e35;
+  font-weight: 700;
+  margin: 0 0 0.5rem 0;
+}
+
+.schedule-no-vets span {
+  font-size: 0.9rem;
+  color: #64748b;
+  font-weight: 600;
+}
+
+.schedule-vets-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  max-height: 250px;
+  overflow-y: auto;
+  padding-right: 0.5rem;
+}
+
+.schedule-vet-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.25rem 1.5rem;
+  background: white;
+  border: 3px solid #e8f0f7;
+  border-radius: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.schedule-vet-card:hover {
+  border-color: #91befe;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(145, 190, 254, 0.2);
+}
+
+.schedule-vet-card.selected {
+  border-color: #10b981;
+  background: linear-gradient(135deg, #f0fdf4 0%, #ffffff 100%);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.15);
+}
+
+.schedule-vet-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.schedule-vet-name {
+  font-size: 1rem;
+  color: #1a2e35;
+  font-weight: 800;
+}
+
+.schedule-vet-specialization {
+  font-size: 0.85rem;
+  color: #64748b;
+  font-weight: 600;
+}
+
+.schedule-vet-badge {
+  padding: 0.5rem 1rem;
+  background: #e8f4f8;
+  color: #0369a1;
+  border-radius: 10px;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.schedule-vet-card.selected .schedule-vet-badge {
+  background: #d1fae5;
+  color: #10b981;
+}
+
+.schedule-approval-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.schedule-approval-cancel,
+.schedule-approval-confirm {
+  padding: 1.1rem 1.5rem;
+  border: none;
+  border-radius: 14px;
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: 700;
+  transition: all 0.25s ease;
+  font-family: inherit;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.schedule-approval-cancel {
+  background: #f8fafc;
+  color: #64748b;
+  border: 2px solid #e2e8f0;
+}
+
+.schedule-approval-cancel:hover {
+  background: #fee;
+  color: #ef4444;
+  border-color: #fecaca;
+  transform: translateY(-2px);
+}
+
+.schedule-approval-confirm {
+  background: linear-gradient(135deg, #a8ceff 0%, #91befe 100%);
+  color: white;
+}
+
+.schedule-approval-confirm:hover:not(:disabled) {
+  transform: translateY(-2px);
+  background: linear-gradient(135deg, #91befe 0%, #7aabf5 100%);
+  box-shadow: 0 8px 20px rgba(145, 190, 254, 0.4);
+}
+
+.schedule-approval-confirm:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Scrollbar styling for vets list */
+.schedule-vets-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.schedule-vets-list::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 10px;
+}
+
+.schedule-vets-list::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 10px;
+}
+
+.schedule-vets-list::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
 }

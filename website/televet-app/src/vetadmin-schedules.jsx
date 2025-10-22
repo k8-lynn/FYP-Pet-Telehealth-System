@@ -1,3 +1,4 @@
+//vetadmin-schedules
 import React, { useState, useEffect } from "react";
 import { Calendar, Clock, Edit3, ChevronLeft, ChevronRight, Users, TrendingUp, X, Save, MapPin, Plus, CheckCircle } from 'lucide-react';
 
@@ -28,6 +29,10 @@ const VetAdminSchedules = () => {
   const [slotToDelete, setSlotToDelete] = useState(null);
   const [slotsLoading, setSlotsLoading] = useState(false);
   const [slotsGenerated, setSlotsGenerated] = useState(false);
+  const [showApprovalModal, setShowApprovalModal] = useState(false);
+  const [selectedPendingSlot, setSelectedPendingSlot] = useState(null);
+  const [veterinarians, setVeterinarians] = useState([]);
+  const [selectedVeterinarian, setSelectedVeterinarian] = useState(null);
 
   // Time slots state - default slots for today
 const [timeSlots, setTimeSlots] = useState([]);
@@ -68,6 +73,25 @@ const [timeSlots, setTimeSlots] = useState([]);
       fetchVetAdminData(userId);
     }
   }, []);
+
+  useEffect(() => {
+    if (va_id) {
+      fetchVeterinarians(va_id);
+    }
+  }, [va_id]);
+  
+  const fetchVeterinarians = async (vaId) => {
+    try {
+      const res = await fetch(`http://localhost:5000/api/veterinarians/${vaId}`);
+      const data = await res.json();
+      
+      if (res.ok) {
+        setVeterinarians(data);
+      }
+    } catch (error) {
+      console.error("Error fetching veterinarians:", error);
+    }
+  };
 
   const fetchVetAdminData = async (userId) => {
     try {
@@ -411,9 +435,50 @@ const [timeSlots, setTimeSlots] = useState([]);
     setIsEditMode(false);
     setSlotToDelete(null);
   };
+
+  // Add this function:
+  const handleApproveSlot = async (slot) => {
+    if (!selectedVeterinarian) {
+      alert('Please select a veterinarian');
+      return;
+    }
+  
+    const updatedSlots = timeSlots.map(s => 
+      s.id === slot.id 
+        ? { 
+            ...s, 
+            status: 'taken',
+            veterinarian: `Dr. ${selectedVeterinarian.usr_firstName} ${selectedVeterinarian.usr_lastName}`,
+            vt_id: selectedVeterinarian.vt_id
+          }
+        : s
+    );
+  
+    try {
+      const res = await fetch(`http://localhost:5000/api/clinic-slots/${clinic_id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ slots: updatedSlots })
+      });
+  
+      if (res.ok) {
+        setTimeSlots(updatedSlots);
+        setSelectedPendingSlot(null);
+        setSelectedVeterinarian(null);
+        alert('Appointment approved and assigned successfully!');
+      } else {
+        alert('Failed to approve appointment');
+      }
+    } catch (error) {
+      console.error('Error approving slot:', error);
+      alert('An error occurred');
+    }
+  };
   
   const availableCount = timeSlots.filter(s => s.status === 'available').length;
   const takenCount = timeSlots.filter(s => s.status === 'taken').length;
+  const pendingCount = timeSlots.filter(s => s.status === 'pending').length;
+
 
   return (
     <div className="schedule-dashboard-container">
@@ -601,7 +666,7 @@ const [timeSlots, setTimeSlots] = useState([]);
             ) : (
               <>
                 <div className="schedule-today-stats">
-                  <div className="schedule-today-stats-left">
+                <div className="schedule-today-stats-left">
                     <div className="schedule-today-stat-item available">
                       <span>Available</span>
                       <div>{availableCount}</div>
@@ -609,6 +674,10 @@ const [timeSlots, setTimeSlots] = useState([]);
                     <div className="schedule-today-stat-item booked">
                       <span>Booked</span>
                       <div>{takenCount}</div>
+                    </div>
+                    <div className="schedule-today-stat-item pending">
+                      <span>Pending</span>
+                      <div>{pendingCount}</div>
                     </div>
                   </div>
                   <div className="schedule-slot-actions">
@@ -643,6 +712,7 @@ const [timeSlots, setTimeSlots] = useState([]);
                     <div 
                       key={slot.id}
                       className={`schedule-time-slot ${slot.status} ${isEditMode ? 'edit-mode' : ''}`}
+                      onClick={() => slot.status === 'pending' && setSelectedPendingSlot(slot)}
                     >
                       {isEditMode && (
                         <button 
@@ -847,6 +917,98 @@ const [timeSlots, setTimeSlots] = useState([]);
         </div>
         )}
 
+        {/* Approval Modal */}
+        {selectedPendingSlot && (
+          <div className="schedule-modal-overlay" onClick={() => setSelectedPendingSlot(null)}>
+            <div className="schedule-approval-modal" onClick={(e) => e.stopPropagation()}>
+              <button className="schedule-modal-close" onClick={() => setSelectedPendingSlot(null)}>
+                <X size={24} />
+              </button>
+
+              <div className="schedule-approval-header">
+                <CheckCircle size={48} />
+                <h2>Approve Appointment</h2>
+                <p>Assign a veterinarian to this appointment</p>
+              </div>
+
+              <div className="schedule-approval-body">
+                <div className="schedule-approval-info">
+                  <div className="schedule-approval-info-item">
+                    <Clock size={20} />
+                    <div>
+                      <span className="info-label">Time Slot</span>
+                      <span className="info-value">{selectedPendingSlot.time}</span>
+                    </div>
+                  </div>
+                  <div className="schedule-approval-info-item">
+                    <Users size={20} />
+                    <div>
+                      <span className="info-label">Patient</span>
+                      <span className="info-value">{selectedPendingSlot.patient}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="schedule-vet-selection">
+                  <label className="schedule-vet-label">
+                    <Users size={20} />
+                    Assign Veterinarian
+                  </label>
+                  
+                  {veterinarians.length === 0 ? (
+                    <div className="schedule-no-vets">
+                      <p>No veterinarians available</p>
+                      <span>Please add veterinarians to your clinic first</span>
+                    </div>
+                  ) : (
+                    <div className="schedule-vets-list">
+                      {veterinarians.map((vet) => (
+                        <div
+                          key={vet.vt_id}
+                          className={`schedule-vet-card ${selectedVeterinarian?.vt_id === vet.vt_id ? 'selected' : ''}`}
+                          onClick={() => setSelectedVeterinarian(vet)}
+                        >
+                          <div className="schedule-vet-info">
+                            <div className="schedule-vet-name">
+                              Dr. {vet.usr_firstName} {vet.usr_lastName}
+                            </div>
+                            <div className="schedule-vet-specialization">
+                              {vet.vt_specialization}
+                            </div>
+                          </div>
+                          <div className="schedule-vet-badge">
+                            {vet.vt_patientsAssigned} patients
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="schedule-approval-actions">
+                  <button 
+                    className="schedule-approval-cancel"
+                    onClick={() => {
+                      setSelectedPendingSlot(null);
+                      setSelectedVeterinarian(null);
+                    }}
+                  >
+                    Cancel
+                  </button>
+                  <button 
+                    className="schedule-approval-confirm"
+                    onClick={() => handleApproveSlot(selectedPendingSlot)}
+                    disabled={!selectedVeterinarian}
+                  >
+                    <CheckCircle size={20} />
+                    Confirm Assignment
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {slotToDelete && (
           <div className="schedule-modal-overlay" onClick={() => setSlotToDelete(null)}>
             <div className="schedule-delete-confirm-modal" onClick={(e) => e.stopPropagation()}>
@@ -868,6 +1030,7 @@ const [timeSlots, setTimeSlots] = useState([]);
                   Yes, Delete
                 </button>
               </div>
+              
             </div>
           </div>
         )}
