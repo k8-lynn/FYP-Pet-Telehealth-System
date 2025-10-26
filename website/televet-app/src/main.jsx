@@ -16,6 +16,7 @@ import PetOwnerMyVet from './petowner-myvet';
 import VetAdminDashboard from './vetadmin-dashboard.jsx';
 import VetAdminVeterinarians from './vetadmin-myveterinarians.jsx';
 import VetAdminSchedules from './vetadmin-schedules.jsx';
+import VetAdminAppointments from './vetadmin-appointments.jsx'
 
 
 import MyProfile from './myprofile.jsx';
@@ -85,6 +86,15 @@ ReactDOM.createRoot(document.getElementById('root')).render(
           element={
             <ProtectedRoute allowedType="vetAdmin">
               <VetAdminSchedules />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/vetadmin-appointments"
+          element={
+            <ProtectedRoute allowedType="vetAdmin">
+              <VetAdminAppointments />
             </ProtectedRoute>
           }
         />

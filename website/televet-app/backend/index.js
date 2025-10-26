@@ -1776,3 +1776,91 @@ app.post('/api/clinic-slots/generate/:clinic_id/date/:date', (req, res) => {
     });
   });
 });
+
+// GET /api/clinic-appointments-count/:clinic_id
+app.get('/api/clinic-appointments-count/:clinic_id', (req, res) => {
+  const { clinic_id } = req.params;
+
+  const today = new Date();
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+
+  // Get start of week (Monday)
+  const startOfWeek = new Date(today);
+  startOfWeek.setDate(today.getDate() - today.getDay() + 1);
+  const weekStartStr = `${startOfWeek.getFullYear()}-${String(startOfWeek.getMonth() + 1).padStart(2, '0')}-${String(startOfWeek.getDate()).padStart(2, '0')}`;
+
+  // Get end of week (Sunday)
+  const endOfWeek = new Date(startOfWeek);
+  endOfWeek.setDate(startOfWeek.getDate() + 6);
+  const weekEndStr = `${endOfWeek.getFullYear()}-${String(endOfWeek.getMonth() + 1).padStart(2, '0')}-${String(endOfWeek.getDate()).padStart(2, '0')}`;
+
+  // Get start and end of month
+  const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+  const monthStartStr = `${startOfMonth.getFullYear()}-${String(startOfMonth.getMonth() + 1).padStart(2, '0')}-01`;
+
+  const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+  const monthEndStr = `${endOfMonth.getFullYear()}-${String(endOfMonth.getMonth() + 1).padStart(2, '0')}-${String(endOfMonth.getDate()).padStart(2, '0')}`;
+
+  const sql = `
+    SELECT slot_date, slots
+    FROM clinic_slots_t
+    WHERE clinic_id = ? 
+    AND slot_date BETWEEN ? AND ?
+  `;
+
+  db.query(sql, [clinic_id, monthStartStr, monthEndStr], (err, results) => {
+    if (err) {
+      console.error('❌ Error fetching appointment counts:', err);
+      return res.status(500).json({ error: 'Failed to fetch appointment counts' });
+    }
+
+    let appointmentsToday = 0;
+    let appointmentsThisWeek = 0;
+    let appointmentsThisMonth = 0;
+
+    results.forEach(row => {
+      let slotsArray = row.slots;
+      
+      // Parse JSON if string
+      if (typeof slotsArray === 'string') {
+        try {
+          slotsArray = JSON.parse(slotsArray);
+        } catch (e) {
+          slotsArray = [];
+        }
+      }
+
+      // Count only confirmed appointments (status = 'taken')
+      const appointmentCount = slotsArray.filter(s => s.status === 'taken').length;
+
+      // Format date for comparison
+      let dateKey;
+      if (typeof row.slot_date === 'string') {
+        dateKey = row.slot_date;
+      } else {
+        const d = new Date(row.slot_date);
+        dateKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      }
+
+      // Count for today
+      if (dateKey === todayStr) {
+        appointmentsToday += appointmentCount;
+      }
+
+      // Count for this week
+      if (dateKey >= weekStartStr && dateKey <= weekEndStr) {
+        appointmentsThisWeek += appointmentCount;
+      }
+
+      // Count for this month (all results are already filtered by month)
+      appointmentsThisMonth += appointmentCount;
+    });
+
+    console.log('✅ Appointment counts retrieved for clinic_id:', clinic_id);
+    res.status(200).json({
+      today: appointmentsToday,
+      thisWeek: appointmentsThisWeek,
+      thisMonth: appointmentsThisMonth
+    });
+  });
+});
