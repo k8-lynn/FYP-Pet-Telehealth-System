@@ -1864,3 +1864,531 @@ app.get('/api/clinic-appointments-count/:clinic_id', (req, res) => {
     });
   });
 });
+
+// -------------------------------------------------------------
+// 🟢 GET ALL PATIENTS FOR A SPECIFIC VET ADMIN (by clinic name)
+// -------------------------------------------------------------
+app.get('/api/patients/clinic/:clinicName', (req, res) => {
+  const { clinicName } = req.params;
+
+  console.log("🐾 GET patients for clinic:", clinicName);
+  console.log("🔍 Decoded clinic name:", decodeURIComponent(clinicName));
+
+  const sql = `
+    SELECT 
+      pet.pet_id,
+      pet.pet_name,
+      pet.pet_species,
+      pet.pet_age,
+      pet.pet_gender,
+      pet.pet_breed,
+      pet.pet_weight,
+      pet.pet_hasVaccination,
+      pet.pet_vaccinationDate,
+      pet.pet_hasMedication,
+      pet.pet_medicationDetails,
+      pet.pet_hasAllergies,
+      pet.pet_allergyDetails,
+      pet.pet_dietType,
+      pet.pet_behavioralNotes,
+      pet.pet_lastUpdated,
+      pet.pet_assignedVet,
+      pp.pp_id,
+      pp.pp_assignedClinic,
+      pp.createdAt as pp_createdAt,
+      u.usr_id,
+      u.usr_firstName as owner_firstName,
+      u.usr_lastName as owner_lastName,
+      u.usr_email as owner_email,
+      vt.vt_id,
+      CONCAT(vu.usr_firstName, ' ', vu.usr_lastName) as vet_name,
+      a.appt_status,
+      a.appt_id
+    FROM pet_t pet
+    INNER JOIN pet_parent_t pp ON pet.pp_id = pp.pp_id
+    INNER JOIN user_t u ON pp.usr_id = u.usr_id
+    LEFT JOIN veterinarian_t vt ON pet.pet_assignedVet = vt.vt_id
+    LEFT JOIN user_t vu ON vt.usr_id = vu.usr_id
+    LEFT JOIN appointment_t a ON pet.pet_id = a.pet_id AND a.clinic_id = (SELECT clinic_id FROM clinic_t WHERE clinic_name = ?)
+    WHERE pp.pp_assignedClinic IS NOT NULL 
+    AND pp.pp_assignedClinic = ?
+    ORDER BY pp.createdAt DESC
+  `;
+
+  db.query(sql, [decodeURIComponent(clinicName), decodeURIComponent(clinicName)], (err, result) => {
+    if (err) {
+      console.error('❌ Error fetching patients:', err);
+      return res.status(500).json({ error: 'Failed to fetch patients' });
+    }
+
+    console.log(`✅ Retrieved ${result.length} patients for clinic ${clinicName}`);
+    console.log('📋 First patient (if any):', result[0]);
+    res.status(200).json(result);
+  });
+});
+
+// -------------------------------------------------------------
+// 🟢 GET SINGLE PATIENT DETAILS
+// -------------------------------------------------------------
+app.get('/api/patients/:pet_id', (req, res) => {
+  const { pet_id } = req.params;
+
+  const sql = `
+    SELECT 
+      pet.*,
+      pp.pp_assignedClinic,
+      pp.createdAt as pp_createdAt,
+      u.usr_firstName as owner_firstName,
+      u.usr_lastName as owner_lastName,
+      u.usr_email as owner_email,
+      vt.vt_id,
+      CONCAT(vu.usr_firstName, ' ', vu.usr_lastName) as vet_name
+    FROM pet_t pet
+    INNER JOIN pet_parent_t pp ON pet.pp_id = pp.pp_id
+    INNER JOIN user_t u ON pp.usr_id = u.usr_id
+    LEFT JOIN veterinarian_t vt ON pet.pet_assignedVet = vt.vt_id
+    LEFT JOIN user_t vu ON vt.usr_id = vu.usr_id
+    WHERE pet.pet_id = ?
+  `;
+
+  db.query(sql, [pet_id], (err, result) => {
+    if (err) {
+      console.error('❌ Error fetching patient details:', err);
+      return res.status(500).json({ error: 'Failed to fetch patient details' });
+    }
+
+    if (result.length === 0) {
+      return res.status(404).json({ error: 'Patient not found' });
+    }
+
+    res.status(200).json(result[0]);
+  });
+});
+
+// -------------------------------------------------------------
+// 🟢 ASSIGN VET TO PATIENT
+// -------------------------------------------------------------
+app.put('/api/patients/:pet_id/assign-vet', (req, res) => {
+  const { pet_id } = req.params;
+  const { vt_id } = req.body;
+  const io = req.app.get('io');
+
+  if (!vt_id) {
+    return res.status(400).json({ error: 'Veterinarian ID is required' });
+  }
+
+  // First, update the pet's assigned vet
+  const updatePetSQL = `
+    UPDATE pet_t
+    SET pet_assignedVet = ?, pet_lastUpdated = NOW()
+    WHERE pet_id = ?
+  `;
+
+  db.query(updatePetSQL, [vt_id, pet_id], (err, result) => {
+    if (err) {
+      console.error('❌ Error assigning vet to patient:', err);
+      return res.status(500).json({ error: 'Failed to assign vet' });
+    }
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'Patient not found' });
+    }
+
+    // Get vet name first
+    const getVetNameSQL = `
+      SELECT u.usr_firstName, u.usr_lastName 
+      FROM user_t u
+      INNER JOIN veterinarian_t vt ON u.usr_id = vt.usr_id
+      WHERE vt.vt_id = ?
+    `;
+
+    db.query(getVetNameSQL, [vt_id], (errVet, vetResult) => {
+      if (errVet || vetResult.length === 0) {
+        console.error('⚠️ Error getting vet name:', errVet);
+        return res.status(500).json({ error: 'Failed to get vet info' });
+      }
+
+      const vetName = `Dr. ${vetResult[0].usr_firstName} ${vetResult[0].usr_lastName}`;
+
+      // Get pending appointment details for this pet
+      const getAppointmentSQL = `
+        SELECT 
+          a.appt_id,
+          a.appt_date,
+          a.clinic_id,
+          pet.pet_id
+        FROM appointment_t a
+        INNER JOIN pet_t pet ON a.pet_id = pet.pet_id
+        WHERE a.pet_id = ? AND a.appt_status = 'pending'
+        LIMIT 1
+      `;
+
+      db.query(getAppointmentSQL, [pet_id], (err2, apptResult) => {
+        // Update appointment status
+        const updateAppointmentsSQL = `
+          UPDATE appointment_t
+          SET vt_id = ?, appt_status = 'scheduled', updated_at = NOW()
+          WHERE pet_id = ? AND appt_status = 'pending'
+        `;
+
+        db.query(updateAppointmentsSQL, [vt_id, pet_id], (err3) => {
+          if (err3) {
+            console.error('⚠️ Error updating appointments:', err3);
+          } else {
+            console.log(`✅ Updated appointments for pet ${pet_id} with vet ${vt_id}`);
+          }
+
+          // Update vet patient count
+          const updateVetSQL = `
+            UPDATE veterinarian_t
+            SET vt_patientsAssigned = vt_patientsAssigned + 1
+            WHERE vt_id = ?
+          `;
+
+          db.query(updateVetSQL, [vt_id], (err4) => {
+            if (err4) {
+              console.error('⚠️ Error updating vet patient count:', err4);
+            }
+
+            // If we have appointment, update the slot
+            if (!err2 && apptResult.length > 0) {
+              const appt = apptResult[0];
+              const apptDate = new Date(appt.appt_date);
+              const dateKey = `${apptDate.getFullYear()}-${String(apptDate.getMonth() + 1).padStart(2, '0')}-${String(apptDate.getDate()).padStart(2, '0')}`;
+
+              // Get slots for this date
+              const getSlotsSQL = `
+                SELECT slots 
+                FROM clinic_slots_t 
+                WHERE clinic_id = ? AND slot_date = ?
+              `;
+
+              db.query(getSlotsSQL, [appt.clinic_id, dateKey], (err5, slotsResult) => {
+                if (!err5 && slotsResult.length > 0) {
+                  let slots = slotsResult[0].slots;
+                  
+                  // Parse if string
+                  if (typeof slots === 'string') {
+                    try {
+                      slots = JSON.parse(slots);
+                    } catch (parseErr) {
+                      console.error('⚠️ Error parsing slots:', parseErr);
+                      return res.status(200).json({ message: 'Vet assigned successfully' });
+                    }
+                  }
+
+                  console.log('🔍 Looking for pending slot with petId:', pet_id);
+
+                  // Update slot - match by petId instead of patient name
+                  const updatedSlots = slots.map(slot => {
+                    if (slot.status === 'pending' && slot.petId == pet_id) {
+                      console.log('✅ Found matching slot:', slot);
+                      return {
+                        ...slot,
+                        status: 'taken',
+                        veterinarian: vetName,
+                        vt_id: vt_id
+                      };
+                    }
+                    return slot;
+                  });
+
+                  // Save updated slots
+                  const updateSlotsSQL = `
+                    UPDATE clinic_slots_t 
+                    SET slots = ?, last_updated = NOW()
+                    WHERE clinic_id = ? AND slot_date = ?
+                  `;
+
+                  db.query(updateSlotsSQL, [JSON.stringify(updatedSlots), appt.clinic_id, dateKey], (err6) => {
+                    if (!err6) {
+                      console.log(`✅ Slot updated to 'taken' for pet ${pet_id}`);
+                      io.emit('slotUpdated', { clinic_id: appt.clinic_id, date: dateKey, action: 'assigned' });
+                    } else {
+                      console.error('⚠️ Error updating slot:', err6);
+                    }
+                  });
+                } else {
+                  console.error('⚠️ No slots found for date:', dateKey);
+                }
+
+                res.status(200).json({ message: 'Vet assigned successfully' });
+              });
+            } else {
+              console.log(`✅ Patient ${pet_id} assigned to vet ${vt_id}`);
+              res.status(200).json({ message: 'Vet assigned successfully' });
+            }
+          });
+        });
+      });
+    });
+  });
+});
+
+// -------------------------------------------------------------
+// 🟢 DELETE PATIENT (removes from clinic)
+// -------------------------------------------------------------
+app.delete('/api/patients/:pet_id', (req, res) => {
+  const { pet_id } = req.params;
+
+  // First check if patient has an assigned vet to decrement their count
+  const checkSQL = 'SELECT pet_assignedVet FROM pet_t WHERE pet_id = ?';
+  
+  db.query(checkSQL, [pet_id], (err, result) => {
+    if (err) {
+      console.error('❌ Error checking patient:', err);
+      return res.status(500).json({ error: 'Failed to delete patient' });
+    }
+
+    const assignedVet = result[0]?.pet_assignedVet;
+
+    // Delete the patient by removing their clinic assignment
+    const deleteSQL = `
+      UPDATE pet_parent_t pp
+      INNER JOIN pet_t pet ON pp.pp_id = pet.pp_id
+      SET pp.pp_assignedClinic = NULL, pp.pp_lastUpdated = NOW()
+      WHERE pet.pet_id = ?
+    `;
+
+    db.query(deleteSQL, [pet_id], (err2, deleteResult) => {
+      if (err2) {
+        console.error('❌ Error deleting patient:', err2);
+        return res.status(500).json({ error: 'Failed to delete patient' });
+      }
+
+      if (deleteResult.affectedRows === 0) {
+        return res.status(404).json({ error: 'Patient not found' });
+      }
+
+      // If patient had an assigned vet, decrement their count
+      if (assignedVet) {
+        const updateVetSQL = `
+          UPDATE veterinarian_t
+          SET vt_patientsAssigned = GREATEST(vt_patientsAssigned - 1, 0)
+          WHERE vt_id = ?
+        `;
+
+        db.query(updateVetSQL, [assignedVet], (err3) => {
+          if (err3) {
+            console.error('⚠️ Error updating vet patient count:', err3);
+          }
+        });
+      }
+
+      console.log(`✅ Patient ${pet_id} removed from clinic`);
+      res.status(200).json({ message: 'Patient removed successfully' });
+    });
+  });
+});
+
+// GET /api/user-pets/:usr_id
+app.get('/api/user-pets/:usr_id', (req, res) => {
+  const { usr_id } = req.params;
+
+  const sql = `
+    SELECT 
+      pet.pet_id,
+      pet.pet_name,
+      pet.pet_species,
+      pet.pet_breed,
+      pet.pet_age,
+      pet.pet_gender
+    FROM pet_t pet
+    INNER JOIN pet_parent_t pp ON pet.pp_id = pp.pp_id
+    WHERE pp.usr_id = ?
+    ORDER BY pet.pet_name ASC
+  `;
+
+  db.query(sql, [usr_id], (err, result) => {
+    if (err) {
+      console.error('❌ Error fetching user pets:', err);
+      return res.status(500).json({ error: 'Failed to fetch pets' });
+    }
+
+    res.status(200).json(result);
+  });
+});
+// -------------------------------------------------------------
+// 🟢 CREATE APPOINTMENT
+// -------------------------------------------------------------
+app.post('/api/appointments', (req, res) => {
+  const {
+    clinic_id,
+    pet_id,
+    usr_id,
+    appt_type,
+    appt_description,
+    appt_date,
+    slot_time
+  } = req.body;
+
+  console.log('📅 Creating appointment:', {
+    clinic_id,
+    pet_id,
+    usr_id,
+    appt_type,
+    appt_date
+  });
+
+  // First, get pp_id from usr_id
+  const getPpIdSQL = 'SELECT pp_id FROM pet_parent_t WHERE usr_id = ?';
+  
+  db.query(getPpIdSQL, [usr_id], (err, ppResult) => {
+    if (err) {
+      console.error('❌ Error fetching pp_id:', err);
+      return res.status(500).json({ error: 'Failed to fetch pet parent info' });
+    }
+
+    if (ppResult.length === 0) {
+      return res.status(404).json({ error: 'Pet parent not found' });
+    }
+
+    const pp_id = ppResult[0].pp_id;
+
+    // Insert appointment
+    const insertSQL = `
+      INSERT INTO appointment_t (
+        clinic_id,
+        pet_id,
+        pp_id,
+        appt_type,
+        appt_description,
+        appt_date,
+        appt_status
+      )
+      VALUES (?, ?, ?, ?, ?, ?, 'pending')
+    `;
+
+    db.query(insertSQL, [
+      clinic_id,
+      pet_id,
+      pp_id,
+      appt_type,
+      appt_description || null,
+      appt_date
+    ], (err2, result) => {
+      if (err2) {
+        console.error('❌ Error creating appointment:', err2);
+        return res.status(500).json({ error: 'Failed to create appointment' });
+      }
+
+      console.log('✅ Appointment created successfully, ID:', result.insertId);
+      res.status(201).json({
+        message: 'Appointment created successfully',
+        appt_id: result.insertId
+      });
+    });
+  });
+});
+
+// -------------------------------------------------------------
+// 🟢 GET APPOINTMENTS BY CLINIC
+// -------------------------------------------------------------
+app.get('/api/appointments/clinic/:clinic_id', (req, res) => {
+  const { clinic_id } = req.params;
+
+  const sql = `
+    SELECT 
+      a.appt_id,
+      a.clinic_id,
+      a.appt_type,
+      a.appt_description,
+      a.appt_date,
+      a.appt_status,
+      a.created_at,
+      pet.pet_id,
+      pet.pet_name,
+      pet.pet_species,
+      pet.pet_breed,
+      pet.pet_age,
+      pet.pet_gender,
+      u.usr_id,
+      u.usr_firstName as owner_firstName,
+      u.usr_lastName as owner_lastName,
+      u.usr_email as owner_email,
+      vt.vt_id,
+      CONCAT(vu.usr_firstName, ' ', vu.usr_lastName) as vet_name
+    FROM appointment_t a
+    INNER JOIN pet_t pet ON a.pet_id = pet.pet_id
+    INNER JOIN pet_parent_t pp ON a.pp_id = pp.pp_id
+    INNER JOIN user_t u ON pp.usr_id = u.usr_id
+    LEFT JOIN veterinarian_t vt ON a.vt_id = vt.vt_id
+    LEFT JOIN user_t vu ON vt.usr_id = vu.usr_id
+    WHERE a.clinic_id = ?
+    ORDER BY a.appt_date ASC
+  `;
+
+  db.query(sql, [clinic_id], (err, result) => {
+    if (err) {
+      console.error('❌ Error fetching appointments:', err);
+      return res.status(500).json({ error: 'Failed to fetch appointments' });
+    }
+
+    console.log(`✅ Retrieved ${result.length} appointments for clinic ${clinic_id}`);
+    res.status(200).json(result);
+  });
+});
+
+// -------------------------------------------------------------
+// 🟢 UPDATE APPOINTMENT STATUS
+// -------------------------------------------------------------
+app.put('/api/appointments/:appt_id/status', (req, res) => {
+  const { appt_id } = req.params;
+  const { status } = req.body;
+
+  if (!['scheduled', 'completed', 'cancelled', 'no-show'].includes(status)) {
+    return res.status(400).json({ error: 'Invalid status' });
+  }
+
+  const sql = `
+    UPDATE appointment_t
+    SET appt_status = ?, updated_at = NOW()
+    WHERE appt_id = ?
+  `;
+
+  db.query(sql, [status, appt_id], (err, result) => {
+    if (err) {
+      console.error('❌ Error updating appointment status:', err);
+      return res.status(500).json({ error: 'Failed to update appointment' });
+    }
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'Appointment not found' });
+    }
+
+    console.log(`✅ Appointment ${appt_id} status updated to ${status}`);
+    res.status(200).json({ message: 'Appointment status updated successfully' });
+  });
+});
+
+// -------------------------------------------------------------
+// 🟢 ASSIGN VET TO APPOINTMENT
+// -------------------------------------------------------------
+app.put('/api/appointments/:appt_id/assign-vet', (req, res) => {
+  const { appt_id } = req.params;
+  const { vt_id } = req.body;
+
+  if (!vt_id) {
+    return res.status(400).json({ error: 'Veterinarian ID is required' });
+  }
+
+  const sql = `
+    UPDATE appointment_t
+    SET vt_id = ?, updated_at = NOW()
+    WHERE appt_id = ?
+  `;
+
+  db.query(sql, [vt_id, appt_id], (err, result) => {
+    if (err) {
+      console.error('❌ Error assigning vet to appointment:', err);
+      return res.status(500).json({ error: 'Failed to assign vet' });
+    }
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'Appointment not found' });
+    }
+
+    console.log(`✅ Vet ${vt_id} assigned to appointment ${appt_id}`);
+    res.status(200).json({ message: 'Vet assigned successfully' });
+  });
+});

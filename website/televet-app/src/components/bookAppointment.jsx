@@ -1,3 +1,4 @@
+//bookAppointment.jsx
 import React, { useState, useEffect, useRef } from 'react';
 import { Calendar, Clock, CheckCircle, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import "../styles/bookAppointment.css";
@@ -17,6 +18,8 @@ const BookAppointment = ({ clinicId, onClose }) => {
   const [appointmentType, setAppointmentType] = useState('');
   const [appointmentDescription, setAppointmentDescription] = useState('');
   const socketRef = useRef(null);
+  const [userPets, setUserPets] = useState([]);
+  const [selectedPet, setSelectedPet] = useState(null);
 
   const appointmentTypes = [
     { value: 'Check-up', color: '#a8ceff' },
@@ -203,6 +206,23 @@ const BookAppointment = ({ clinicId, onClose }) => {
     };
   }, [clinicId, viewMode, currentDate]);
 
+  useEffect(() => {
+    const fetchUserPets = async () => {
+      const userId = sessionStorage.getItem('userid');
+      if (!userId) return;
+  
+      try {
+        const res = await fetch(`http://localhost:5000/api/user-pets/${userId}`);
+        const data = await res.json();
+        setUserPets(data);
+      } catch (error) {
+        console.error('Error fetching user pets:', error);
+      }
+    };
+  
+    fetchUserPets();
+  }, []);
+
   const handleSlotClick = (slot, date = null) => {
     if (slot.status === 'available') {
       setSelectedSlot(slot);
@@ -225,23 +245,36 @@ const BookAppointment = ({ clinicId, onClose }) => {
       alert('Please select an appointment type');
       return;
     }
+    
+    if (!appointmentDescription.trim()) {
+      alert('Please provide a description');
+      return;
+    }
   
     const userId = sessionStorage.getItem('userid');
-    const petOwnerName = sessionStorage.getItem('firstName') || 'Pet Owner';
+    if (!selectedPet) {
+      alert('Please select a pet');
+      return;
+    }
+    
+    const petOwnerName = `${sessionStorage.getItem('firstName')} - ${selectedPet.pet_name}`;
     const dateStr = formatDateForAPI(selectedDate);
-
+  
     try {
+      // Step 1: Get current slots
       const res = await fetch(`http://localhost:5000/api/clinic-slots/${clinicId}/date/${dateStr}`);
       const data = await res.json();
       
       let currentSlots = data?.slots || [];
-
+  
+      // Step 2: Update slot status to pending
       const updatedSlots = currentSlots.map(slot => 
         slot.id === selectedSlot.id 
           ? { 
               ...slot, 
               status: 'pending', 
               patient: petOwnerName, 
+              petId: selectedPet.pet_id,
               userId,
               appointmentType,
               description: appointmentDescription
@@ -249,17 +282,39 @@ const BookAppointment = ({ clinicId, onClose }) => {
           : slot
       );
   
+      // Step 3: Update slots in database
       const updateRes = await fetch(`http://localhost:5000/api/clinic-slots/${clinicId}/date/${dateStr}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ slots: updatedSlots })
       });
   
-      if (updateRes.ok) {
+      if (!updateRes.ok) {
+        alert('Failed to book appointment');
+        return;
+      }
+  
+      // Step 4: Create appointment record
+      const appointmentDateTime = `${dateStr} ${convertTo24Hour(selectedSlot.time)}`;
+      
+      const appointmentRes = await fetch('http://localhost:5000/api/appointments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          clinic_id: clinicId,
+          pet_id: selectedPet.pet_id,
+          usr_id: userId,
+          appt_type: appointmentType,
+          appt_description: appointmentDescription,
+          appt_date: appointmentDateTime,
+          slot_time: selectedSlot.time
+        })
+      });
+  
+      if (appointmentRes.ok) {
         setShowConfirmModal(false);
         setBookingSuccess(true);
-        
-        // Note: No need to manually refresh - socket will handle it!
+        setSelectedPet(null);
         
         setTimeout(() => {
           setBookingSuccess(false);
@@ -269,12 +324,28 @@ const BookAppointment = ({ clinicId, onClose }) => {
           setAppointmentDescription('');
         }, 3000);
       } else {
-        alert('Failed to book appointment');
+        alert('Failed to create appointment record');
       }
     } catch (error) {
       console.error('Error booking slot:', error);
       alert('An error occurred while booking');
     }
+  };
+  
+  // Helper function to convert 12-hour time to 24-hour format
+  const convertTo24Hour = (time12h) => {
+    const [time, period] = time12h.split(' ');
+    let [hours, minutes] = time.split(':');
+    
+    hours = parseInt(hours);
+    
+    if (period === 'PM' && hours !== 12) {
+      hours += 12;
+    } else if (period === 'AM' && hours === 12) {
+      hours = 0;
+    }
+    
+    return `${String(hours).padStart(2, '0')}:${minutes}:00`;
   };
 
   const navigateDate = (direction) => {
@@ -564,6 +635,29 @@ const BookAppointment = ({ clinicId, onClose }) => {
                 })}</span>
               </div>
 
+              <div className="book-pet-selection-section">
+                <label className="book-pet-label">
+                  Select Pet <span className="required">*</span>
+                </label>
+                <div className="book-pet-dropdown">
+                  <select 
+                    className="book-pet-select"
+                    value={selectedPet?.pet_id || ''}
+                    onChange={(e) => {
+                      const pet = userPets.find(p => p.pet_id === parseInt(e.target.value));
+                      setSelectedPet(pet || null);
+                    }}
+                  >
+                    <option value="" disabled>Choose a pet...</option>
+                    {userPets.map((pet) => (
+                      <option key={pet.pet_id} value={pet.pet_id}>
+                        {pet.pet_name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
               <div className="book-appointment-type-section">
                 <label className="book-type-label">
                   Appointment Type <span className="required">*</span>
@@ -586,9 +680,9 @@ const BookAppointment = ({ clinicId, onClose }) => {
               </div>
 
               <div className="book-description-section">
-                <label className="book-description-label">
-                  Description (Optional)
-                </label>
+              <label className="book-description-label">
+                Description <span className="required">*</span>
+              </label>
                 <textarea
                   className="book-description-input"
                   placeholder="Describe the reason for your visit or any specific concerns..."
@@ -618,7 +712,7 @@ const BookAppointment = ({ clinicId, onClose }) => {
               <button 
                 className="book-modal-confirm"
                 onClick={handleBookSlot}
-                disabled={!appointmentType}
+                disabled={!appointmentType || !selectedPet || !appointmentDescription.trim()}
               >
                 <CheckCircle size={18} />
                 Confirm Booking

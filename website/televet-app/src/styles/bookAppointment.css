@@ -1041,3 +1041,61 @@
         padding: 12px;
     }
 }
+.book-pet-selection-section {
+  margin: 1.5rem 0;
+}
+
+.book-pet-label {
+  display: block;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #1a2e35;
+  margin-bottom: 0.75rem;
+}
+
+.book-pet-dropdown {
+  position: relative;
+  width: 100%;
+}
+
+.book-pet-select {
+  width: 100%;
+  padding: 0.875rem 1rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #1a2e35;
+  background: white;
+  border: 2px solid #e8f0f7;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 1rem center;
+  background-size: 20px;
+  padding-right: 3rem;
+}
+
+.book-pet-select:hover {
+  border-color: #a8ceff;
+  background-color: #f8fbff;
+}
+
+.book-pet-select:focus {
+  outline: none;
+  border-color: #91befe;
+  background-color: #f8fbff;
+  box-shadow: 0 0 0 3px rgba(145, 190, 254, 0.1);
+}
+
+.book-pet-select option {
+  padding: 0.75rem;
+  font-weight: 600;
+  color: #1a2e35;
+}
+
+.book-pet-select option:disabled {
+  color: #94a3b8;
+  font-style: italic;
+}

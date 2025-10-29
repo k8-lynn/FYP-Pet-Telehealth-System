@@ -1,0 +1,607 @@
+/* Page Header */
+.mypatients-page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2.5rem;
+    padding: 2rem;
+    background: white;
+    border-radius: 24px;
+    border: 3px solid #e8f0f7;
+  }
+  
+  .mypatients-page-title {
+    font-size: 2.25rem;
+    color: #1a2e35;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    margin: 0 0 0.5rem 0;
+  }
+  
+  .mypatients-page-subtitle {
+    font-size: 1rem;
+    color: #64748b;
+    font-weight: 600;
+    margin: 0;
+  }
+  
+  /* Stats Cards */
+  .mypatients-stats {
+    display: flex;
+    gap: 1rem;
+  }
+  
+  .stat-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 1rem 1.5rem;
+    background: linear-gradient(135deg, #f8fbff 0%, #ffffff 100%);
+    border: 2px solid #e8f0f7;
+    border-radius: 16px;
+    min-width: 120px;
+  }
+  
+  .stat-number {
+    font-size: 2rem;
+    color: #1a2e35;
+    font-weight: 800;
+    line-height: 1;
+    margin-bottom: 0.5rem;
+  }
+  
+  .stat-label {
+    font-size: 0.85rem;
+    color: #64748b;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  
+  /* Table Section */
+  .mypatients-table-section {
+    background: white;
+    border-radius: 24px;
+    padding: 2.25rem;
+    border: 3px solid #e8f0f7;
+  }
+  
+  .mypatients-empty {
+    text-align: center;
+    padding: 4rem 2rem;
+  }
+  
+  .mypatients-empty h3 {
+    font-size: 1.5rem;
+    color: #1a2e35;
+    font-weight: 800;
+    margin: 0 0 0.5rem 0;
+  }
+  
+  .mypatients-empty p {
+    font-size: 1rem;
+    color: #64748b;
+    font-weight: 600;
+    margin: 0;
+  }
+  
+  /* Table */
+  .mypatients-table {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  
+  .mypatients-table-header {
+    display: grid;
+    grid-template-columns: 60px 1.2fr 1fr 0.8fr 0.8fr 1.3fr 1.3fr 1.2fr 1.8fr;
+    gap: 1rem;
+    padding: 0.75rem 1rem;
+    background: #f8fafc;
+    border-radius: 12px;
+    align-items: center;
+  }
+  
+  .mypatients-table-header > div {
+    font-size: 0.8rem;
+    color: #64748b;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  
+  .mypatients-table-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  
+  .mypatients-table-row {
+    display: grid;
+    grid-template-columns: 60px 1.2fr 1fr 0.8fr 0.8fr 1.3fr 1.3fr 1.2fr 1.8fr;
+    gap: 1rem;
+    padding: 1rem;
+    border-radius: 12px;
+    transition: all 0.2s ease;
+    align-items: center;
+  }
+  
+  .mypatients-table-row:hover {
+    background: #f8fbff;
+  }
+  
+  .table-cell-number {
+    font-size: 0.9rem;
+    color: #64748b;
+    font-weight: 700;
+  }
+  
+  .table-cell-pet-name {
+    font-size: 0.95rem;
+    color: #1a2e35;
+    font-weight: 600;
+  }
+  
+  .table-cell-pet-name strong {
+    font-weight: 700;
+    color: #1a2e35;
+  }
+  
+  .table-cell-species,
+  .table-cell-owner {
+    font-size: 0.9rem;
+    color: #64748b;
+    font-weight: 600;
+  }
+  
+  .table-cell-age {
+    font-size: 0.9rem;
+    color: #1a2e35;
+    font-weight: 700;
+  }
+  
+  .table-cell-gender {
+    display: flex;
+    justify-content: center;
+  }
+  
+  .gender-badge {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.85rem;
+    font-weight: 800;
+  }
+  
+  .gender-m {
+    background: #dbeafe;
+    color: #3b82f6;
+    border: 2px solid #3b82f640;
+  }
+  
+  .gender-f {
+    background: #fce7f3;
+    color: #ec4899;
+    border: 2px solid #ec489940;
+  }
+  
+  .table-cell-vet {
+    display: flex;
+    justify-content: center;
+  }
+  
+  .vet-badge {
+    padding: 0.4rem 0.9rem;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    text-align: center;
+  }
+  
+  .vet-assigned {
+    background: #d1fae520;
+    color: #10b981;
+    border: 2px solid #10b98140;
+  }
+  
+  .vet-pending {
+    background: #fef3c7;
+    color: #f59e0b;
+    border: 2px solid #f59e0b40;
+  }
+  
+  .table-cell-date {
+    font-size: 0.85rem;
+    color: #64748b;
+    font-weight: 600;
+  }
+  
+  .table-cell-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    justify-content: flex-end;
+  }
+  
+  .assign-button {
+    background: linear-gradient(135deg, #a8ceff 0%, #91befe 100%);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    padding: 0.6rem 1rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+    font-weight: 700;
+    transition: all 0.25s ease;
+  }
+  
+  .assign-button:hover {
+    transform: translateY(-2px);
+    background: linear-gradient(135deg, #91befe 0%, #7aabf5 100%);
+  }
+  
+  /* Menu Dropdown */
+  .menu-wrapper {
+    position: relative;
+  }
+  
+  .menu-button {
+    background: #f8fafc;
+    color: #64748b;
+    border: 2px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 0.5rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+  }
+  
+  .menu-button:hover {
+    background: #e2e8f0;
+    color: #1a2e35;
+  }
+  
+  .menu-dropdown {
+    position: absolute;
+    top: calc(100% + 0.5rem);
+    right: 0;
+    background: white;
+    border: 2px solid #e8f0f7;
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(26, 46, 53, 0.15);
+    z-index: 100;
+    min-width: 160px;
+    overflow: hidden;
+  }
+  
+  .menu-item {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: none;
+    background: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #1a2e35;
+    transition: all 0.2s ease;
+    text-align: left;
+  }
+  
+  .menu-item:hover {
+    background: #f8fbff;
+  }
+  
+  .menu-item.delete {
+    color: #ef4444;
+  }
+  
+  .menu-item.delete:hover {
+    background: #fee;
+  }
+  
+  /* Modal */
+  .mypatients-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(26, 46, 53, 0.7);
+    backdrop-filter: blur(8px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 2rem;
+  }
+  
+  .mypatients-modal-content {
+    background: white;
+    border-radius: 24px;
+    border: 3px solid #e8f0f7;
+    max-width: 900px;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 60px rgba(26, 46, 53, 0.3);
+  }
+  
+  .mypatients-modal-content.view-modal {
+    max-width: 800px;
+  }
+  
+  .mypatients-modal-content.assign-modal {
+    max-width: 500px;
+  }
+  
+  .mypatients-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 2rem 2rem 1.5rem 2rem;
+    border-bottom: 2px solid #e8f0f7;
+    position: sticky;
+    top: 0;
+    background: white;
+    z-index: 1;
+  }
+  
+  .mypatients-modal-title {
+    font-size: 1.75rem;
+    color: #1a2e35;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    margin: 0;
+  }
+  
+  .mypatients-modal-close {
+    background: #f8fafc;
+    color: #64748b;
+    border: 2px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 0.5rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+  }
+  
+  .mypatients-modal-close:hover {
+    background: #fee;
+    color: #ef4444;
+    border-color: #fecaca;
+  }
+  
+  .mypatients-modal-form {
+    padding: 2rem;
+  }
+  
+  /* Assign Modal Specific */
+  .assign-info {
+    background: linear-gradient(135deg, #f8fbff 0%, #ffffff 100%);
+    border: 2px solid #e8f0f7;
+    border-radius: 16px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+  
+  .assign-info p {
+    margin: 0.5rem 0;
+    font-size: 0.95rem;
+    color: #64748b;
+    font-weight: 600;
+  }
+  
+  .assign-info strong {
+    color: #1a2e35;
+    font-weight: 700;
+  }
+  
+  .mypatients-form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+  }
+  
+  .mypatients-form-group label {
+    font-size: 0.9rem;
+    color: #1a2e35;
+    font-weight: 700;
+  }
+  
+  .mypatients-form-group select {
+    padding: 0.875rem 1.125rem;
+    border: 2px solid #e8f0f7;
+    border-radius: 12px;
+    font-size: 0.95rem;
+    color: #1a2e35;
+    font-weight: 600;
+    font-family: inherit;
+    transition: all 0.2s ease;
+    background: white;
+  }
+  
+  .mypatients-form-group select:focus {
+    outline: none;
+    border-color: #91befe;
+    box-shadow: 0 0 0 3px rgba(145, 190, 254, 0.1);
+  }
+  
+  .mypatients-modal-footer {
+    display: flex;
+    gap: 1rem;
+    justify-content: flex-end;
+    padding-top: 1.5rem;
+    border-top: 2px solid #e8f0f7;
+  }
+  
+  .mypatients-cancel-button {
+    background: #f8fafc;
+    color: #64748b;
+    border: 2px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 0.875rem 2rem;
+    cursor: pointer;
+    font-size: 0.95rem;
+    font-weight: 700;
+    font-family: inherit;
+    transition: all 0.2s ease;
+  }
+  
+  .mypatients-cancel-button:hover {
+    background: #e2e8f0;
+  }
+  
+  .mypatients-submit-button {
+    background: linear-gradient(135deg, #a8ceff 0%, #91befe 100%);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    padding: 0.875rem 2rem;
+    cursor: pointer;
+    font-size: 0.95rem;
+    font-weight: 700;
+    font-family: inherit;
+    transition: all 0.25s ease;
+  }
+  
+  .mypatients-submit-button:hover {
+    transform: translateY(-2px);
+    background: linear-gradient(135deg, #91befe 0%, #7aabf5 100%);
+    box-shadow: 0 8px 20px rgba(145, 190, 254, 0.4);
+  }
+  
+  /* View Modal Specific Styles */
+  .view-modal-body {
+    padding: 2rem;
+  }
+  
+  .view-section {
+    margin-bottom: 2rem;
+    padding-bottom: 2rem;
+    border-bottom: 2px solid #e8f0f7;
+  }
+  
+  .view-section:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+    padding-bottom: 0;
+  }
+  
+  .view-section h3 {
+    font-size: 1.1rem;
+    color: #1a2e35;
+    font-weight: 800;
+    margin: 0 0 1.25rem 0;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  
+  .view-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.25rem;
+  }
+  
+  .view-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 1rem;
+    background: linear-gradient(135deg, #f8fbff 0%, #ffffff 100%);
+    border: 2px solid #e8f0f7;
+    border-radius: 12px;
+  }
+  
+  .view-item.full-width {
+    grid-column: 1 / -1;
+  }
+  
+  .view-item strong {
+    font-size: 0.8rem;
+    color: #64748b;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  
+  .view-item:not(:has(strong)) {
+    font-size: 0.95rem;
+    color: #1a2e35;
+    font-weight: 600;
+  }
+  
+  /* Responsive Design */
+  @media (max-width: 1400px) {
+    .mypatients-table-header,
+    .mypatients-table-row {
+      grid-template-columns: 50px 1fr 0.9fr 0.7fr 0.7fr 1.2fr 1.2fr 1fr 1.5fr;
+    }
+  }
+  
+  @media (max-width: 1200px) {
+    .mypatients-page-header {
+      flex-direction: column;
+      gap: 1.5rem;
+      align-items: stretch;
+    }
+  
+    .mypatients-stats {
+      justify-content: space-between;
+    }
+  }
+  
+  @media (max-width: 768px) {
+    .mypatients-stats {
+      flex-direction: column;
+    }
+  
+    .stat-card {
+      width: 100%;
+    }
+  
+    .mypatients-table-section {
+      overflow-x: auto;
+    }
+  
+    .mypatients-table {
+      min-width: 1000px;
+    }
+  
+    .view-grid {
+      grid-template-columns: 1fr;
+    }
+  
+    .mypatients-modal-content {
+      max-width: 100%;
+      margin: 1rem;
+    }
+  
+    .mypatients-modal-footer {
+      flex-direction: column;
+    }
+  
+    .mypatients-cancel-button,
+    .mypatients-submit-button {
+      width: 100%;
+    }
+  }
+
+  .vet-none {
+    background: #f1f5f9;
+    color: #94a3b8;
+    border: 2px solid #e2e8f0;
+  }
