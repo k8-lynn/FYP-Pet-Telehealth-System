@@ -1,0 +1,392 @@
+/* Vet Dashboard Container */
+.vet-dashboard-container {
+    display: flex;
+    min-height: 100vh;
+    background: linear-gradient(to top, #e8f4f8 0%, #f8f2fb 50%, #ffffff 100%);
+    font-family: 'DM Sans', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .vet-main-content {
+    flex: 1;
+    padding: 2.5rem 2.5rem 2.5rem 340px;
+    max-width: 100%;
+    position: relative;
+    z-index: 1;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  /* When sidebar is collapsed - content expands */
+  .vet-sidebar.collapsed ~ .vet-main-content {
+    padding-left: 140px;
+  }
+  
+  /* Header */
+  .vet-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2.5rem;
+  }
+  
+  .vet-dashboard-container .location-info {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    background: white;
+    border: 2px solid #e8f0f7;
+    padding: 0.75rem 1.5rem;
+    border-radius: 14px;
+  }
+  
+  .vet-dashboard-container .location-icon {
+    color: #91befe;
+  }
+  
+  .vet-dashboard-container .location-text {
+    font-size: 0.95rem;
+    color: #1a2e35;
+    font-weight: 700;
+  }
+  
+  /* Stats Grid */
+  .vet-dashboard-container .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.75rem;
+    margin-bottom: 2.5rem;
+    max-width: 100%;
+  }
+  
+  .vet-dashboard-container .stat-card {
+    background: white;
+    border-radius: 24px;
+    padding: 2rem;
+    border: 3px solid #e8f0f7;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 1rem;
+    transition: all 0.25s ease;
+  }
+  
+  .vet-dashboard-container .stat-card:hover {
+    transform: translateY(-4px);
+    border-color: #a8ceff;
+  }
+  
+  .vet-dashboard-container .stat-icon {
+    width: 56px;
+    height: 56px;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  
+  .vet-dashboard-container .stat-content {
+    flex: 1;
+  }
+  
+  .vet-dashboard-container .stat-value {
+    font-size: 2rem;
+    color: #1a2e35;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    margin: 0 0 0.25rem 0;
+  }
+  
+  .vet-dashboard-container .stat-title {
+    font-size: 0.9rem;
+    color: #1a2e35;
+    font-weight: 700;
+    margin: 0 0 0.25rem 0;
+    line-height: 1.3;
+  }
+  
+  .vet-dashboard-container .stat-subtitle {
+    font-size: 0.8rem;
+    color: #64748b;
+    font-weight: 600;
+    margin: 0;
+  }
+  
+  /* Dashboard Content Grid */
+  .vet-dashboard-container .dashboard-content {
+    display: grid;
+    grid-template-columns: 1fr 400px;
+    gap: 1.75rem;
+  }
+  
+  /* Appointments Section */
+  .vet-dashboard-container .appointments-section {
+    background: white;
+    border-radius: 24px;
+    padding: 2.25rem;
+    border: 3px solid #e8f0f7;
+  }
+  
+  .vet-dashboard-container .section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1.25rem;
+    border-bottom: 2px solid #f1f5f9;
+  }
+  
+  .vet-dashboard-container .section-title {
+    font-size: 1.6rem;
+    color: #1a2e35;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    margin: 0;
+  }
+  
+  .vet-dashboard-container .appointment-count {
+    background: #f8fafc;
+    border: 2px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 0.4rem 0.9rem;
+    font-size: 0.9rem;
+    color: #64748b;
+    font-weight: 700;
+  }
+  
+  /* Appointments Table */
+  .vet-dashboard-container .appointments-table {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  
+  .vet-dashboard-container .table-header {
+    display: grid;
+    grid-template-columns: 100px 1fr 1fr 120px 120px 100px;
+    gap: 1rem;
+    padding: 0.75rem 1rem;
+    background: #f8fafc;
+    border-radius: 12px;
+  }
+  
+  .vet-dashboard-container .table-header .table-cell {
+    font-size: 0.8rem;
+    color: #64748b;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  
+  .vet-dashboard-container .table-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  
+  .vet-dashboard-container .table-row {
+    display: grid;
+    grid-template-columns: 100px 1fr 1fr 120px 120px 100px;
+    gap: 1rem;
+    padding: 1rem;
+    border-radius: 12px;
+    transition: all 0.2s ease;
+    align-items: center;
+  }
+  
+  .vet-dashboard-container .table-row:hover {
+    background: #f8fbff;
+  }
+  
+  .vet-dashboard-container .table-cell {
+    font-size: 0.9rem;
+    color: #1a2e35;
+    font-weight: 600;
+  }
+  
+  .vet-dashboard-container .appointment-time {
+    color: #64748b;
+    font-weight: 700;
+    font-size: 0.9rem;
+  }
+  
+  .vet-dashboard-container .pet-name {
+    color: #1a2e35;
+    font-weight: 700;
+  }
+  
+  .vet-dashboard-container .owner-name {
+    color: #64748b;
+  }
+  
+  .vet-dashboard-container .appointment-type {
+    display: inline-block;
+    padding: 0.4rem 0.9rem;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    text-align: center;
+  }
+  
+  .vet-dashboard-container .status-badge {
+    display: inline-block;
+    padding: 0.4rem 0.9rem;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    text-align: center;
+    background: #f0fdf4;
+    color: #15803d;
+    border: 2px solid #bbf7d0;
+  }
+  
+  .vet-dashboard-container .view-button {
+    background: linear-gradient(135deg, #a8ceff 0%, #91befe 100%);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    padding: 0.6rem 1rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+    font-weight: 700;
+    transition: all 0.25s ease;
+  }
+  
+  .vet-dashboard-container .view-button:hover {
+    transform: translateY(-2px);
+    background: linear-gradient(135deg, #91befe 0%, #7aabf5 100%);
+  }
+  
+  /* Activity Section */
+  .vet-dashboard-container .activity-section {
+    background: white;
+    border-radius: 24px;
+    padding: 2.25rem;
+    border: 3px solid #e8f0f7;
+    max-height: 800px;
+    overflow-y: auto;
+  }
+  
+  .vet-dashboard-container .activity-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+  
+  .vet-dashboard-container .activity-item {
+    display: flex;
+    gap: 1rem;
+    position: relative;
+  }
+  
+  .vet-dashboard-container .activity-item:not(:last-child)::before {
+    content: '';
+    position: absolute;
+    left: 5px;
+    top: 24px;
+    bottom: -24px;
+    width: 2px;
+    background: #e8f0f7;
+  }
+  
+  .vet-dashboard-container .activity-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #91befe;
+    border: 3px solid #e8f0f7;
+    flex-shrink: 0;
+    margin-top: 4px;
+  }
+  
+  .vet-dashboard-container .activity-content {
+    flex: 1;
+  }
+  
+  .vet-dashboard-container .activity-action {
+    font-size: 0.95rem;
+    color: #1a2e35;
+    font-weight: 700;
+    margin: 0 0 0.25rem 0;
+  }
+  
+  .vet-dashboard-container .activity-details {
+    font-size: 0.85rem;
+    color: #64748b;
+    font-weight: 600;
+    margin: 0 0 0.5rem 0;
+  }
+  
+  .vet-dashboard-container .activity-time {
+    font-size: 0.8rem;
+    color: #94a3b8;
+    font-weight: 600;
+  }
+  
+  /* Responsive Design */
+  @media (max-width: 1400px) {
+    .vet-dashboard-container .stats-grid {
+      grid-template-columns: repeat(3, 1fr);
+    }
+    
+    .vet-dashboard-container .dashboard-content {
+      grid-template-columns: 1fr;
+    }
+  }
+  
+  @media (max-width: 1200px) {
+    .vet-main-content {
+      padding-left: 340px;
+    }
+    
+    .vetadmin-sidebar.collapsed ~ .vet-main-content {
+      padding-left: 140px;
+    }
+  }
+  
+  @media (max-width: 992px) {
+    .vet-main-content {
+      padding: 2rem;
+      padding-left: 2.5rem;
+    }
+    
+    .vet-dashboard-container .stats-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .vet-dashboard-container .table-header,
+    .vet-dashboard-container .table-row {
+      grid-template-columns: 80px 1fr 1fr 100px 100px 80px;
+      font-size: 0.85rem;
+    }
+  }
+  
+  @media (max-width: 768px) {
+    .vet-main-content {
+      padding: 1.5rem;
+    }
+    
+    .vet-dashboard-container .stats-grid {
+      grid-template-columns: 1fr;
+    }
+    
+    .vet-header {
+      flex-direction: column;
+      gap: 1rem;
+      align-items: stretch;
+    }
+    
+    .vet-dashboard-container .location-info {
+      justify-content: center;
+    }
+    
+    .vet-dashboard-container .section-title {
+      font-size: 1.4rem;
+    }
+  }

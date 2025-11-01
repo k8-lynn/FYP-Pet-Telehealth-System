@@ -1,0 +1,152 @@
+/* Vet Sidebar */
+.vet-sidebar {
+    width: 280px;
+    background: linear-gradient(135deg, #91befe 0%, #c3dbfa 100%);
+    transition: all 0.3s ease;
+    border-radius: 20px;
+    padding: 2rem 0;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    position: fixed;
+    top: 20px;
+    left: 20px;
+    bottom: 20px;
+    z-index: 1000;
+    backdrop-filter: blur(10px);
+  }
+  
+  .vet-sidebar.collapsed {
+    width: 80px;
+  }
+  
+  /* Hide title when collapsed */
+  .vet-sidebar.collapsed .vet-sidebar-title {
+    opacity: 0;
+    width: 0;
+    overflow: hidden;
+  }
+  
+  /* Center toggle button when collapsed */
+  .vet-sidebar.collapsed .vet-sidebar-header {
+    justify-content: center;
+    padding: 0 0.5rem;
+  }
+  
+  /* Hide labels when collapsed */
+  .vet-sidebar.collapsed .vet-nav-label {
+    opacity: 0;
+    width: 0;
+    overflow: hidden;
+  }
+  
+  /* Center nav items when collapsed */
+  .vet-sidebar.collapsed .vet-nav-item {
+    padding: 0 0.5rem;
+    justify-content: center;
+  }
+  
+  .vet-sidebar.collapsed .vet-nav-content {
+    justify-content: center;
+    padding: 0.75rem;
+  }
+  
+  /* Remove transform on hover when collapsed */
+  .vet-sidebar.collapsed .vet-nav-content:hover {
+    transform: translateX(0);
+  }
+  
+  .vet-sidebar-header {
+    padding: 0 1.5rem;
+    margin-bottom: 3rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    transition: all 0.3s ease;
+  }
+  
+  .vet-sidebar-title {
+    margin: 0;
+    font-size: 1.5rem;
+    color: #ffffff;
+    font-weight: 700;
+    transition: all 0.3s ease;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+  }
+  
+  .vet-sidebar-toggle {
+    background: rgba(255, 255, 255, 0.3);
+    border: none;
+    cursor: pointer;
+    padding: 0.5rem;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+  }
+  
+  .vet-sidebar-toggle:hover {
+    background: rgba(255, 255, 255, 0.5);
+    transform: scale(1.05);
+  }
+  
+  /* Navigation */
+  .vet-nav-item {
+    padding: 0 1.5rem;
+    margin: 0.5rem 0;
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    background: transparent;
+    border-left: none;
+    transition: all 0.2s ease;
+  }
+  
+  .vet-nav-item.active .vet-nav-content {
+    background: rgba(255, 255, 255, 0.35);
+    padding: 0.75rem 1rem;
+    border-radius: 14px;
+    box-shadow: 0 4px 12px rgba(255, 255, 255, 0.3);
+  }
+  
+  /* Adjust active padding when collapsed */
+  .vet-sidebar.collapsed .vet-nav-item.active .vet-nav-content {
+    padding: 0.75rem;
+  }
+  
+  .vet-nav-content {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.75rem 1rem;
+    transition: all 0.2s ease;
+    width: 100%;
+    border-radius: 14px;
+  }
+  
+  .vet-nav-content:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: translateX(4px);
+  }
+  
+  .vet-nav-icon {
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  
+  .vet-nav-label {
+    font-size: 1rem;
+    color: #ffffff;
+    font-weight: 500;
+    white-space: nowrap;
+    transition: all 0.3s ease;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+  }
+  
+  .vet-nav-item.active .vet-nav-label {
+    color: #ffffff;
+    font-weight: 700;
+  }

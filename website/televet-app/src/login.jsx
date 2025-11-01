@@ -57,6 +57,19 @@ const Login = () => {
             navigate('/vetadmin-dashboard');
           }, 2000);
         } 
+
+        else if (data.userType === 'veterinarian' || data.user_type === 'veterinarian') {
+          sessionStorage.setItem('firstName', data.firstName);
+          sessionStorage.setItem('userid', data.userId);
+          sessionStorage.setItem('userType', data.userType);
+        
+          setShowSuccess(true);
+        
+          setTimeout(() => {
+            navigate('/vet-dashboard'); // ✅ Send to veterinarian dashboard
+          }, 2000);
+        }
+        
         else {
           alert('Login successful, but unknown user type.');
         }

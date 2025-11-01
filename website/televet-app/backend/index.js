@@ -604,6 +604,43 @@ app.get('/api/profile/:usr_id', (req, res) => {
         res.status(200).json(profile);
       });
     } 
+
+    // 🩺 Step 4️⃣: Veterinarian
+    else if (user.usr_type === 'veterinarian') {
+      const vetSQL = `
+        SELECT 
+          vt_id,
+          va_id,  -- references vet admin
+          vt_licenseNumber,
+          vt_licensingAuthority,
+          vt_yearsOfPractice,
+          vt_specialization,
+          vt_vetLocation,
+          vt_clinicName,
+          vt_clinicPhone,
+          vt_clinicEmail,
+          vt_patientsAssigned,
+          vt_onDutyToday,
+          vt_consent,
+          vt_createdAt
+        FROM veterinarian_t
+        WHERE usr_id = ?
+      `;
+      db.query(vetSQL, [usr_id], (err3, vetResult) => {
+        if (err3) {
+          console.error('❌ Error fetching veterinarian:', err3);
+          return res.status(500).json({ error: 'Failed to fetch veterinarian data' });
+        }
+        if (vetResult.length === 0) {
+          console.warn('⚠️ No veterinarian data found for usr_id:', usr_id);
+          return res.status(404).json({ error: 'Veterinarian data not found' });
+        }
+        const profile = { ...user, ...vetResult[0] };
+        console.log('✅ Sending Veterinarian Profile:', profile);
+        res.status(200).json(profile);
+      });
+    }
+
     
     // Step 4️⃣: Invalid user type
     else {
@@ -2390,5 +2427,65 @@ app.put('/api/appointments/:appt_id/assign-vet', (req, res) => {
 
     console.log(`✅ Vet ${vt_id} assigned to appointment ${appt_id}`);
     res.status(200).json({ message: 'Vet assigned successfully' });
+  });
+});
+
+// -------------------------------------------------------------
+// 🟢 GET ALL PATIENTS FOR A SPECIFIC VETERINARIAN (by vt_id)
+// -------------------------------------------------------------
+app.get('/api/patients/vet/:vt_id', (req, res) => {
+  const { vt_id } = req.params;
+
+  console.log("🐾 GET patients for veterinarian:", vt_id);
+
+  const sql = `
+    SELECT 
+      pet.pet_id,
+      pet.pet_name,
+      pet.pet_species,
+      pet.pet_age,
+      pet.pet_gender,
+      pet.pet_breed,
+      pet.pet_weight,
+      pet.pet_hasVaccination,
+      pet.pet_vaccinationDate,
+      pet.pet_hasMedication,
+      pet.pet_medicationDetails,
+      pet.pet_hasAllergies,
+      pet.pet_allergyDetails,
+      pet.pet_dietType,
+      pet.pet_behavioralNotes,
+      pet.pet_lastUpdated,
+      pet.pet_assignedVet,
+      pp.pp_id,
+      pp.pp_assignedClinic,
+      pp.createdAt as pp_createdAt,
+      u.usr_id,
+      u.usr_firstName as owner_firstName,
+      u.usr_lastName as owner_lastName,
+      u.usr_email as owner_email,
+      vt.vt_id,
+      CONCAT(vu.usr_firstName, ' ', vu.usr_lastName) as vet_name,
+      a.appt_status,
+      a.appt_id
+    FROM pet_t pet
+    INNER JOIN pet_parent_t pp ON pet.pp_id = pp.pp_id
+    INNER JOIN user_t u ON pp.usr_id = u.usr_id
+    LEFT JOIN veterinarian_t vt ON pet.pet_assignedVet = vt.vt_id
+    LEFT JOIN user_t vu ON vt.usr_id = vu.usr_id
+    LEFT JOIN appointment_t a ON pet.pet_id = a.pet_id AND a.vt_id = ?
+    WHERE pet.pet_assignedVet = ?
+    ORDER BY pp.createdAt DESC
+  `;
+
+  db.query(sql, [vt_id, vt_id], (err, result) => {
+    if (err) {
+      console.error('❌ Error fetching patients for vet:', err);
+      return res.status(500).json({ error: 'Failed to fetch patients' });
+    }
+
+    console.log(`✅ Retrieved ${result.length} patients for veterinarian ${vt_id}`);
+    console.log('📋 First patient (if any):', result[0]);
+    res.status(200).json(result);
   });
 });
