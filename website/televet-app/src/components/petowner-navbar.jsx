@@ -10,7 +10,7 @@ const PetOwnerNavbar = ({ sidebarOpen, setSidebarOpen }) => {
 
   const navItems = [
     { icon: Home, label: 'Home', path: '/petowner-dashboard' },
-    { icon: MessageCircle, label: 'Messages', path: '/petowner-messages' },
+    { icon: MessageCircle, label: 'Chat', path: '/petowner-messages' },
     { icon: Bell, label: 'Reminders', path: '/petowner-reminders' },
     { icon: PawPrint, label: 'My Pets', path: '/petowner-mypets' },
     { icon: Stethoscope, label: 'My Vet', path: '/petowner-myvet' },

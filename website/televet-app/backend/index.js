@@ -31,6 +31,12 @@ io.on('connection', (socket) => {
   // Send a test event to confirm connection
   socket.emit('welcome', { message: 'Connected successfully!' });
   
+  // ✅ Handle user joining their room
+  socket.on('joinUser', (userId) => {
+    socket.join(`user_${userId}`);
+    console.log(`✅ User ${userId} joined room: user_${userId}`);
+  });
+  
   socket.on('disconnect', (reason) => {
     console.log('❌ User disconnected:', socket.id, 'Reason:', reason);
   });
@@ -2002,8 +2008,21 @@ app.get('/api/patients/:pet_id', (req, res) => {
   });
 });
 
+// Add this helper function at the top of your backend file (near other helper functions)
+const formatAppointmentDate = (dateString) => {
+  const date = new Date(dateString);
+  return date.toLocaleDateString('en-US', {
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true
+  });
+};
 // -------------------------------------------------------------
-// 🟢 ASSIGN VET TO PATIENT
+// 🟢 ASSIGN VET TO PATIENT (UPDATED WITH VET NOTIFICATION)
 // -------------------------------------------------------------
 app.put('/api/patients/:pet_id/assign-vet', (req, res) => {
   const { pet_id } = req.params;
@@ -2031,21 +2050,25 @@ app.put('/api/patients/:pet_id/assign-vet', (req, res) => {
       return res.status(404).json({ error: 'Patient not found' });
     }
 
-    // Get vet name first
-    const getVetNameSQL = `
-      SELECT u.usr_firstName, u.usr_lastName 
-      FROM user_t u
-      INNER JOIN veterinarian_t vt ON u.usr_id = vt.usr_id
+    // Get vet name and usr_id in ONE query
+    const getVetInfoSQL = `
+      SELECT vt.vt_id, u.usr_id, u.usr_firstName, u.usr_lastName 
+      FROM veterinarian_t vt
+      INNER JOIN user_t u ON vt.usr_id = u.usr_id
       WHERE vt.vt_id = ?
     `;
 
-    db.query(getVetNameSQL, [vt_id], (errVet, vetResult) => {
+    db.query(getVetInfoSQL, [vt_id], (errVet, vetResult) => {
       if (errVet || vetResult.length === 0) {
-        console.error('⚠️ Error getting vet name:', errVet);
+        console.error('❌ Error getting vet info:', errVet);
         return res.status(500).json({ error: 'Failed to get vet info' });
       }
 
-      const vetName = `Dr. ${vetResult[0].usr_firstName} ${vetResult[0].usr_lastName}`;
+      const vetInfo = vetResult[0];
+      const vetName = `Dr. ${vetInfo.usr_firstName} ${vetInfo.usr_lastName}`;
+      const vet_usr_id = vetInfo.usr_id;
+
+      console.log(`✅ Found vet: ${vetName}, usr_id: ${vet_usr_id}`);
 
       // Get pending appointment details for this pet
       const getAppointmentSQL = `
@@ -2053,7 +2076,8 @@ app.put('/api/patients/:pet_id/assign-vet', (req, res) => {
           a.appt_id,
           a.appt_date,
           a.clinic_id,
-          pet.pet_id
+          pet.pet_id,
+          pet.pet_name
         FROM appointment_t a
         INNER JOIN pet_t pet ON a.pet_id = pet.pet_id
         WHERE a.pet_id = ? AND a.appt_status = 'pending'
@@ -2087,9 +2111,13 @@ app.put('/api/patients/:pet_id/assign-vet', (req, res) => {
               console.error('⚠️ Error updating vet patient count:', err4);
             }
 
-            // If we have appointment, update the slot
+            // If we have appointment, update the slot AND create notifications
             if (!err2 && apptResult.length > 0) {
               const appt = apptResult[0];
+              const appointmentId = appt.appt_id;
+              const appointmentDate = appt.appt_date;
+              const pet_name = appt.pet_name;
+
               const apptDate = new Date(appt.appt_date);
               const dateKey = `${apptDate.getFullYear()}-${String(apptDate.getMonth() + 1).padStart(2, '0')}-${String(apptDate.getDate()).padStart(2, '0')}`;
 
@@ -2148,11 +2176,39 @@ app.put('/api/patients/:pet_id/assign-vet', (req, res) => {
                 } else {
                   console.error('⚠️ No slots found for date:', dateKey);
                 }
-
-                res.status(200).json({ message: 'Vet assigned successfully' });
               });
+
+              // ✅ CREATE NOTIFICATIONS FOR BOTH OWNER AND VET
+              const getOwnerSQL = `
+                SELECT pp.usr_id
+                FROM pet_t pet
+                INNER JOIN pet_parent_t pp ON pet.pp_id = pp.pp_id
+                WHERE pet.pet_id = ?
+              `;
+
+              db.query(getOwnerSQL, [pet_id], (errOwner, ownerResult) => {
+                if (!errOwner && ownerResult.length > 0) {
+                  const owner_usr_id = ownerResult[0].usr_id;
+                  
+                  // Create approved notification for OWNER
+                  const ownerMessage = `Your appointment for ${pet_name} has been approved by ${vetName}.`;
+                  createNotification(owner_usr_id, pet_id, appointmentId, 'approved', ownerMessage, appointmentDate);
+                  console.log(`✅ Owner notification sent to usr_id: ${owner_usr_id}`);
+
+                  // ✅ CREATE NOTIFICATION FOR VET (we already have vet_usr_id from earlier!)
+                  const vetMessage = `You have been assigned to ${pet_name} for appointment`;
+                  createNotification(vet_usr_id, pet_id, appointmentId, 'assigned', vetMessage, appointmentDate);
+                  console.log(`✅ Vet notification sent to usr_id: ${vet_usr_id} for vt_id: ${vt_id}`);
+                } else {
+                  console.error('❌ Error fetching owner usr_id:', errOwner);
+                }
+              });
+
+              // Send response after all operations
+              res.status(200).json({ message: 'Vet assigned successfully' });
+
             } else {
-              console.log(`✅ Patient ${pet_id} assigned to vet ${vt_id}`);
+              console.log(`✅ Patient ${pet_id} assigned to vet ${vt_id} (no appointment found)`);
               res.status(200).json({ message: 'Vet assigned successfully' });
             }
           });
@@ -2267,10 +2323,15 @@ app.post('/api/appointments', (req, res) => {
     appt_date
   });
 
-  // First, get pp_id from usr_id
-  const getPpIdSQL = 'SELECT pp_id FROM pet_parent_t WHERE usr_id = ?';
+  // First, get pp_id and pet name
+  const getPpIdSQL = `
+    SELECT pp.pp_id, pet.pet_name
+    FROM pet_parent_t pp
+    INNER JOIN pet_t pet ON pp.pp_id = pet.pp_id
+    WHERE pp.usr_id = ? AND pet.pet_id = ?
+  `;
   
-  db.query(getPpIdSQL, [usr_id], (err, ppResult) => {
+  db.query(getPpIdSQL, [usr_id, pet_id], (err, ppResult) => {
     if (err) {
       console.error('❌ Error fetching pp_id:', err);
       return res.status(500).json({ error: 'Failed to fetch pet parent info' });
@@ -2281,6 +2342,7 @@ app.post('/api/appointments', (req, res) => {
     }
 
     const pp_id = ppResult[0].pp_id;
+    const pet_name = ppResult[0].pet_name;
 
     // Insert appointment
     const insertSQL = `
@@ -2309,10 +2371,16 @@ app.post('/api/appointments', (req, res) => {
         return res.status(500).json({ error: 'Failed to create appointment' });
       }
 
-      console.log('✅ Appointment created successfully, ID:', result.insertId);
+      const appt_id = result.insertId;
+
+      // Create pending notification
+      const message = `Your appointment request for ${pet_name} is pending approval.`;
+      createNotification(usr_id, pet_id, appt_id, 'pending', message, appt_date);
+
+      console.log('✅ Appointment created successfully, ID:', appt_id);
       res.status(201).json({
         message: 'Appointment created successfully',
-        appt_id: result.insertId
+        appt_id: appt_id
       });
     });
   });
@@ -2489,3 +2557,123 @@ app.get('/api/patients/vet/:vt_id', (req, res) => {
     res.status(200).json(result);
   });
 });
+
+// -------------------------------------------------------------
+// 🟢 GET USER NOTIFICATIONS
+// -------------------------------------------------------------
+app.get('/api/notifications/:usr_id', (req, res) => {
+  const { usr_id } = req.params;
+
+  const sql = `
+    SELECT 
+      n.*,
+      pet.pet_name,
+      pet.pet_species
+    FROM notification_t n
+    LEFT JOIN pet_t pet ON n.pet_id = pet.pet_id
+    WHERE n.usr_id = ?
+    ORDER BY n.created_at DESC
+    LIMIT 50
+  `;
+
+  db.query(sql, [usr_id], (err, result) => {
+    if (err) {
+      console.error('❌ Error fetching notifications:', err);
+      return res.status(500).json({ error: 'Failed to fetch notifications' });
+    }
+
+    console.log(`✅ Retrieved ${result.length} notifications for user ${usr_id}`);
+    res.status(200).json(result);
+  });
+});
+
+// -------------------------------------------------------------
+// 🟢 MARK NOTIFICATION AS READ
+// -------------------------------------------------------------
+app.put('/api/notifications/:notification_id/read', (req, res) => {
+  const { notification_id } = req.params;
+
+  const sql = `
+    UPDATE notification_t
+    SET is_read = TRUE
+    WHERE notification_id = ?
+  `;
+
+  db.query(sql, [notification_id], (err, result) => {
+    if (err) {
+      console.error('❌ Error marking notification as read:', err);
+      return res.status(500).json({ error: 'Failed to update notification' });
+    }
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'Notification not found' });
+    }
+
+    console.log(`✅ Notification ${notification_id} marked as read`);
+    res.status(200).json({ message: 'Notification marked as read' });
+  });
+});
+
+// -------------------------------------------------------------
+// 🟢 DELETE NOTIFICATION
+// -------------------------------------------------------------
+app.delete('/api/notifications/:notification_id', (req, res) => {
+  const { notification_id } = req.params;
+
+  const sql = 'DELETE FROM notification_t WHERE notification_id = ?';
+
+  db.query(sql, [notification_id], (err, result) => {
+    if (err) {
+      console.error('❌ Error deleting notification:', err);
+      return res.status(500).json({ error: 'Failed to delete notification' });
+    }
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'Notification not found' });
+    }
+
+    console.log(`✅ Notification ${notification_id} deleted`);
+    res.status(200).json({ message: 'Notification deleted' });
+  });
+});
+
+// -------------------------------------------------------------
+// 🟢 CREATE NOTIFICATION HELPER FUNCTION
+// -------------------------------------------------------------
+const createNotification = (usr_id, pet_id, appt_id, type, message, appt_date = null) => {
+  const sql = `
+    INSERT INTO notification_t (usr_id, pet_id, appt_id, notification_type, notification_message, appt_date)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `;
+
+  db.query(sql, [usr_id, pet_id, appt_id, type, message, appt_date], (err, result) => {
+    if (err) {
+      console.error('❌ Error creating notification:', err);
+    } else {
+      console.log(`✅ Notification created for user ${usr_id}`);
+      
+      // ✅ Get io from app (no require needed!)
+      const ioInstance = app.get('io');
+      
+      // Get the full notification data with pet info
+      const getNotificationSQL = `
+        SELECT 
+          n.*,
+          pet.pet_name,
+          pet.pet_species
+        FROM notification_t n
+        LEFT JOIN pet_t pet ON n.pet_id = pet.pet_id
+        WHERE n.notification_id = ?
+      `;
+      
+      db.query(getNotificationSQL, [result.insertId], (err2, notifResult) => {
+        if (!err2 && notifResult.length > 0) {
+          console.log(`🔔 Emitting notification to user_${usr_id}:`, notifResult[0]);
+          // Emit to specific user
+          ioInstance.to(`user_${usr_id}`).emit('newNotification', notifResult[0]);
+        }
+      });
+    }
+  });
+};
+

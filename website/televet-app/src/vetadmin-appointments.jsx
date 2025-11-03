@@ -624,50 +624,75 @@ const VetAdminAppointments = () => {
     setSlotToDelete(null);
   };
 
-  const handleApproveSlot = async (slot) => {
-    if (!selectedVeterinarian) {
-      alert('Please select a veterinarian');
-      return;
-    }
-  
-    const targetDate = selectedDate || currentDate;
-    const dateKey = formatDateKey(targetDate);
-    const existingSlots = timeSlots[dateKey] || [];
-  
-    const updatedSlots = existingSlots.map(s => 
-      s.id === slot.id 
-        ? { 
-            ...s, 
-            status: 'taken',
-            veterinarian: `Dr. ${selectedVeterinarian.usr_firstName} ${selectedVeterinarian.usr_lastName}`,
-            vt_id: selectedVeterinarian.vt_id
-          }
-        : s
-    );
-  
+  // Replace the handleApproveSlot function in vetadmin-appointments.jsx
+
+const handleApproveSlot = async (slot) => {
+  if (!selectedVeterinarian) {
+    alert('Please select a veterinarian');
+    return;
+  }
+
+  const targetDate = selectedDate || currentDate;
+  const dateKey = formatDateKey(targetDate);
+  const existingSlots = timeSlots[dateKey] || [];
+
+  // First, update the appointment status in the database if there's a petId
+  if (slot.petId) {
     try {
-      const res = await fetch(`http://localhost:5000/api/clinic-slots/${clinic_id}/date/${dateKey}`, {
+      // Update pet's assigned vet
+      const assignVetRes = await fetch(`http://localhost:5000/api/patients/${slot.petId}/assign-vet`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ slots: updatedSlots })
+        body: JSON.stringify({ vt_id: selectedVeterinarian.vt_id })
       });
-  
-      if (res.ok) {
-        setTimeSlots(prev => ({
-          ...prev,
-          [dateKey]: updatedSlots
-        }));
-        setSelectedPendingSlot(null);
-        setSelectedVeterinarian(null);
-        alert('Appointment approved and assigned successfully!');
-      } else {
-        alert('Failed to approve appointment');
+
+      if (!assignVetRes.ok) {
+        alert('Failed to assign veterinarian to patient');
+        return;
       }
     } catch (error) {
-      console.error('Error approving slot:', error);
-      alert('An error occurred');
+      console.error('Error assigning vet:', error);
+      alert('An error occurred while assigning veterinarian');
+      return;
     }
-  };
+  }
+
+  // Update the slot
+  const updatedSlots = existingSlots.map(s => 
+    s.id === slot.id 
+      ? { 
+          ...s, 
+          status: 'taken',
+          veterinarian: `Dr. ${selectedVeterinarian.usr_firstName} ${selectedVeterinarian.usr_lastName}`,
+          vt_id: selectedVeterinarian.vt_id
+        }
+      : s
+  );
+
+  try {
+    const res = await fetch(`http://localhost:5000/api/clinic-slots/${clinic_id}/date/${dateKey}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ slots: updatedSlots })
+    });
+
+    if (res.ok) {
+      setTimeSlots(prev => ({
+        ...prev,
+        [dateKey]: updatedSlots
+      }));
+      setShowApprovalModal(false);
+      setSelectedPendingSlot(null);
+      setSelectedVeterinarian(null);
+      alert('Appointment approved and assigned successfully!');
+    } else {
+      alert('Failed to approve appointment');
+    }
+  } catch (error) {
+    console.error('Error approving slot:', error);
+    alert('An error occurred');
+  }
+};
 
   const todayKey = formatDateKey(currentDate);
   const todaySlots = timeSlots[todayKey] || [];
