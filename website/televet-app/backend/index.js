@@ -1945,20 +1945,30 @@ app.get('/api/patients/clinic/:clinicName', (req, res) => {
       u.usr_email as owner_email,
       vt.vt_id,
       CONCAT(vu.usr_firstName, ' ', vu.usr_lastName) as vet_name,
-      a.appt_status,
-      a.appt_id
+      (SELECT appt_status FROM appointment_t 
+       WHERE pet_id = pet.pet_id 
+       AND clinic_id = (SELECT clinic_id FROM clinic_t WHERE clinic_name = ?)
+       ORDER BY created_at DESC LIMIT 1) as appt_status,
+      (SELECT appt_id FROM appointment_t 
+       WHERE pet_id = pet.pet_id 
+       AND clinic_id = (SELECT clinic_id FROM clinic_t WHERE clinic_name = ?)
+       ORDER BY created_at DESC LIMIT 1) as appt_id
     FROM pet_t pet
     INNER JOIN pet_parent_t pp ON pet.pp_id = pp.pp_id
     INNER JOIN user_t u ON pp.usr_id = u.usr_id
     LEFT JOIN veterinarian_t vt ON pet.pet_assignedVet = vt.vt_id
     LEFT JOIN user_t vu ON vt.usr_id = vu.usr_id
-    LEFT JOIN appointment_t a ON pet.pet_id = a.pet_id AND a.clinic_id = (SELECT clinic_id FROM clinic_t WHERE clinic_name = ?)
     WHERE pp.pp_assignedClinic IS NOT NULL 
     AND pp.pp_assignedClinic = ?
+    GROUP BY pet.pet_id
     ORDER BY pp.createdAt DESC
   `;
 
-  db.query(sql, [decodeURIComponent(clinicName), decodeURIComponent(clinicName)], (err, result) => {
+  db.query(sql, [
+    decodeURIComponent(clinicName), 
+    decodeURIComponent(clinicName), 
+    decodeURIComponent(clinicName)
+  ], (err, result) => {
     if (err) {
       console.error('❌ Error fetching patients:', err);
       return res.status(500).json({ error: 'Failed to fetch patients' });
@@ -1969,6 +1979,7 @@ app.get('/api/patients/clinic/:clinicName', (req, res) => {
     res.status(200).json(result);
   });
 });
+
 
 // -------------------------------------------------------------
 // 🟢 GET SINGLE PATIENT DETAILS
@@ -2302,7 +2313,7 @@ app.get('/api/user-pets/:usr_id', (req, res) => {
   });
 });
 // -------------------------------------------------------------
-// 🟢 CREATE APPOINTMENT
+// 🟢 CREATE APPOINTMENT (WITH VET ADMIN NOTIFICATION)
 // -------------------------------------------------------------
 app.post('/api/appointments', (req, res) => {
   const {
@@ -2373,9 +2384,45 @@ app.post('/api/appointments', (req, res) => {
 
       const appt_id = result.insertId;
 
-      // Create pending notification
-      const message = `Your appointment request for ${pet_name} is pending approval.`;
-      createNotification(usr_id, pet_id, appt_id, 'pending', message, appt_date);
+      // Create pending notification for PET OWNER
+      const ownerMessage = `Your appointment request for ${pet_name} is pending approval.`;
+      createNotification(usr_id, pet_id, appt_id, 'pending', ownerMessage, appt_date);
+
+      // ✅ GET VET ADMIN usr_id AND CREATE NOTIFICATION FOR THEM
+      const getVetAdminSQL = `
+        SELECT u.usr_id 
+        FROM vet_admin_t va
+        INNER JOIN user_t u ON va.usr_id = u.usr_id
+        INNER JOIN clinic_t c ON va.va_id = c.va_id
+        WHERE c.clinic_id = ?
+      `;
+
+      db.query(getVetAdminSQL, [clinic_id], (err3, adminResult) => {
+        if (!err3 && adminResult.length > 0) {
+          const vetAdminUsrId = adminResult[0].usr_id;
+          
+          console.log('🔍 Found vet admin usr_id:', vetAdminUsrId); // Debug log
+          
+          // Format appointment date for notification
+          const apptDate = new Date(appt_date);
+          const formattedDate = apptDate.toLocaleDateString('en-US', {
+            weekday: 'long',
+            month: 'long',
+            day: 'numeric',
+            year: 'numeric',
+            hour: 'numeric',
+            minute: '2-digit',
+            hour12: true
+          });
+          
+          const adminMessage = `${pet_name} has booked an appointment awaiting approval on ${formattedDate}`;
+          createNotification(vetAdminUsrId, pet_id, appt_id, 'pending', adminMessage, appt_date);
+          
+          console.log(`✅ Vet admin notification sent to usr_id: ${vetAdminUsrId}`); // Fixed syntax
+        } else {
+          console.error('❌ Error fetching vet admin usr_id:', err3);
+        }
+      });
 
       console.log('✅ Appointment created successfully, ID:', appt_id);
       res.status(201).json({
@@ -2534,19 +2581,23 @@ app.get('/api/patients/vet/:vt_id', (req, res) => {
       u.usr_email as owner_email,
       vt.vt_id,
       CONCAT(vu.usr_firstName, ' ', vu.usr_lastName) as vet_name,
-      a.appt_status,
-      a.appt_id
+      (SELECT appt_status FROM appointment_t 
+       WHERE pet_id = pet.pet_id AND vt_id = ?
+       ORDER BY created_at DESC LIMIT 1) as appt_status,
+      (SELECT appt_id FROM appointment_t 
+       WHERE pet_id = pet.pet_id AND vt_id = ?
+       ORDER BY created_at DESC LIMIT 1) as appt_id
     FROM pet_t pet
     INNER JOIN pet_parent_t pp ON pet.pp_id = pp.pp_id
     INNER JOIN user_t u ON pp.usr_id = u.usr_id
     LEFT JOIN veterinarian_t vt ON pet.pet_assignedVet = vt.vt_id
     LEFT JOIN user_t vu ON vt.usr_id = vu.usr_id
-    LEFT JOIN appointment_t a ON pet.pet_id = a.pet_id AND a.vt_id = ?
     WHERE pet.pet_assignedVet = ?
+    GROUP BY pet.pet_id
     ORDER BY pp.createdAt DESC
   `;
 
-  db.query(sql, [vt_id, vt_id], (err, result) => {
+  db.query(sql, [vt_id, vt_id, vt_id], (err, result) => {
     if (err) {
       console.error('❌ Error fetching patients for vet:', err);
       return res.status(500).json({ error: 'Failed to fetch patients' });

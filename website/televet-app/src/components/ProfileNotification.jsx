@@ -1,3 +1,4 @@
+//profileNotification.jsx
 import React, { useState, useRef, useEffect } from "react";
 import { Bell, User, ChevronLeft, LogOut, X, Check, Clock } from "lucide-react";
 import { useNavigate } from "react-router-dom";
