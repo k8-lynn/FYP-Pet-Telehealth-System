@@ -1,3 +1,4 @@
+//petowner-myvet.jsx
 import React, { useState, useEffect } from "react";
 import { MapPin, Search, Clock, Phone, Mail, Calendar, CheckCircle, X } from 'lucide-react';
 import io from 'socket.io-client';
@@ -6,6 +7,7 @@ import PawPattern from "./components/PawPattern";
 import PetOwnerNavbar from './components/petowner-navbar';
 import ProfileNotification from "./components/ProfileNotification";
 import BookAppointment from './components/bookAppointment';
+import Toast from './components/toast';
 
 const MyVet = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -21,6 +23,8 @@ const MyVet = () => {
   const [clinicHours, setClinicHours] = useState(null);
   const [showBookingModal, setShowBookingModal] = useState(false);
   const [clinicStatus, setClinicStatus] = useState('closed'); // 'open', 'closed', 'temporarily closed'
+  const [showBookingToast, setShowBookingToast] = useState(false);
+  const [bookingDetails, setBookingDetails] = useState(null);
 
   // Socket.IO connection
   useEffect(() => {
@@ -55,6 +59,7 @@ const MyVet = () => {
               parsedHours[field] = typeof data.hours[field] === 'string' 
                 ? JSON.parse(data.hours[field]) 
                 : data.hours[field];
+            // eslint-disable-next-line no-unused-vars
             } catch (e) {
               console.warn(`⚠️ Could not parse ${field}:`, data.hours[field]);
               parsedHours[field] = null;
@@ -263,6 +268,17 @@ const MyVet = () => {
         alert("An error occurred while registering the clinic.");
       }
     }
+  };
+
+  const handleBookingSuccess = (details) => {
+    setBookingDetails(details);
+    setShowBookingToast(true);
+    
+    // Auto-hide toast after 3 seconds
+    setTimeout(() => {
+      setShowBookingToast(false);
+      setBookingDetails(null);
+    }, 3000);
   };
   
   return (
@@ -548,9 +564,18 @@ const MyVet = () => {
             <BookAppointment 
               clinicId={registeredVet.clinic_id} 
               onClose={() => setShowBookingModal(false)}
+              onBookingSuccess={handleBookingSuccess}
             />
           </div>
         </div>
+      )}
+
+      {showBookingToast && bookingDetails && (
+        <Toast
+          type="pending"
+          title="Awaiting Approval"
+          message={`Booking pending for ${bookingDetails.time}`}
+        />
       )}
     </div>
   );

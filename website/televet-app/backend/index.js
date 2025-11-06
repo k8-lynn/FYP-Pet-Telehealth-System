@@ -2321,6 +2321,7 @@ app.post('/api/appointments', (req, res) => {
     pet_id,
     usr_id,
     appt_type,
+    consultation_type,
     appt_description,
     appt_date,
     slot_time
@@ -2331,6 +2332,7 @@ app.post('/api/appointments', (req, res) => {
     pet_id,
     usr_id,
     appt_type,
+    consultation_type,
     appt_date
   });
 
@@ -2362,11 +2364,12 @@ app.post('/api/appointments', (req, res) => {
         pet_id,
         pp_id,
         appt_type,
+        consultation_type,
         appt_description,
         appt_date,
         appt_status
       )
-      VALUES (?, ?, ?, ?, ?, ?, 'pending')
+      VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')
     `;
 
     db.query(insertSQL, [
@@ -2374,6 +2377,7 @@ app.post('/api/appointments', (req, res) => {
       pet_id,
       pp_id,
       appt_type,
+      consultation_type, // ADD THIS
       appt_description || null,
       appt_date
     ], (err2, result) => {

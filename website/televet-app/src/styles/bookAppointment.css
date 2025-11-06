@@ -1099,3 +1099,281 @@
   color: #94a3b8;
   font-style: italic;
 }
+
+/* Consultation Type Selection */
+.book-consultation-type-container {
+  padding: 3rem 2rem;
+  text-align: center;
+}
+
+.book-consultation-title {
+  font-size: 1.75rem;
+  color: #1a2e35;
+  font-weight: 800;
+  margin-bottom: 2.5rem;
+  letter-spacing: -0.02em;
+}
+
+.book-consultation-options {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 2rem;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.book-consultation-card {
+  background: white;
+  border: 3px solid #e8f0f7;
+  border-radius: 20px;
+  padding: 3rem 2rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-align: center;
+}
+
+.book-consultation-card:hover {
+  border-color: #91befe;
+  transform: translateY(-8px);
+  box-shadow: 0 12px 40px rgba(145, 190, 254, 0.2);
+}
+
+.book-consultation-card.selected {
+  border-color: #91befe;
+  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+  box-shadow: 0 12px 40px rgba(145, 190, 254, 0.3);
+}
+
+.book-consultation-icon {
+  font-size: 4rem;
+  margin-bottom: 1.5rem;
+}
+
+.book-consultation-card h4 {
+  font-size: 1.5rem;
+  color: #1a2e35;
+  font-weight: 800;
+  margin-bottom: 1rem;
+}
+
+.book-consultation-card p {
+  font-size: 1rem;
+  color: #64748b;
+  font-weight: 600;
+  line-height: 1.6;
+}
+/* Emergency Check - More Compact */
+.book-emergency-check {
+  padding: 1.5rem 2rem 2rem 2rem; /* Reduced top padding from 3rem to 1.5rem */
+  max-width: 800px; /* Slightly wider for better layout */
+  margin: 0 auto;
+  text-align: center;
+}
+
+.book-emergency-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin-bottom: 1.25rem; /* Reduced from 1.5rem */
+}
+
+.book-emergency-header svg {
+  color: #dc2626;
+  flex-shrink: 0;
+}
+
+.book-emergency-title {
+  font-size: 1.5rem; /* Reduced from 1.75rem */
+  color: #dc2626;
+  font-weight: 800;
+  margin: 0;
+}
+
+.book-emergency-question {
+  font-size: 1.1rem; /* Reduced from 1.2rem */
+  color: #1a2e35;
+  font-weight: 700;
+  margin-bottom: 1.5rem; /* Reduced from 2rem */
+}
+
+.book-emergency-symptoms {
+  background: #fef2f2;
+  border: 2px solid #fecaca;
+  border-radius: 14px;
+  padding: 1.5rem; /* Reduced from 2rem */
+  list-style: none;
+  margin-bottom: 2rem; /* Reduced from 2.5rem */
+  text-align: left;
+}
+
+.book-emergency-symptoms li {
+  font-size: 1rem; /* Reduced from 1.1rem */
+  color: #991b1b;
+  font-weight: 600;
+  padding: 0.625rem 0; /* Reduced from 0.75rem */
+  border-bottom: 1px solid #fecaca;
+  display: flex;
+  align-items: center;
+  gap: 0.875rem; /* Reduced from 1rem */
+}
+
+.book-emergency-symptoms li svg {
+  color: #dc2626;
+  flex-shrink: 0;
+}
+
+.book-emergency-symptoms li:last-child {
+  border-bottom: none;
+}
+
+.book-emergency-actions {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.25rem; /* Reduced from 1.5rem */
+}
+
+.book-emergency-btn {
+  padding: 1.25rem 1.75rem; /* Reduced from 1.5rem 2rem */
+  border: none;
+  border-radius: 14px;
+  font-size: 1rem; /* Reduced from 1.1rem */
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.625rem; /* Reduced from 0.75rem */
+}
+
+.book-emergency-btn svg {
+  flex-shrink: 0;
+}
+
+.book-emergency-btn.yes {
+  background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+  color: #991b1b;
+  border: 3px solid #ef4444;
+}
+
+.book-emergency-btn.yes:hover {
+  background: linear-gradient(135deg, #fecaca 0%, #fca5a5 100%);
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(239, 68, 68, 0.3);
+}
+
+.book-emergency-btn.no {
+  background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+  color: #065f46;
+  border: 3px solid #10b981;
+}
+
+.book-emergency-btn.no:hover {
+  background: linear-gradient(135deg, #a7f3d0 0%, #6ee7b7 100%);
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(16, 185, 129, 0.3);
+}
+
+.book-consultation-icon svg {
+  color: #3b82f6;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .book-emergency-check {
+    padding: 1rem 1.5rem;
+  }
+  
+  .book-emergency-actions {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  
+  .book-emergency-btn {
+    padding: 1rem 1.5rem;
+  }
+}
+
+/* Consultation Badge */
+.book-consultation-badge {
+  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+  color: #1e40af;
+  padding: 0.875rem 1.5rem;
+  border-radius: 12px;
+  font-weight: 700;
+  font-size: 1.1rem;
+  text-align: center;
+  margin-bottom: 1.5rem;
+  border: 2px solid #93c5fd;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+}
+
+.book-emergency-btn svg {
+  flex-shrink: 0;
+}
+
+.book-modal-consultation-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  background: #f0f9ff;
+  padding: 1rem 1.5rem;
+  border-radius: 12px;
+  margin: 1rem 0;
+  border: 2px solid #bfdbfe;
+}
+
+.book-badge-icon {
+  font-size: 1.5rem;
+}
+
+.book-modal-consultation-badge span:last-child {
+  font-size: 1rem;
+  color: #1e40af;
+  font-weight: 700;
+}
+
+/* Wider Container */
+.book-appointment-container {
+  max-width: 1600px; /* Increased from 1400px */
+}
+
+@media (max-width: 768px) {
+  .book-consultation-options {
+    grid-template-columns: 1fr;
+  }
+  
+  .book-emergency-actions {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Back Button */
+.book-back-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: #f8fafc;
+  color: #64748b;
+  border: 2px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 0.75rem 1.25rem;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-bottom: 1.5rem;
+  font-family: inherit;
+}
+
+.book-back-btn:hover {
+  background: #91befe;
+  color: white;
+  border-color: #91befe;
+  transform: translateX(-4px);
+}

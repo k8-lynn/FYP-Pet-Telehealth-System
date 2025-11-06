@@ -1,10 +1,9 @@
 //bookAppointment.jsx
 import React, { useState, useEffect, useRef } from 'react';
-import { Calendar, Clock, CheckCircle, ChevronLeft, ChevronRight, X } from 'lucide-react';
-import "../styles/bookAppointment.css";
+import { Calendar, Clock, CheckCircle, ChevronLeft, ChevronRight, X, Monitor, Building2, AlertTriangle, Droplet, Wind, Activity, HeartPulse, CircleAlert, AlertCircle } from 'lucide-react';import "../styles/bookAppointment.css";
 import { io } from "socket.io-client";
 
-const BookAppointment = ({ clinicId, onClose }) => {
+const BookAppointment = ({ clinicId, onClose, onBookingSuccess }) => {
   const [viewMode, setViewMode] = useState('today');
   const [currentDate, setCurrentDate] = useState(new Date());
   const [timeSlots, setTimeSlots] = useState([]);
@@ -14,12 +13,15 @@ const BookAppointment = ({ clinicId, onClose }) => {
   const [selectedSlot, setSelectedSlot] = useState(null);
   const [selectedDate, setSelectedDate] = useState(null);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
-  const [bookingSuccess, setBookingSuccess] = useState(false);
   const [appointmentType, setAppointmentType] = useState('');
   const [appointmentDescription, setAppointmentDescription] = useState('');
   const socketRef = useRef(null);
   const [userPets, setUserPets] = useState([]);
   const [selectedPet, setSelectedPet] = useState(null);
+  // New states for consultation flow
+  const [consultationType, setConsultationType] = useState(null); // 'online' or 'physical'
+  const [showEmergencyCheck, setShowEmergencyCheck] = useState(false);
+  const [bookingStep, setBookingStep] = useState(1); // 1: choose type, 2: emergency check, 3: slot selection, 4: details
 
   const appointmentTypes = [
     { value: 'Check-up', color: '#a8ceff' },
@@ -224,14 +226,35 @@ const BookAppointment = ({ clinicId, onClose }) => {
   }, []);
 
   const handleSlotClick = (slot, date = null) => {
-    if (slot.status === 'available') {
-      setSelectedSlot(slot);
-      setSelectedDate(date || currentDate);
-      setAppointmentType('');
-      setAppointmentDescription('');
-      setShowConfirmModal(true);
-    }
-  };
+  if (slot.status === 'available') {
+    setSelectedSlot(slot);
+    setSelectedDate(date || currentDate);
+    setBookingStep(4); // Jump to details step
+    setShowConfirmModal(true);
+  }
+};
+
+const handleConsultationTypeSelect = (type) => {
+  setConsultationType(type);
+  if (type === 'online') {
+    setShowEmergencyCheck(true);
+    setBookingStep(2);
+  } else {
+    setShowEmergencyCheck(false);
+    setBookingStep(3);
+  }
+};
+
+const handleEmergencyResponse = (isEmergency) => {
+  if (isEmergency) {
+    setConsultationType('physical');
+    setShowEmergencyCheck(false);
+    setBookingStep(3);
+  } else {
+    setShowEmergencyCheck(false);
+    setBookingStep(3);
+  }
+};
 
   const handleDayClick = async (date) => {
     setCurrentDate(date);
@@ -305,6 +328,7 @@ const BookAppointment = ({ clinicId, onClose }) => {
           pet_id: selectedPet.pet_id,
           usr_id: userId,
           appt_type: appointmentType,
+          consultation_type: consultationType, // NEW
           appt_description: appointmentDescription,
           appt_date: appointmentDateTime,
           slot_time: selectedSlot.time
@@ -313,19 +337,28 @@ const BookAppointment = ({ clinicId, onClose }) => {
   
       if (appointmentRes.ok) {
         setShowConfirmModal(false);
-        setBookingSuccess(true);
         setSelectedPet(null);
         
-        setTimeout(() => {
-          setBookingSuccess(false);
-          setSelectedSlot(null);
-          setSelectedDate(null);
-          setAppointmentType('');
-          setAppointmentDescription('');
-        }, 3000);
+        // ✅ Close modal first
+        onClose();
+        
+        // ✅ Notify parent to show toast
+        if (onBookingSuccess) {
+          onBookingSuccess({
+            time: selectedSlot.time,
+            date: selectedDate
+          });
+        }
+        
+        // ✅ Reset form state
+        setSelectedSlot(null);
+        setSelectedDate(null);
+        setAppointmentType('');
+        setAppointmentDescription('');
       } else {
         alert('Failed to create appointment record');
       }
+
     } catch (error) {
       console.error('Error booking slot:', error);
       alert('An error occurred while booking');
@@ -516,99 +549,221 @@ const BookAppointment = ({ clinicId, onClose }) => {
         </button>
       </div>
 
-      <div className="book-view-selector">
+      {/* Back button for navigation */}
+      {bookingStep > 1 && !showConfirmModal && (
         <button 
-          className={`book-view-btn ${viewMode === 'today' ? 'active' : ''}`}
-          onClick={() => setViewMode('today')}
+          className="book-back-btn"
+          onClick={() => {
+            if (bookingStep === 3) {
+              if (consultationType === 'online') {
+                setBookingStep(2);
+                setShowEmergencyCheck(true);
+              } else {
+                setBookingStep(1);
+              }
+            } else if (bookingStep === 2) {
+              setBookingStep(1);
+              setShowEmergencyCheck(false);
+            }
+          }}
         >
-          Today
-        </button>
-        <button 
-          className={`book-view-btn ${viewMode === 'weekly' ? 'active' : ''}`}
-          onClick={() => setViewMode('weekly')}
-        >
-          This Week
-        </button>
-        <button 
-          className={`book-view-btn ${viewMode === 'monthly' ? 'active' : ''}`}
-          onClick={() => setViewMode('monthly')}
-        >
-          This Month
-        </button>
-      </div>
-
-      <div className="book-date-nav">
-        <button className="book-nav-btn" onClick={() => navigateDate(-1)}>
           <ChevronLeft size={20} />
+          Back
         </button>
-        <span className="book-current-date">{formatDate(currentDate)}</span>
-        <button className="book-nav-btn" onClick={() => navigateDate(1)}>
-          <ChevronRight size={20} />
-        </button>
-      </div>
+      )}
 
-      <div className="book-content-area">
-        {loading ? (
-          <div className="book-loading">
-            <div className="book-loading-spinner"></div>
-            <p>Loading available slots...</p>
+      {/* Step 1: Consultation Type Selection */}
+      {bookingStep === 1 && (
+        <div className="book-consultation-type-container">
+          <h3 className="book-consultation-title">How would you like to consult with a veterinarian?</h3>
+          <div className="book-consultation-options">
+            <div 
+              className={`book-consultation-card ${consultationType === 'online' ? 'selected' : ''}`}
+              onClick={() => handleConsultationTypeSelect('online')}
+            >
+              <div className="book-consultation-icon">
+                <Monitor size={64} />
+              </div>
+              <h4>Online Consultation</h4>
+              <p>Connect with a vet remotely for non-urgent cases</p>
+            </div>
+            <div 
+              className={`book-consultation-card ${consultationType === 'physical' ? 'selected' : ''}`}
+              onClick={() => handleConsultationTypeSelect('physical')}
+            >
+              <div className="book-consultation-icon">
+                <Building2 size={64} />
+              </div>
+              <h4>Physical Clinic Visit</h4>
+              <p>Visit the clinic in person for examinations</p>
+            </div>
           </div>
-        ) : (
-          <>
-            {viewMode === 'today' && (
-              <>
-                {timeSlots.length > 0 && (
-                  <div className="book-stats">
-                    <div className="book-stat-item available">
-                      <span>Available</span>
-                      <div>{availableCount}</div>
-                    </div>
-                    <div className="book-stat-item booked">
-                      <span>Booked</span>
-                      <div>{takenCount}</div>
-                    </div>
-                  </div>
-                )}
+        </div>
+      )}
 
-                <div className="book-slots-container">
-                  {timeSlots.length === 0 ? (
-                    <div className="book-empty">
-                      <Clock size={48} />
-                      <p>No time slots available</p>
-                      <span>Please check back later or contact the clinic directly</span>
-                    </div>
-                  ) : (
-                    <div className="book-slots-grid">
-                      {timeSlots.map(slot => (
-                        <div 
-                          key={slot.id}
-                          className={`book-time-slot ${slot.status} ${selectedSlot?.id === slot.id ? 'selected' : ''}`}
-                          onClick={() => handleSlotClick(slot)}
-                        >
-                          <div className="book-slot-header">
-                            <span className="book-slot-time">{slot.time}</span>
-                            <div className="book-slot-indicator"></div>
-                          </div>
-                          {slot.status === 'available' ? (
-                            <div className="book-slot-available">Available</div>
-                          ) : slot.status === 'pending' ? (
-                            <div className="book-slot-pending">Pending</div>
-                          ) : (
-                            <div className="book-slot-booked">Booked</div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
+      {/* Step 2: Emergency Check (Online Only) */}
+      {bookingStep === 2 && showEmergencyCheck && (
+        <div className="book-emergency-check">
+          <div className="book-emergency-header">
+            <AlertTriangle size={48} />
+            <h3 className="book-emergency-title">Quick Safety Check</h3>
+          </div>
+          <p className="book-emergency-question">
+            Is your pet experiencing any of the following?
+          </p>
+          <ul className="book-emergency-symptoms">
+            <li>
+              <Droplet size={20} />
+              <span>Bleeding heavily</span>
+            </li>
+            <li>
+              <Wind size={20} />
+              <span>Choking or cannot breathe properly</span>
+            </li>
+            <li>
+              <Activity size={20} />
+              <span>Having seizures</span>
+            </li>
+            <li>
+              <HeartPulse size={20} />
+              <span>Cannot move or collapsed</span>
+            </li>
+            <li>
+              <CircleAlert size={20} />
+              <span>Severe vomiting or diarrhea</span>
+            </li>
+          </ul>
+          <div className="book-emergency-actions">
+            <button 
+              className="book-emergency-btn yes"
+              onClick={() => handleEmergencyResponse(true)}
+            >
+              <AlertCircle size={24} />
+              Yes - Switch to Physical Visit
+            </button>
+            <button 
+              className="book-emergency-btn no"
+              onClick={() => handleEmergencyResponse(false)}
+            >
+              <CheckCircle size={24} />
+              No - Continue Online Booking
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Step 3: Slot Selection */}
+      {bookingStep === 3 && (
+        <>
+          <div className="book-consultation-badge">
+            {consultationType === 'online' ? (
+              <>
+                <Monitor size={20} />
+                <span>Online Consultation</span>
+              </>
+            ) : (
+              <>
+                <Building2 size={20} />
+                <span>Physical Clinic Visit</span>
               </>
             )}
+          </div>
 
-            {viewMode === 'weekly' && renderWeeklyView()}
-            {viewMode === 'monthly' && renderMonthlyView()}
-          </>
-        )}
-      </div>
+          <div className="book-view-selector">
+            <button 
+              className={`book-view-btn ${viewMode === 'today' ? 'active' : ''}`}
+              onClick={() => setViewMode('today')}
+            >
+              Today
+            </button>
+            <button 
+              className={`book-view-btn ${viewMode === 'weekly' ? 'active' : ''}`}
+              onClick={() => setViewMode('weekly')}
+            >
+              This Week
+            </button>
+            <button 
+              className={`book-view-btn ${viewMode === 'monthly' ? 'active' : ''}`}
+              onClick={() => setViewMode('monthly')}
+            >
+              This Month
+            </button>
+          </div>
+
+          <div className="book-date-nav">
+            <button className="book-nav-btn" onClick={() => navigateDate(-1)}>
+              <ChevronLeft size={20} />
+            </button>
+            <span className="book-current-date">{formatDate(currentDate)}</span>
+            <button className="book-nav-btn" onClick={() => navigateDate(1)}>
+              <ChevronRight size={20} />
+            </button>
+          </div>
+
+          <div className="book-content-area">
+            {loading ? (
+              <div className="book-loading">
+                <div className="book-loading-spinner"></div>
+                <p>Loading available slots...</p>
+              </div>
+            ) : (
+              <>
+                {viewMode === 'today' && (
+                  <>
+                    {timeSlots.length > 0 && (
+                      <div className="book-stats">
+                        <div className="book-stat-item available">
+                          <span>Available</span>
+                          <div>{availableCount}</div>
+                        </div>
+                        <div className="book-stat-item booked">
+                          <span>Booked</span>
+                          <div>{takenCount}</div>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="book-slots-container">
+                      {timeSlots.length === 0 ? (
+                        <div className="book-empty">
+                          <Clock size={48} />
+                          <p>No time slots available</p>
+                          <span>Please check back later or contact the clinic directly</span>
+                        </div>
+                      ) : (
+                        <div className="book-slots-grid">
+                          {timeSlots.map(slot => (
+                            <div 
+                              key={slot.id}
+                              className={`book-time-slot ${slot.status} ${selectedSlot?.id === slot.id ? 'selected' : ''}`}
+                              onClick={() => handleSlotClick(slot)}
+                            >
+                              <div className="book-slot-header">
+                                <span className="book-slot-time">{slot.time}</span>
+                                <div className="book-slot-indicator"></div>
+                              </div>
+                              {slot.status === 'available' ? (
+                                <div className="book-slot-available">Available</div>
+                              ) : slot.status === 'pending' ? (
+                                <div className="book-slot-pending">Pending</div>
+                              ) : (
+                                <div className="book-slot-booked">Booked</div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </>
+                )}
+
+                {viewMode === 'weekly' && renderWeeklyView()}
+                {viewMode === 'monthly' && renderMonthlyView()}
+              </>
+            )}
+          </div>
+        </>
+      )}
 
       {showConfirmModal && selectedSlot && (
         <div className="book-modal-overlay">
@@ -633,6 +788,20 @@ const BookAppointment = ({ clinicId, onClose }) => {
                   day: 'numeric', 
                   year: 'numeric' 
                 })}</span>
+              </div>
+
+              <div className="book-modal-consultation-badge">
+                {consultationType === 'online' ? (
+                  <>
+                    <Monitor size={24} />
+                    <span>Online Consultation</span>
+                  </>
+                ) : (
+                  <>
+                    <Building2 size={24} />
+                    <span>Physical Clinic Visit</span>
+                  </>
+                )}
               </div>
 
               <div className="book-pet-selection-section">
@@ -705,6 +874,8 @@ const BookAppointment = ({ clinicId, onClose }) => {
                   setSelectedDate(null);
                   setAppointmentType('');
                   setAppointmentDescription('');
+                  setSelectedPet(null);
+                  setBookingStep(3);
                 }}
               >
                 Cancel
@@ -722,15 +893,7 @@ const BookAppointment = ({ clinicId, onClose }) => {
         </div>
       )}
 
-      {bookingSuccess && (
-        <div className="book-success-toast pending">
-          <Clock size={24} />
-          <div>
-            <strong>Awaiting Approval</strong>
-            <p>Booking pending for {selectedSlot?.time}</p>
-          </div>
-        </div>
-      )}
+
     </div>
   );
 };
