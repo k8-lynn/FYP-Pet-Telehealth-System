@@ -1566,35 +1566,33 @@ function generateTimeSlots(openingTime, closingTime) {
   return slots;
 }
 
-// GET /api/clinic-slots/:clinic_id/date/:date
-app.get('/api/clinic-slots/:clinic_id/date/:date', (req, res) => {
-  const { clinic_id, date } = req.params;
+// GET /api/clinic-slots/:clinic_id/date/:date/:consultation_type
+app.get('/api/clinic-slots/:clinic_id/date/:date/:consultation_type', (req, res) => {
+  const { clinic_id, date, consultation_type } = req.params;
 
   const sql = `
     SELECT 
       clinic_slots_id,
       clinic_id,
       slot_date,
+      consultation_type,
       slots,
       last_updated
     FROM clinic_slots_t
-    WHERE clinic_id = ? AND slot_date = ?
+    WHERE clinic_id = ? AND slot_date = ? AND consultation_type = ?
   `;
 
-  db.query(sql, [clinic_id, date], (err, result) => {
+  db.query(sql, [clinic_id, date, consultation_type], (err, result) => {
     if (err) {
       console.error('❌ Error fetching clinic slots by date:', err);
       return res.status(500).json({ error: 'Failed to fetch clinic slots' });
     }
 
     if (result.length === 0) {
-      console.log('⚠️ No clinic slots found for date:', date);
       return res.status(200).json({ slots: [] });
     }
 
     const slotsData = result[0];
-    
-    // Parse JSON if it's a string
     if (slotsData.slots && typeof slotsData.slots === 'string') {
       try {
         slotsData.slots = JSON.parse(slotsData.slots);
@@ -1603,16 +1601,15 @@ app.get('/api/clinic-slots/:clinic_id/date/:date', (req, res) => {
       }
     }
 
-    console.log('✅ Clinic slots retrieved for date:', date);
     res.status(200).json(slotsData);
   });
 });
 
-// PUT /api/clinic-slots/:clinic_id/date/:date
-app.put('/api/clinic-slots/:clinic_id/date/:date', (req, res) => {
-  const { clinic_id, date } = req.params;
+// PUT /api/clinic-slots/:clinic_id/date/:date/:consultation_type
+app.put('/api/clinic-slots/:clinic_id/date/:date/:consultation_type', (req, res) => {
+  const { clinic_id, date, consultation_type } = req.params;
   const { slots } = req.body;
-  const io = req.app.get('io'); // ✅ Get io instance
+  const io = req.app.get('io');
 
   if (!slots) {
     return res.status(400).json({ error: 'Slots data is required' });
@@ -1620,9 +1617,12 @@ app.put('/api/clinic-slots/:clinic_id/date/:date', (req, res) => {
 
   const slotsJSON = JSON.stringify(slots);
 
-  const checkSQL = 'SELECT clinic_slots_id FROM clinic_slots_t WHERE clinic_id = ? AND slot_date = ?';
+  const checkSQL = `
+    SELECT clinic_slots_id FROM clinic_slots_t 
+    WHERE clinic_id = ? AND slot_date = ? AND consultation_type = ?
+  `;
 
-  db.query(checkSQL, [clinic_id, date], (err, result) => {
+  db.query(checkSQL, [clinic_id, date, consultation_type], (err, result) => {
     if (err) {
       console.error('❌ Error checking clinic slots:', err);
       return res.status(500).json({ error: 'Database error' });
@@ -1630,51 +1630,42 @@ app.put('/api/clinic-slots/:clinic_id/date/:date', (req, res) => {
 
     if (result.length === 0) {
       const insertSQL = `
-        INSERT INTO clinic_slots_t (clinic_id, slot_date, slots)
-        VALUES (?, ?, ?)
+        INSERT INTO clinic_slots_t (clinic_id, slot_date, consultation_type, slots)
+        VALUES (?, ?, ?, ?)
       `;
 
-      db.query(insertSQL, [clinic_id, date, slotsJSON], (err2) => {
+      db.query(insertSQL, [clinic_id, date, consultation_type, slotsJSON], (err2) => {
         if (err2) {
           console.error('❌ Error inserting clinic slots:', err2);
           return res.status(500).json({ error: 'Failed to create clinic slots' });
         }
 
-        console.log('✅ Clinic slots created for date:', date);
-
-        // 🟢 Emit Socket.IO event
-        io.emit('slotUpdated', { clinic_id, date, action: 'created' });
-
+        io.emit('slotUpdated', { clinic_id, date, consultation_type, action: 'created' });
         res.status(200).json({ message: 'Clinic slots created successfully' });
       });
     } else {
       const updateSQL = `
         UPDATE clinic_slots_t
         SET slots = ?, last_updated = NOW()
-        WHERE clinic_id = ? AND slot_date = ?
+        WHERE clinic_id = ? AND slot_date = ? AND consultation_type = ?
       `;
 
-      db.query(updateSQL, [slotsJSON, clinic_id, date], (err2) => {
+      db.query(updateSQL, [slotsJSON, clinic_id, date, consultation_type], (err2) => {
         if (err2) {
           console.error('❌ Error updating clinic slots:', err2);
           return res.status(500).json({ error: 'Failed to update clinic slots' });
         }
 
-        console.log('✅ Clinic slots updated for date:', date);
-
-        // 🟢 Emit Socket.IO event
-        io.emit('slotUpdated', { clinic_id, date, action: 'updated' });
-
+        io.emit('slotUpdated', { clinic_id, date, consultation_type, action: 'updated' });
         res.status(200).json({ message: 'Clinic slots updated successfully' });
       });
     }
   });
 });
 
-
-// GET /api/clinic-slots/:clinic_id/range
-app.get('/api/clinic-slots/:clinic_id/range', (req, res) => {
-  const { clinic_id } = req.params;
+/// GET /api/clinic-slots/:clinic_id/range/:consultation_type
+app.get('/api/clinic-slots/:clinic_id/range/:consultation_type', (req, res) => {
+  const { clinic_id, consultation_type } = req.params;
   const { startDate, endDate } = req.query;
 
   if (!startDate || !endDate) {
@@ -1686,32 +1677,28 @@ app.get('/api/clinic-slots/:clinic_id/range', (req, res) => {
       slot_date,
       slots
     FROM clinic_slots_t
-    WHERE clinic_id = ? AND slot_date BETWEEN ? AND ?
+    WHERE clinic_id = ? AND consultation_type = ? AND slot_date BETWEEN ? AND ?
   `;
 
-  db.query(sql, [clinic_id, startDate, endDate], (err, results) => {
+  db.query(sql, [clinic_id, consultation_type, startDate, endDate], (err, results) => {
     if (err) {
       console.error('❌ Error fetching clinic slots range:', err);
       return res.status(500).json({ error: 'Failed to fetch clinic slots' });
     }
 
-    // Process results into count object
     const slotCounts = {};
 
     results.forEach(row => {
-      // Handle both string and Date formats from MySQL
       let dateKey;
       if (typeof row.slot_date === 'string') {
-        dateKey = row.slot_date; // Already in YYYY-MM-DD format
+        dateKey = row.slot_date;
       } else {
-        // If it's a Date object, format it using local time components
         const d = new Date(row.slot_date);
         dateKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
       }
       
       let slotsArray = row.slots;
 
-      // Parse JSON if string
       if (typeof slotsArray === 'string') {
         try {
           slotsArray = JSON.parse(slotsArray);
@@ -1728,16 +1715,14 @@ app.get('/api/clinic-slots/:clinic_id/range', (req, res) => {
       };
     });
 
-    console.log('✅ Clinic slots range retrieved:', startDate, 'to', endDate);
     res.status(200).json({ slots: slotCounts });
   });
 });
 
-// POST /api/clinic-slots/generate/:clinic_id/date/:date
-app.post('/api/clinic-slots/generate/:clinic_id/date/:date', (req, res) => {
-  const { clinic_id, date } = req.params;
+// POST /api/clinic-slots/generate/:clinic_id/date/:date/:consultation_type
+app.post('/api/clinic-slots/generate/:clinic_id/date/:date/:consultation_type', (req, res) => {
+  const { clinic_id, date, consultation_type } = req.params;
 
-  // First, get clinic hours
   const hoursSQL = 'SELECT * FROM clinic_hours_t WHERE clinic_id = ?';
   
   db.query(hoursSQL, [clinic_id], (err, hoursResult) => {
@@ -1747,12 +1732,10 @@ app.post('/api/clinic-slots/generate/:clinic_id/date/:date', (req, res) => {
     }
 
     if (hoursResult.length === 0) {
-      return res.status(404).json({ error: 'Clinic hours not found. Please set clinic hours first.' });
+      return res.status(404).json({ error: 'Clinic hours not found' });
     }
 
     const hoursData = hoursResult[0];
-    
-    // Get day of week from date
     const dateObj = new Date(date + 'T00:00:00');
     const daysOfWeek = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
     const dayName = daysOfWeek[dateObj.getDay()];
@@ -1760,7 +1743,6 @@ app.post('/api/clinic-slots/generate/:clinic_id/date/:date', (req, res) => {
     const dayHoursField = `${dayName}_hours`;
     let dayHours = hoursData[dayHoursField];
 
-    // Parse if it's a string
     if (typeof dayHours === 'string') {
       try {
         dayHours = JSON.parse(dayHours);
@@ -1770,48 +1752,55 @@ app.post('/api/clinic-slots/generate/:clinic_id/date/:date', (req, res) => {
     }
 
     if (!dayHours || dayHours.status === 'Closed' || !dayHours.opening || !dayHours.closing) {
-      return res.status(400).json({ error: `Clinic is closed on ${dayName}s or hours not set` });
+      return res.status(400).json({ error: `Clinic is closed on ${dayName}s` });
     }
 
-    // Generate time slots using the existing helper function
-    const slots = generateTimeSlots(dayHours.opening, dayHours.closing);
+    // Generate different slot intervals based on consultation type
+    const interval = consultation_type === 'online' ? 15 : 30; // 15 min for online, 30 for physical
+    const slots = generateTimeSlotsWithInterval(dayHours.opening, dayHours.closing, interval);
     const slotsJSON = JSON.stringify(slots);
     
-    // Check if slots exist for this date
-    const checkSQL = 'SELECT clinic_slots_id FROM clinic_slots_t WHERE clinic_id = ? AND slot_date = ?';
+    const checkSQL = `
+      SELECT clinic_slots_id FROM clinic_slots_t 
+      WHERE clinic_id = ? AND slot_date = ? AND consultation_type = ?
+    `;
 
-    db.query(checkSQL, [clinic_id, date], (err2, checkResult) => {
+    db.query(checkSQL, [clinic_id, date, consultation_type], (err2, checkResult) => {
       if (err2) {
         console.error('❌ Error checking clinic slots:', err2);
         return res.status(500).json({ error: 'Database error' });
       }
 
       if (checkResult.length === 0) {
-        // INSERT
-        const insertSQL = 'INSERT INTO clinic_slots_t (clinic_id, slot_date, slots) VALUES (?, ?, ?)';
-        db.query(insertSQL, [clinic_id, date, slotsJSON], (err3) => {
+        const insertSQL = `
+          INSERT INTO clinic_slots_t (clinic_id, slot_date, consultation_type, slots) 
+          VALUES (?, ?, ?, ?)
+        `;
+        db.query(insertSQL, [clinic_id, date, consultation_type, slotsJSON], (err3) => {
           if (err3) {
             console.error('❌ Error inserting slots:', err3);
             return res.status(500).json({ error: 'Failed to create slots' });
           }
-          console.log('✅ Default slots generated for date:', date);
-          // ✅ ADD THIS: Emit socket event
+          
           const io = req.app.get('io');
-          io.emit('slotUpdated', { clinic_id, date, action: 'generated' });
+          io.emit('slotUpdated', { clinic_id, date, consultation_type, action: 'generated' });
           
           res.status(200).json({ message: 'Default slots generated successfully', slots });
         });
       } else {
-        // UPDATE
-        const updateSQL = 'UPDATE clinic_slots_t SET slots = ?, last_updated = NOW() WHERE clinic_id = ? AND slot_date = ?';
-        db.query(updateSQL, [slotsJSON, clinic_id, date], (err3) => {
+        const updateSQL = `
+          UPDATE clinic_slots_t 
+          SET slots = ?, last_updated = NOW() 
+          WHERE clinic_id = ? AND slot_date = ? AND consultation_type = ?
+        `;
+        db.query(updateSQL, [slotsJSON, clinic_id, date, consultation_type], (err3) => {
           if (err3) {
             console.error('❌ Error updating slots:', err3);
             return res.status(500).json({ error: 'Failed to update slots' });
           }
-          console.log('✅ Default slots updated for date:', date);
+          
           const io = req.app.get('io');
-          io.emit('slotUpdated', { clinic_id, date, action: 'regenerated' });
+          io.emit('slotUpdated', { clinic_id, date, consultation_type, action: 'regenerated' });
           
           res.status(200).json({ message: 'Default slots generated successfully', slots });
         });
@@ -1819,6 +1808,47 @@ app.post('/api/clinic-slots/generate/:clinic_id/date/:date', (req, res) => {
     });
   });
 });
+
+// Helper function with configurable interval
+function generateTimeSlotsWithInterval(openingTime, closingTime, interval = 30) {
+  const slots = [];
+  let slotId = 1;
+
+  const parseTime = (timeStr) => {
+    const [time, period] = timeStr.split(' ');
+    let [hours, minutes] = time.split(':').map(Number);
+    
+    if (period === 'PM' && hours !== 12) hours += 12;
+    if (period === 'AM' && hours === 12) hours = 0;
+    
+    return hours * 60 + minutes;
+  };
+
+  const formatTime = (minutes) => {
+    let hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    const period = hours >= 12 ? 'PM' : 'AM';
+    
+    if (hours > 12) hours -= 12;
+    if (hours === 0) hours = 12;
+    
+    return `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')} ${period}`;
+  };
+
+  const startMinutes = parseTime(openingTime);
+  const endMinutes = parseTime(closingTime);
+
+  for (let minutes = startMinutes; minutes < endMinutes; minutes += interval) {
+    slots.push({
+      id: slotId++,
+      time: formatTime(minutes),
+      status: 'available',
+      patient: null
+    });
+  }
+
+  return slots;
+}
 
 // GET /api/clinic-appointments-count/:clinic_id
 app.get('/api/clinic-appointments-count/:clinic_id', (req, res) => {

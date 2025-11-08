@@ -1950,3 +1950,42 @@
     flex-wrap: wrap;
   }
 }
+
+/* Consultation Type Toggle (matches your view toggle style) */
+.schedule-consultation-toggle {
+  display: flex;
+  background: #f8fafc;
+  border-radius: 12px;
+  padding: 0.25rem;
+  border: 2px solid #e2e8f0;
+  gap: 0.25rem;
+}
+
+.schedule-consultation-toggle button {
+  padding: 0.6rem 1.25rem;
+  border: none;
+  background: transparent;
+  color: #64748b;
+  font-size: 0.9rem;
+  font-weight: 700;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+  letter-spacing: -0.01em;
+}
+
+.schedule-consultation-toggle button.active {
+  background: linear-gradient(135deg, #a8ceff 0%, #91befe 100%);
+  color: white;
+  box-shadow: 0 2px 8px rgba(145, 190, 254, 0.3);
+}
+
+.schedule-consultation-toggle button:hover:not(.active) {
+  background: #e8f4f8;
+  color: #91befe;
+}
+
+.schedule-consultation-toggle button:active {
+  transform: scale(0.98);
+}

@@ -33,11 +33,15 @@ const VetAdminAppointments = () => {
   const [selectedVeterinarian, setSelectedVeterinarian] = useState(null);
   const socketRef = useRef(null);
 
-  const [timeSlots, setTimeSlots] = useState({});
+  const [timeSlots, setTimeSlots] = useState({
+    physical: {},
+    online: {}
+  });
   const [selectedDate, setSelectedDate] = useState(null);
   const [showDateSlotModal, setShowDateSlotModal] = useState(false);
   const [weekSlotCounts, setWeekSlotCounts] = useState({});
   const [monthSlotCounts, setMonthSlotCounts] = useState({});
+  const [consultationType, setConsultationType] = useState('physical'); // Add this state
 
   const [hoursForm, setHoursForm] = useState({
     monday: { opening: '09:00 AM', closing: '05:00 PM', status: 'Available' },
@@ -89,28 +93,27 @@ const VetAdminAppointments = () => {
   useEffect(() => {
     if (!clinic_id) return;
     
+    // Fetch both physical and online slots
     if (viewMode === 'today') {
-      const todayKey = formatDateKey(currentDate);
-      fetchClinicSlotsByDate(clinic_id, currentDate);
+      fetchClinicSlotsByDate(clinic_id, currentDate, 'physical');
+      fetchClinicSlotsByDate(clinic_id, currentDate, 'online');
     } else if (viewMode === 'weekly') {
       const weekDays = getWeekDays(currentDate);
-      const startDate = weekDays[0];
-      const endDate = weekDays[6];
-      fetchClinicSlotsRange(clinic_id, startDate, endDate);
+      fetchClinicSlotsRange(clinic_id, weekDays[0], weekDays[6], 'physical');
+      fetchClinicSlotsRange(clinic_id, weekDays[0], weekDays[6], 'online');
     } else if (viewMode === 'monthly') {
       const year = currentDate.getFullYear();
       const month = currentDate.getMonth();
-      const startDate = new Date(year, month, 1);
-      const endDate = new Date(year, month + 1, 0);
-      fetchClinicSlotsRange(clinic_id, startDate, endDate);
+      fetchClinicSlotsRange(clinic_id, new Date(year, month, 1), new Date(year, month + 1, 0), 'physical');
+      fetchClinicSlotsRange(clinic_id, new Date(year, month, 1), new Date(year, month + 1, 0), 'online');
     }
   }, [clinic_id, currentDate, viewMode]);
 
   useEffect(() => {
     if (showDateSlotModal && selectedDate && clinic_id) {
-      fetchClinicSlotsByDate(clinic_id, selectedDate);
+      fetchClinicSlotsByDate(clinic_id, selectedDate, consultationType);
     }
-  }, [showDateSlotModal, selectedDate, clinic_id]);
+  }, [showDateSlotModal, selectedDate, clinic_id, consultationType]);
 
   useEffect(() => {
     if (!clinic_id) return;
@@ -127,26 +130,25 @@ const VetAdminAppointments = () => {
       console.log("✅ Vet Admin connected to Socket.IO:", socket.id);
     });
 
-    socket.on("slotUpdated", (data) => {
-      console.log("📡 Vet Admin received slot update:", data);
-
-      if (data.clinic_id == clinic_id) {
-        console.log("🔄 Refreshing vet admin view for clinic:", clinic_id);
-
-        fetchAppointmentCounts(clinic_id);
-        
-        if (viewMode === "today") {
-          fetchClinicSlotsByDate(clinic_id, currentDate);
-        } else if (viewMode === "weekly") {
-          const weekDays = getWeekDays(currentDate);
-          fetchClinicSlotsRange(clinic_id, weekDays[0], weekDays[6]);
-        } else if (viewMode === "monthly") {
-          const year = currentDate.getFullYear();
-          const month = currentDate.getMonth();
-          fetchClinicSlotsRange(clinic_id, new Date(year, month, 1), new Date(year, month + 1, 0));
-        }
+  socket.on("slotUpdated", (data) => {
+    if (data.clinic_id == clinic_id) {
+      fetchAppointmentCounts(clinic_id);
+      
+      if (viewMode === "today") {
+        fetchClinicSlotsByDate(clinic_id, currentDate, 'physical');
+        fetchClinicSlotsByDate(clinic_id, currentDate, 'online');
+      } else if (viewMode === "weekly") {
+        const weekDays = getWeekDays(currentDate);
+        fetchClinicSlotsRange(clinic_id, weekDays[0], weekDays[6], 'physical');
+        fetchClinicSlotsRange(clinic_id, weekDays[0], weekDays[6], 'online');
+      } else if (viewMode === "monthly") {
+        const year = currentDate.getFullYear();
+        const month = currentDate.getMonth();
+        fetchClinicSlotsRange(clinic_id, new Date(year, month, 1), new Date(year, month + 1, 0), 'physical');
+        fetchClinicSlotsRange(clinic_id, new Date(year, month, 1), new Date(year, month + 1, 0), 'online');
       }
-    });
+    }
+  });
 
     socket.on("connect_error", (error) => {
       console.error("❌ Vet Admin socket error:", error);
@@ -167,18 +169,20 @@ const VetAdminAppointments = () => {
 
     const handleSlotUpdate = (data) => {
       if (data.clinic_id == clinic_id) {
-
         fetchAppointmentCounts(clinic_id);
 
         if (viewMode === "today") {
-          fetchClinicSlotsByDate(clinic_id, currentDate);
+          fetchClinicSlotsByDate(clinic_id, currentDate, 'physical');
+          fetchClinicSlotsByDate(clinic_id, currentDate, 'online');
         } else if (viewMode === "weekly") {
           const weekDays = getWeekDays(currentDate);
-          fetchClinicSlotsRange(clinic_id, weekDays[0], weekDays[6]);
+          fetchClinicSlotsRange(clinic_id, weekDays[0], weekDays[6], 'physical');
+          fetchClinicSlotsRange(clinic_id, weekDays[0], weekDays[6], 'online');
         } else if (viewMode === "monthly") {
           const year = currentDate.getFullYear();
           const month = currentDate.getMonth();
-          fetchClinicSlotsRange(clinic_id, new Date(year, month, 1), new Date(year, month + 1, 0));
+          fetchClinicSlotsRange(clinic_id, new Date(year, month, 1), new Date(year, month + 1, 0), 'physical');
+          fetchClinicSlotsRange(clinic_id, new Date(year, month, 1), new Date(year, month + 1, 0), 'online');
         }
       }
     };
@@ -283,45 +287,53 @@ const VetAdminAppointments = () => {
     }
   };
 
-  const fetchClinicSlotsByDate = async (clinicId, date) => {
+  const fetchClinicSlotsByDate = async (clinicId, date, type = consultationType) => {
     const dateKey = formatDateKey(date);
     try {
-      const res = await fetch(`http://localhost:5000/api/clinic-slots/${clinicId}/date/${dateKey}`);
+      const res = await fetch(`http://localhost:5000/api/clinic-slots/${clinicId}/date/${dateKey}/${type}`);
       const data = await res.json();
       
       if (data && data.slots) {
         setTimeSlots(prev => ({
           ...prev,
-          [dateKey]: data.slots
+          [consultationType]: {
+            ...prev[consultationType],
+            [dateKey]: data.slots
+          }
         }));
       } else {
         setTimeSlots(prev => ({
           ...prev,
-          [dateKey]: []
+          [type]: {
+            ...prev[type],
+            [dateKey]: []
+          }
         }));
       }
     } catch (error) {
       console.error("Error fetching clinic slots for date:", error);
-      setTimeSlots(prev => ({
-        ...prev,
-        [dateKey]: []
-      }));
     }
   };
-  
-  const fetchClinicSlotsRange = async (clinicId, startDate, endDate) => {
+
+  const fetchClinicSlotsRange = async (clinicId, startDate, endDate, type = consultationType) => {
     const startKey = formatDateKey(startDate);
     const endKey = formatDateKey(endDate);
     
     try {
-      const res = await fetch(`http://localhost:5000/api/clinic-slots/${clinicId}/range?startDate=${startKey}&endDate=${endKey}`);
+      const res = await fetch(`http://localhost:5000/api/clinic-slots/${clinicId}/range/${type}?startDate=${startKey}&endDate=${endKey}`);
       const data = await res.json();
       
       if (data && data.slots) {
         if (viewMode === 'weekly') {
-          setWeekSlotCounts(data.slots);
+          setWeekSlotCounts(prev => ({
+            ...prev,
+            [type]: data.slots
+          }));
         } else if (viewMode === 'monthly') {
-          setMonthSlotCounts(data.slots);
+          setMonthSlotCounts(prev => ({
+            ...prev,
+            [type]: data.slots
+          }));
         }
       }
     } catch (error) {
@@ -349,24 +361,26 @@ const VetAdminAppointments = () => {
       alert("Clinic not found");
       return;
     }
-  
+
     setSlotsLoading(true);
     try {
       const todayKey = formatDateKey(currentDate);
-      const res = await fetch(`http://localhost:5000/api/clinic-slots/generate/${clinic_id}/date/${todayKey}`, {
+      const res = await fetch(`http://localhost:5000/api/clinic-slots/generate/${clinic_id}/date/${todayKey}/${consultationType}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' }
       });
-  
+
       const data = await res.json();
       
       if (res.ok) {
         setTimeSlots(prev => ({
           ...prev,
-          [todayKey]: data.slots
+          [consultationType]: {
+            ...prev[consultationType],
+            [todayKey]: data.slots
+          }
         }));
-        setSlotsGenerated(true);
-        alert("Default time slots generated successfully!");
+        alert(`Default ${consultationType} time slots generated successfully!`);
       } else {
         alert(data.error || "Failed to generate slots");
       }
@@ -502,7 +516,7 @@ const VetAdminAppointments = () => {
   
     const targetDate = selectedDate || currentDate;
     const dateKey = formatDateKey(targetDate);
-    const existingSlots = timeSlots[dateKey] || [];
+    const existingSlots = timeSlots[consultationType]?.[dateKey] || [];
   
     const newSlot = {
       id: existingSlots.length > 0 ? Math.max(...existingSlots.map(s => s.id)) + 1 : 1,
@@ -551,7 +565,7 @@ const VetAdminAppointments = () => {
     setSlotsLoading(true);
     
     try {
-      const res = await fetch(`http://localhost:5000/api/clinic-slots/generate/${clinic_id}/date/${dateKey}`, {
+      const res = await fetch(`http://localhost:5000/api/clinic-slots/generate/${clinic_id}/date/${dateKey}/${consultationType}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' }
       });
@@ -695,7 +709,7 @@ const handleApproveSlot = async (slot) => {
 };
 
   const todayKey = formatDateKey(currentDate);
-  const todaySlots = timeSlots[todayKey] || [];
+  const todaySlots = timeSlots[consultationType]?.[todayKey] || [];
   const availableCount = todaySlots.filter(s => s.status === 'available').length;
   const takenCount = todaySlots.filter(s => s.status === 'taken').length;
   const pendingCount = todaySlots.filter(s => s.status === 'pending').length;
@@ -779,6 +793,21 @@ const handleApproveSlot = async (slot) => {
                   onClick={() => setViewMode('monthly')}
                 >
                   Monthly
+                </button>
+              </div>
+
+              <div className="schedule-consultation-toggle" style={{ marginLeft: '1rem' }}>
+                <button 
+                  className={consultationType === 'physical' ? 'active' : ''}
+                  onClick={() => setConsultationType('physical')}
+                >
+                  Physical
+                </button>
+                <button 
+                  className={consultationType === 'online' ? 'active' : ''}
+                  onClick={() => setConsultationType('online')}
+                >
+                  Online
                 </button>
               </div>
               <div className="schedule-nav-controls">
@@ -911,7 +940,7 @@ const handleApproveSlot = async (slot) => {
               <div className="schedule-calendar-grid">
                 {getWeekDays(currentDate).map((day, index) => {
                   const dateKey = formatDateKey(day);
-                  const dayCounts = weekSlotCounts[dateKey] || { available: 0, booked: 0, pending: 0, total: 0 };
+                  const dayCounts = weekSlotCounts[consultationType]?.[dateKey] || { available: 0, booked: 0, pending: 0, total: 0 };
                   
                   return (
                     <div 
@@ -967,7 +996,7 @@ const handleApproveSlot = async (slot) => {
                   }
                   
                   const dateKey = formatDateKey(day);
-                  const dayCounts = monthSlotCounts[dateKey] || { available: 0, booked: 0, pending: 0, total: 0 };
+                  const dayCounts = monthSlotCounts[consultationType]?.[dateKey] || { available: 0, booked: 0, pending: 0, total: 0 };
                   const isToday = day.toDateString() === new Date().toDateString();
                   
                   return (
@@ -1059,7 +1088,7 @@ const handleApproveSlot = async (slot) => {
               <div className="schedule-modal-body">
                 {(() => {
                   const dateKey = formatDateKey(selectedDate);
-                  const dateSlots = timeSlots[dateKey] || [];
+                  const dateSlots = timeSlots[consultationType]?.[dateKey] || [];
                   
                   if (dateSlots.length === 0) {
                     return (
