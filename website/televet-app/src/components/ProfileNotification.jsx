@@ -1,8 +1,8 @@
-//profileNotification.jsx
+// profileNotification.jsx
 import React, { useState, useRef, useEffect } from "react";
 import { Bell, User, ChevronLeft, LogOut, X, Check, Clock } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import io from 'socket.io-client'; // ✅ Add this import
+import { useNotification } from "./NotificationProvider";
 import "../styles/profile-notification.css";
 
 const ProfileNotification = ({ firstName = "Pet Owner" }) => {
@@ -12,10 +12,12 @@ const ProfileNotification = ({ firstName = "Pet Owner" }) => {
   const [unreadCount, setUnreadCount] = useState(0);
   const dropdownRef = useRef(null);
   const notificationRef = useRef(null);
-  const socketRef = useRef(null); // ✅ Add socket ref
   const navigate = useNavigate();
 
-  // Fetch notifications
+  // ✅ Get notifications from context
+  const { notifications: contextNotifications } = useNotification();
+
+  // Fetch notifications from API
   useEffect(() => {
     const fetchNotifications = async () => {
       const userId = sessionStorage.getItem('userid');
@@ -35,49 +37,24 @@ const ProfileNotification = ({ firstName = "Pet Owner" }) => {
     };
 
     fetchNotifications();
+  }, []); // Only fetch once on mount
 
-    // ✅ Setup Socket.IO connection
-    const userId = sessionStorage.getItem('userid');
-    if (userId) {
-      socketRef.current = io('http://localhost:5000');
-
-      // Join user-specific room
-      socketRef.current.emit('joinUser', userId);
-
-      // Listen for new notifications
-      socketRef.current.on('newNotification', (notification) => {
-        console.log('🔔 New notification received:', notification);
-        
-        // Add new notification to the list
-        setNotifications(prev => [notification, ...prev]);
-        
-        // Increment unread count if not read
-        if (!notification.is_read) {
-          setUnreadCount(prev => prev + 1);
-        }
-
-        // Optional: Show browser notification
-        if (Notification.permission === 'granted') {
-          new Notification('New Appointment Update', {
-            body: notification.notification_message,
-            icon: '/favicon.ico'
-          });
-        }
+  // ✅ Update notifications when context changes (new real-time notifications)
+  useEffect(() => {
+    if (contextNotifications.length > 0) {
+      console.log('📩 Context notifications updated:', contextNotifications);
+      
+      // Merge context notifications with existing ones
+      setNotifications(prev => {
+        const existingIds = new Set(prev.map(n => n.notification_id));
+        const newNotifications = contextNotifications.filter(n => !existingIds.has(n.notification_id));
+        return [...newNotifications, ...prev];
       });
-
-      // Request notification permission
-      if (Notification.permission === 'default') {
-        Notification.requestPermission();
-      }
+      
+      // Update unread count
+      setUnreadCount(prev => prev + contextNotifications.filter(n => !n.is_read).length);
     }
-
-    // Cleanup on unmount
-    return () => {
-      if (socketRef.current) {
-        socketRef.current.disconnect();
-      }
-    };
-  }, []);
+  }, [contextNotifications]);
 
   // Close dropdowns when clicking outside
   useEffect(() => {
@@ -109,16 +86,11 @@ const ProfileNotification = ({ firstName = "Pet Owner" }) => {
     navigate("/myprofile");
   };
 
-
   const handleLogout = () => {
-    // ✅ Disconnect socket on logout
-    if (socketRef.current) {
-      socketRef.current.disconnect();
-    }
-    
     sessionStorage.removeItem("token");
     sessionStorage.removeItem("userType");
     sessionStorage.removeItem("firstName");
+    sessionStorage.removeItem("userid"); // ✅ Also clear userid
     navigate("/login");
   };
 
@@ -195,8 +167,7 @@ const ProfileNotification = ({ firstName = "Pet Owner" }) => {
   const getNotificationIcon = (type) => {
     switch (type) {
       case 'approved':
-        return <Check size={18} className="notification-icon approved" />;
-      case 'assigned':  // ✅ ADD THIS
+      case 'assigned':
         return <Check size={18} className="notification-icon approved" />;
       case 'pending':
         return <Clock size={18} className="notification-icon pending" />;

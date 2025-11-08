@@ -2704,31 +2704,50 @@ const createNotification = (usr_id, pet_id, appt_id, type, message, appt_date = 
   db.query(sql, [usr_id, pet_id, appt_id, type, message, appt_date], (err, result) => {
     if (err) {
       console.error('❌ Error creating notification:', err);
-    } else {
-      console.log(`✅ Notification created for user ${usr_id}`);
-      
-      // ✅ Get io from app (no require needed!)
-      const ioInstance = app.get('io');
-      
-      // Get the full notification data with pet info
-      const getNotificationSQL = `
-        SELECT 
-          n.*,
-          pet.pet_name,
-          pet.pet_species
-        FROM notification_t n
-        LEFT JOIN pet_t pet ON n.pet_id = pet.pet_id
-        WHERE n.notification_id = ?
-      `;
-      
-      db.query(getNotificationSQL, [result.insertId], (err2, notifResult) => {
-        if (!err2 && notifResult.length > 0) {
-          console.log(`🔔 Emitting notification to user_${usr_id}:`, notifResult[0]);
-          // Emit to specific user
-          ioInstance.to(`user_${usr_id}`).emit('newNotification', notifResult[0]);
-        }
-      });
+      return;
     }
+
+    console.log(`✅ Notification created for user ${usr_id}, type: ${type}`);
+    
+    // Get io from app
+    const ioInstance = app.get('io');
+    
+    if (!ioInstance) {
+      console.error('❌ Socket.IO instance not found!');
+      return;
+    }
+
+    // Get the full notification data with pet info
+    const getNotificationSQL = `
+      SELECT 
+        n.*,
+        pet.pet_name,
+        pet.pet_species
+      FROM notification_t n
+      LEFT JOIN pet_t pet ON n.pet_id = pet.pet_id
+      WHERE n.notification_id = ?
+    `;
+    
+    db.query(getNotificationSQL, [result.insertId], (err2, notifResult) => {
+      if (err2) {
+        console.error('❌ Error fetching notification data:', err2);
+        return;
+      }
+
+      if (notifResult.length > 0) {
+        const notification = notifResult[0];
+        console.log(`🔔 Emitting notification to user_${usr_id}:`, {
+          type: notification.notification_type,
+          message: notification.notification_message
+        });
+        
+        // Emit to specific user room
+        ioInstance.to(`user_${usr_id}`).emit('newNotification', notification);
+        
+        console.log(`✅ Notification emitted successfully to room: user_${usr_id}`);
+      }
+    });
   });
 };
+
 

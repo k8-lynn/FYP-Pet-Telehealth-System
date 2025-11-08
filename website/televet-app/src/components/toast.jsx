@@ -1,4 +1,4 @@
-//toast.jsx
+// toast.jsx
 import React from 'react';
 import { CheckCircle, Clock, AlertCircle, Info } from 'lucide-react';
 import '../styles/toast.css';
