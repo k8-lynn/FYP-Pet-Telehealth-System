@@ -290,14 +290,14 @@ const VetAdminAppointments = () => {
   const fetchClinicSlotsByDate = async (clinicId, date, type = consultationType) => {
     const dateKey = formatDateKey(date);
     try {
-      const res = await fetch(`http://localhost:5000/api/clinic-slots/${clinicId}/date/${dateKey}/${type}`);
+      const res = await fetch(`http://localhost:5000/api/clinic-slots/${clinicId}/date/${dateKey}/${type || consultationType}`);
       const data = await res.json();
       
       if (data && data.slots) {
         setTimeSlots(prev => ({
           ...prev,
-          [consultationType]: {
-            ...prev[consultationType],
+          [type]: {  // ✅ CORRECT - use the type parameter
+            ...prev[type],
             [dateKey]: data.slots
           }
         }));
@@ -532,7 +532,7 @@ const VetAdminAppointments = () => {
     });
   
     try {
-      const res = await fetch(`http://localhost:5000/api/clinic-slots/${clinic_id}/date/${dateKey}`, {
+      const res = await fetch(`http://localhost:5000/api/clinic-slots/${clinic_id}/date/${dateKey}/${consultationType}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ slots: updatedSlots })
@@ -541,7 +541,10 @@ const VetAdminAppointments = () => {
       if (res.ok) {
         setTimeSlots(prev => ({
           ...prev,
-          [dateKey]: updatedSlots
+          [consultationType]: {
+            ...prev[consultationType],
+            [dateKey]: updatedSlots
+          }
         }));
         setNewSlotTime('');
         setShowSlotModal(false);
@@ -606,12 +609,12 @@ const VetAdminAppointments = () => {
   
     const targetDate = selectedDate || currentDate;
     const dateKey = formatDateKey(targetDate);
-    const existingSlots = timeSlots[dateKey] || [];
+    const existingSlots = timeSlots[consultationType]?.[dateKey] || [];
     
     const updatedSlots = existingSlots.filter(slot => slot.id !== slotId);
   
     try {
-      const res = await fetch(`http://localhost:5000/api/clinic-slots/${clinic_id}/date/${dateKey}`, {
+      const res = await fetch(`http://localhost:5000/api/clinic-slots/${clinic_id}/date/${dateKey}/${consultationType}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ slots: updatedSlots })
@@ -620,7 +623,10 @@ const VetAdminAppointments = () => {
       if (res.ok) {
         setTimeSlots(prev => ({
           ...prev,
-          [dateKey]: updatedSlots
+          [consultationType]: {
+            ...prev[consultationType],
+            [dateKey]: updatedSlots
+          }
         }));
         setSlotToDelete(null);
         alert('Time slot deleted successfully!');
