@@ -14,6 +14,7 @@ import PetOwnerDashboard from './petowner-dashboard';
 import PetOwnerMyPets from './petowner-mypets';
 import PetOwnerReminders from './petowner-reminders';
 import PetOwnerMyVet from './petowner-myvet';
+import PetOwnerChat from './petowner-chat';
 
 import VetAdminDashboard from './vetadmin-dashboard.jsx';
 import VetAdminVeterinarians from './vetadmin-myveterinarians.jsx';
@@ -65,6 +66,14 @@ ReactDOM.createRoot(document.getElementById('root')).render(
             element={
               <ProtectedRoute allowedType="petParent">
                 <PetOwnerMyVet />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/petowner-chat"
+            element={
+              <ProtectedRoute allowedType="petParent">
+                <PetOwnerChat />
               </ProtectedRoute>
             }
           />
