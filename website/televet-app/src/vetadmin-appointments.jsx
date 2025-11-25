@@ -31,6 +31,7 @@ const VetAdminAppointments = () => {
   const [selectedPendingSlot, setSelectedPendingSlot] = useState(null);
   const [veterinarians, setVeterinarians] = useState([]);
   const [selectedVeterinarian, setSelectedVeterinarian] = useState(null);
+  const [selectedAppointmentDetails, setSelectedAppointmentDetails] = useState(null);
   const socketRef = useRef(null);
 
   const [timeSlots, setTimeSlots] = useState({
@@ -909,7 +910,22 @@ const handleApproveSlot = async (slot) => {
                       <div 
                         key={slot.id}
                         className={`schedule-time-slot ${slot.status} ${isEditMode ? 'edit-mode' : ''}`}
-                        onClick={() => slot.status === 'pending' && setSelectedPendingSlot(slot)}
+                        onClick={async () => {
+                          if (slot.status === 'pending' && slot.petId) {
+                            setSelectedPendingSlot(slot);
+                            
+                            // Fetch appointment details by petId instead
+                            try {
+                              const res = await fetch(`http://localhost:5000/api/appointment-by-pet/${slot.petId}`);
+                              const data = await res.json();
+                              if (res.ok) {
+                                setSelectedAppointmentDetails(data);
+                              }
+                            } catch (error) {
+                              console.error('Error fetching appointment details:', error);
+                            }
+                          }
+                        }}
                       >
                         {isEditMode && (
                           <button 
@@ -1167,7 +1183,22 @@ const handleApproveSlot = async (slot) => {
                           <div 
                             key={slot.id}
                             className={`schedule-time-slot ${slot.status}`}
-                            onClick={() => slot.status === 'pending' && setSelectedPendingSlot(slot)}
+                            onClick={async () => {
+                              if (slot.status === 'pending' && slot.petId) {
+                                setSelectedPendingSlot(slot);
+                                
+                                // Fetch appointment details by petId instead
+                                try {
+                                  const res = await fetch(`http://localhost:5000/api/appointment-by-pet/${slot.petId}`);
+                                  const data = await res.json();
+                                  if (res.ok) {
+                                    setSelectedAppointmentDetails(data);
+                                  }
+                                } catch (error) {
+                                  console.error('Error fetching appointment details:', error);
+                                }
+                              }
+                            }}
                           >
                             <div className="schedule-slot-header">
                               <span className="schedule-slot-time">{slot.time}</span>
@@ -1218,6 +1249,51 @@ const handleApproveSlot = async (slot) => {
                       <span className="info-value">{selectedPendingSlot.patient}</span>
                     </div>
                   </div>
+                  {selectedAppointmentDetails && (
+                    <>
+                      <div className="schedule-approval-info-item">
+                        <Calendar size={20} />
+                        <div>
+                          <span className="info-label">Appointment Type</span>
+                          <span className="info-value">{selectedAppointmentDetails.appt_type}</span>
+                        </div>
+                      </div>
+                      <div className="schedule-approval-info-item">
+                        <MapPin size={20} />
+                        <div>
+                          <span className="info-label">Consultation Type</span>
+                          <span className="info-value">
+                            {selectedAppointmentDetails.consultation_type === 'online' ? 'Online' : 'Physical'}
+                          </span>
+                        </div>
+                      </div>
+                      {selectedAppointmentDetails.appt_description && (
+                        <div className="schedule-approval-info-item">
+                          <Edit3 size={20} />
+                          <div>
+                            <span className="info-label">Description</span>
+                            <span className="info-value">{selectedAppointmentDetails.appt_description}</span>
+                          </div>
+                        </div>
+                      )}
+                      <div className="schedule-approval-info-item">
+                        <Clock size={20} />
+                        <div>
+                          <span className="info-label">Booked At</span>
+                          <span className="info-value">
+                            {new Date(selectedAppointmentDetails.created_at).toLocaleDateString('en-US', {
+                              month: 'long',
+                              day: 'numeric',
+                              year: 'numeric',
+                              hour: 'numeric',
+                              minute: '2-digit',
+                              hour12: true
+                            })}
+                          </span>
+                        </div>
+                      </div>
+                    </>
+                  )}
                 </div>
 
                 <div className="schedule-vet-selection">
@@ -1262,6 +1338,7 @@ const handleApproveSlot = async (slot) => {
                     onClick={() => {
                       setSelectedPendingSlot(null);
                       setSelectedVeterinarian(null);
+                      setSelectedAppointmentDetails(null);
                     }}
                   >
                     Cancel

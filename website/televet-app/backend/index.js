@@ -2116,6 +2116,10 @@ app.put('/api/patients/:pet_id/assign-vet', (req, res) => {
         SELECT 
           a.appt_id,
           a.appt_date,
+          a.appt_type,
+          a.consultation_type,
+          a.appt_description,
+          a.created_at,
           a.clinic_id,
           pet.pet_id,
           pet.pet_name
@@ -2256,6 +2260,72 @@ app.put('/api/patients/:pet_id/assign-vet', (req, res) => {
         });
       });
     });
+  });
+});
+
+// GET /api/appointment-details/:appt_id
+app.get('/api/appointment-details/:appt_id', (req, res) => {
+  const { appt_id } = req.params;
+
+  const sql = `
+    SELECT 
+      a.appt_id,
+      a.appt_type,
+      a.consultation_type,
+      a.appt_description,
+      a.appt_date,
+      a.created_at,
+      pet.pet_name
+    FROM appointment_t a
+    INNER JOIN pet_t pet ON a.pet_id = pet.pet_id
+    WHERE a.appt_id = ?
+  `;
+
+  db.query(sql, [appt_id], (err, result) => {
+    if (err) {
+      console.error('❌ Error fetching appointment details:', err);
+      return res.status(500).json({ error: 'Failed to fetch appointment details' });
+    }
+
+    if (result.length === 0) {
+      return res.status(404).json({ error: 'Appointment not found' });
+    }
+
+    res.status(200).json(result[0]);
+  });
+});
+
+// GET /api/appointment-by-pet/:pet_id
+app.get('/api/appointment-by-pet/:pet_id', (req, res) => {
+  const { pet_id } = req.params;
+
+  const sql = `
+    SELECT 
+      a.appt_id,
+      a.appt_type,
+      a.consultation_type,
+      a.appt_description,
+      a.appt_date,
+      a.created_at,
+      pet.pet_name
+    FROM appointment_t a
+    INNER JOIN pet_t pet ON a.pet_id = pet.pet_id
+    WHERE a.pet_id = ? AND a.appt_status = 'pending'
+    ORDER BY a.created_at DESC
+    LIMIT 1
+  `;
+
+  db.query(sql, [pet_id], (err, result) => {
+    if (err) {
+      console.error('❌ Error fetching appointment details:', err);
+      return res.status(500).json({ error: 'Failed to fetch appointment details' });
+    }
+
+    if (result.length === 0) {
+      return res.status(404).json({ error: 'Appointment not found' });
+    }
+
+    res.status(200).json(result[0]);
   });
 });
 
