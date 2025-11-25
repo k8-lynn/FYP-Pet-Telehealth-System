@@ -654,7 +654,7 @@ const handleApproveSlot = async (slot) => {
 
   const targetDate = selectedDate || currentDate;
   const dateKey = formatDateKey(targetDate);
-  const existingSlots = timeSlots[dateKey] || [];
+  const existingSlots = timeSlots[consultationType]?.[dateKey] || []; // ✅ ADD consultationType
 
   // First, update the appointment status in the database if there's a petId
   if (slot.petId) {
@@ -690,16 +690,21 @@ const handleApproveSlot = async (slot) => {
   );
 
   try {
-    const res = await fetch(`http://localhost:5000/api/clinic-slots/${clinic_id}/date/${dateKey}`, {
+    // ✅ ADD consultationType to URL
+    const res = await fetch(`http://localhost:5000/api/clinic-slots/${clinic_id}/date/${dateKey}/${consultationType}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ slots: updatedSlots })
     });
 
     if (res.ok) {
+      // ✅ UPDATE with consultationType structure
       setTimeSlots(prev => ({
         ...prev,
-        [dateKey]: updatedSlots
+        [consultationType]: {
+          ...prev[consultationType],
+          [dateKey]: updatedSlots
+        }
       }));
       setShowApprovalModal(false);
       setSelectedPendingSlot(null);

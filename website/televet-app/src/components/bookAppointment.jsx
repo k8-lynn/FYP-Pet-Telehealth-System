@@ -44,7 +44,8 @@ const BookAppointment = ({ clinicId, onClose, onBookingSuccess }) => {
     setLoading(true);
     try {
       const dateStr = formatDateForAPI(date);
-      const res = await fetch(`http://localhost:5000/api/clinic-slots/${clinicId}/date/${dateStr}`);
+      // ✅ ADD consultationType parameter
+      const res = await fetch(`http://localhost:5000/api/clinic-slots/${clinicId}/date/${dateStr}/${consultationType}`);
       const data = await res.json();
       
       if (data && data.slots) {
@@ -72,8 +73,9 @@ const BookAppointment = ({ clinicId, onClose, onBookingSuccess }) => {
       const startDate = formatDateForAPI(startOfWeek);
       const endDate = formatDateForAPI(endOfWeek);
 
+      // ✅ ADD consultationType parameter
       const res = await fetch(
-        `http://localhost:5000/api/clinic-slots/${clinicId}/range?startDate=${startDate}&endDate=${endDate}`
+        `http://localhost:5000/api/clinic-slots/${clinicId}/range/${consultationType}?startDate=${startDate}&endDate=${endDate}`
       );
       const data = await res.json();
       
@@ -95,8 +97,9 @@ const BookAppointment = ({ clinicId, onClose, onBookingSuccess }) => {
       const startDate = formatDateForAPI(startOfMonth);
       const endDate = formatDateForAPI(endOfMonth);
 
+      // ✅ ADD consultationType parameter
       const res = await fetch(
-        `http://localhost:5000/api/clinic-slots/${clinicId}/range?startDate=${startDate}&endDate=${endDate}`
+        `http://localhost:5000/api/clinic-slots/${clinicId}/range/${consultationType}?startDate=${startDate}&endDate=${endDate}`
       );
       const data = await res.json();
       
@@ -111,7 +114,8 @@ const BookAppointment = ({ clinicId, onClose, onBookingSuccess }) => {
 
   // ✅ Initial data fetch
   useEffect(() => {
-    if (clinicId) {
+    // ✅ Only fetch if consultation type is selected
+    if (clinicId && consultationType) {
       if (viewMode === 'today') {
         fetchDaySlots(currentDate);
       } else if (viewMode === 'weekly') {
@@ -120,7 +124,7 @@ const BookAppointment = ({ clinicId, onClose, onBookingSuccess }) => {
         fetchMonthlySlots(currentDate);
       }
     }
-  }, [clinicId, currentDate, viewMode]);
+  }, [clinicId, currentDate, viewMode, consultationType]); // ✅ ADD consultationType dependency
 
   // ✅ Socket.IO connection - Initialize ONCE and keep alive
   useEffect(() => {
@@ -152,14 +156,13 @@ const BookAppointment = ({ clinicId, onClose, onBookingSuccess }) => {
     });
 
     // ✅ CRITICAL: Listen for slot updates
+    // Inside the socket.on("slotUpdated") handler
     socket.on("slotUpdated", (data) => {
       console.log("📡 Slot update received:", data);
 
-      // Check if the update is for the current clinic
-      if (data.clinic_id == clinicId) {
+      if (data.clinic_id == clinicId && consultationType) { // ✅ ADD consultationType check
         console.log("🔄 Refreshing slots for clinic:", clinicId);
         
-        // Refresh based on current view mode
         if (viewMode === "today") {
           fetchDaySlots(currentDate);
         } else if (viewMode === "weekly") {
@@ -273,7 +276,7 @@ const handleEmergencyResponse = (isEmergency) => {
       alert('Please provide a description');
       return;
     }
-  
+
     const userId = sessionStorage.getItem('userid');
     if (!selectedPet) {
       alert('Please select a pet');
@@ -282,14 +285,14 @@ const handleEmergencyResponse = (isEmergency) => {
     
     const petOwnerName = `${sessionStorage.getItem('firstName')} - ${selectedPet.pet_name}`;
     const dateStr = formatDateForAPI(selectedDate);
-  
+
     try {
-      // Step 1: Get current slots
-      const res = await fetch(`http://localhost:5000/api/clinic-slots/${clinicId}/date/${dateStr}`);
+      // Step 1: Get current slots - ✅ ADD consultationType
+      const res = await fetch(`http://localhost:5000/api/clinic-slots/${clinicId}/date/${dateStr}/${consultationType}`);
       const data = await res.json();
       
       let currentSlots = data?.slots || [];
-  
+
       // Step 2: Update slot status to pending
       const updatedSlots = currentSlots.map(slot => 
         slot.id === selectedSlot.id 
@@ -304,19 +307,19 @@ const handleEmergencyResponse = (isEmergency) => {
             }
           : slot
       );
-  
-      // Step 3: Update slots in database
-      const updateRes = await fetch(`http://localhost:5000/api/clinic-slots/${clinicId}/date/${dateStr}`, {
+
+      // Step 3: Update slots in database - ✅ ADD consultationType
+      const updateRes = await fetch(`http://localhost:5000/api/clinic-slots/${clinicId}/date/${dateStr}/${consultationType}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ slots: updatedSlots })
       });
-  
+
       if (!updateRes.ok) {
         alert('Failed to book appointment');
         return;
       }
-  
+
       // Step 4: Create appointment record
       const appointmentDateTime = `${dateStr} ${convertTo24Hour(selectedSlot.time)}`;
       
@@ -328,21 +331,19 @@ const handleEmergencyResponse = (isEmergency) => {
           pet_id: selectedPet.pet_id,
           usr_id: userId,
           appt_type: appointmentType,
-          consultation_type: consultationType, // NEW
+          consultation_type: consultationType,
           appt_description: appointmentDescription,
           appt_date: appointmentDateTime,
           slot_time: selectedSlot.time
         })
       });
-  
+
       if (appointmentRes.ok) {
         setShowConfirmModal(false);
         setSelectedPet(null);
         
-        // ✅ Close modal first
         onClose();
         
-        // ✅ Notify parent to show toast
         if (onBookingSuccess) {
           onBookingSuccess({
             time: selectedSlot.time,
@@ -350,7 +351,6 @@ const handleEmergencyResponse = (isEmergency) => {
           });
         }
         
-        // ✅ Reset form state
         setSelectedSlot(null);
         setSelectedDate(null);
         setAppointmentType('');
