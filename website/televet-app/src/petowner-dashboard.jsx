@@ -45,7 +45,7 @@ const PetOwnerDashboard = () => {
   };
 
   return (
-    <div className="dashboard-container">
+    <div className="petowner-dashboard-container">
       <PawPattern count={35} />
       
       {/* Sidebar Navigation Component */}

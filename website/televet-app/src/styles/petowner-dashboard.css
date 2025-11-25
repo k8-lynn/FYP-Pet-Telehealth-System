@@ -1,6 +1,6 @@
 /* petowner-dashboard.css */
 /* Dashboard Container */
-.dashboard-container {
+.petowner-dashboard-container {
   display: flex;
   min-height: 100vh;
   background: linear-gradient(to top, #e8f4f8 0%, #fef9e7 50%, #fff5e1 100%);

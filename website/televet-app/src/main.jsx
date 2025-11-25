@@ -25,6 +25,7 @@ import VetAdminPatients from './vetadmin-mypatients.jsx';
 import VetDashboard from './vet-dashboard.jsx';
 import VetPatients from './vet-mypatients.jsx';
 import VetAppointments from './vet-appointments.jsx';
+import VetChat from './vet-chat.jsx';
 
 import MyProfile from './myprofile.jsx';
 
@@ -150,6 +151,15 @@ ReactDOM.createRoot(document.getElementById('root')).render(
             element={
               <ProtectedRoute allowedType="veterinarian">
                 <VetAppointments />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/vet-chat"
+            element={
+              <ProtectedRoute allowedType="veterinarian">
+                <VetChat />
               </ProtectedRoute>
             }
           />
