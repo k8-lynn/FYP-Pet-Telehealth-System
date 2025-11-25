@@ -2713,6 +2713,51 @@ app.get('/api/patients/vet/:vt_id', (req, res) => {
   });
 });
 
+// GET /api/appointments/vet/:vt_id
+app.get('/api/appointments/vet/:vt_id', (req, res) => {
+  const { vt_id } = req.params;
+
+  const sql = `
+    SELECT 
+      a.appt_id,
+      a.appt_type,
+      a.consultation_type,
+      a.appt_description,
+      a.appt_date,
+      a.appt_status,
+      a.created_at,
+      pet.pet_id,
+      pet.pet_name,
+      pet.pet_species,
+      pet.pet_breed,
+      pet.pet_age,
+      pet.pet_gender,
+      u.usr_id,
+      u.usr_firstName as owner_firstName,
+      u.usr_lastName as owner_lastName,
+      u.usr_email as owner_email,
+      CONCAT(vu.usr_firstName, ' ', vu.usr_lastName) as vet_name
+    FROM appointment_t a
+    INNER JOIN pet_t pet ON a.pet_id = pet.pet_id
+    INNER JOIN pet_parent_t pp ON a.pp_id = pp.pp_id
+    INNER JOIN user_t u ON pp.usr_id = u.usr_id
+    LEFT JOIN veterinarian_t vt ON a.vt_id = vt.vt_id
+    LEFT JOIN user_t vu ON vt.usr_id = vu.usr_id
+    WHERE a.vt_id = ?
+    ORDER BY a.appt_date ASC
+  `;
+
+  db.query(sql, [vt_id], (err, result) => {
+    if (err) {
+      console.error('❌ Error fetching vet appointments:', err);
+      return res.status(500).json({ error: 'Failed to fetch appointments' });
+    }
+
+    console.log(`✅ Retrieved ${result.length} appointments for vet ${vt_id}`);
+    res.status(200).json(result);
+  });
+});
+
 // -------------------------------------------------------------
 // 🟢 GET USER NOTIFICATIONS
 // -------------------------------------------------------------

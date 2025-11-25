@@ -24,6 +24,7 @@ import VetAdminPatients from './vetadmin-mypatients.jsx';
 
 import VetDashboard from './vet-dashboard.jsx';
 import VetPatients from './vet-mypatients.jsx';
+import VetAppointments from './vet-appointments.jsx';
 
 import MyProfile from './myprofile.jsx';
 
@@ -141,6 +142,14 @@ ReactDOM.createRoot(document.getElementById('root')).render(
             element={
               <ProtectedRoute allowedType="veterinarian">
                 <VetPatients />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/vet-appointments"
+            element={
+              <ProtectedRoute allowedType="veterinarian">
+                <VetAppointments />
               </ProtectedRoute>
             }
           />

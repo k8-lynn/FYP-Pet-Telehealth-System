@@ -1,0 +1,190 @@
+/* Import base styles from mypatients */
+/* This file extends vetadmin-mypatients.css with appointments-specific table layout */
+
+/* Override table grid for appointments */
+.appointments-table-header {
+  display: grid;
+  grid-template-columns: 50px 1fr 0.8fr 1fr 1fr 0.9fr 1.5fr 1.3fr 0.9fr 80px;
+  gap: 1rem;
+  padding: 0.75rem 1rem;
+  background: #f8fafc;
+  border-radius: 12px;
+  align-items: center;
+}
+
+.appointments-table-header > div {
+  font-size: 0.8rem;
+  color: #64748b;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.appointments-table-row {
+  display: grid;
+  grid-template-columns: 50px 1fr 0.8fr 1fr 1fr 0.9fr 1.5fr 1.3fr 0.9fr 80px;
+  gap: 1rem;
+  padding: 1rem;
+  border-radius: 12px;
+  transition: all 0.2s ease;
+  align-items: center;
+}
+
+.appointments-table-row:hover {
+  background: #f8fbff;
+}
+
+/* Specific cells for appointments table */
+.table-cell-appt-type,
+.table-cell-consultation,
+.table-cell-description,
+.table-cell-date-wide {
+  font-size: 0.9rem;
+  color: #64748b;
+  font-weight: 600;
+}
+
+.table-cell-description {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Appointment Type badge */
+.appt-type-badge {
+  padding: 0.4rem 0.9rem;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-align: center;
+  display: inline-block;
+  white-space: nowrap;
+}
+
+.appt-type-checkup {
+  background: #a8ceff20;
+  color: #5da3f5;
+  border: 2px solid #a8ceff60;
+}
+
+.appt-type-vaccination {
+  background: #91befe20;
+  color: #4a8fe8;
+  border: 2px solid #91befe60;
+}
+
+.appt-type-dental {
+  background: #ffd66620;
+  color: #e6a600;
+  border: 2px solid #ffd66660;
+}
+
+.appt-type-surgery {
+  background: #ffb08820;
+  color: #ff6b2b;
+  border: 2px solid #ffb08860;
+}
+
+.appt-type-emergency {
+  background: #ff8b8b20;
+  color: #e63946;
+  border: 2px solid #ff8b8b60;
+}
+
+/* Consultation badge */
+.consultation-badge {
+  padding: 0.4rem 0.9rem;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-align: center;
+  display: inline-block;
+  white-space: nowrap;
+}
+
+.consultation-online {
+  background: #dbeafe;
+  color: #3b82f6;
+  border: 2px solid #3b82f640;
+}
+
+.consultation-physical {
+  background: #e0e7ff;
+  color: #6366f1;
+  border: 2px solid #6366f140;
+}
+
+/* Status badges for appointments */
+.status-scheduled {
+  background: #d1fae520;
+  color: #10b981;
+  border: 2px solid #10b98140;
+}
+
+.status-pending {
+  background: #fef3c7;
+  color: #f59e0b;
+  border: 2px solid #f59e0b40;
+}
+
+.status-completed {
+  background: #e0e7ff;
+  color: #6366f1;
+  border: 2px solid #6366f140;
+}
+
+.status-cancelled {
+  background: #fee;
+  color: #ef4444;
+  border: 2px solid #ef444440;
+}
+
+/* Ensure actions cell stays compact */
+.appointments-table-row .table-cell-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  min-width: 80px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 1600px) {
+  .appointments-table-header,
+  .appointments-table-row {
+    grid-template-columns: 45px 0.9fr 0.7fr 0.9fr 0.9fr 0.8fr 1.3fr 1.2fr 0.8fr 75px;
+    font-size: 0.85rem;
+  }
+}
+
+@media (max-width: 1400px) {
+  .appointments-table-header,
+  .appointments-table-row {
+    grid-template-columns: 40px 0.8fr 0.6fr 0.8fr 0.8fr 0.7fr 1.2fr 1.1fr 0.7fr 70px;
+    font-size: 0.8rem;
+  }
+  
+  .table-cell-description {
+    max-width: 150px;
+  }
+}
+
+@media (max-width: 1200px) {
+  .appointments-table-section {
+    overflow-x: auto;
+  }
+
+  .mypatients-table {
+    min-width: 1200px;
+  }
+}
+
+/* Stats cards - keep 3 cards visible */
+.appointments-stats {
+  display: flex;
+  gap: 1rem;
+}
+
+.appointments-stats .stat-card {
+  flex: 1;
+  min-width: 110px;
+}

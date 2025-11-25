@@ -619,3 +619,36 @@
     padding-left: 140px;
   }
 }
+
+/* View Modal - Override to handle long text */
+.view-modal-body .view-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1rem;
+  background: linear-gradient(135deg, #f8fbff 0%, #ffffff 100%);
+  border: 2px solid #e8f0f7;
+  border-radius: 12px;
+  word-wrap: break-word;
+  word-break: break-word;
+  overflow-wrap: break-word;
+}
+
+.view-modal-body .view-item:not(:has(strong)) {
+  font-size: 0.95rem;
+  color: #1a2e35;
+  font-weight: 600;
+  white-space: normal;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Ensure badges in modal don't break layout */
+.view-modal-body .vet-badge,
+.view-modal-body .appt-type-badge,
+.view-modal-body .consultation-badge {
+  display: inline-block;
+  max-width: 100%;
+  word-wrap: normal;
+  white-space: nowrap;
+}
