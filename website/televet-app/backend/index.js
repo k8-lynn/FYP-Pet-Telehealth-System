@@ -98,13 +98,72 @@ app.post('/api/login', (req, res) => {
       usr_type: user.usr_type
     });
 
-    res.status(200).json({
-      message: 'Login successful',
-      userId: user.usr_id,
-      firstName: user.usr_firstName,
-      lastName: user.usr_lastName,
-      userType: user.usr_type
-    });
+    // ✅ If user is a veterinarian, fetch their vt_id
+    if (user.usr_type === 'veterinarian') {
+      const vetSQL = 'SELECT vt_id FROM veterinarian_t WHERE usr_id = ?';
+      
+      db.query(vetSQL, [user.usr_id], (vetErr, vetResult) => {
+        if (vetErr) {
+          console.error('❌ Error fetching vet ID:', vetErr);
+          return res.status(500).json({ message: 'Database error' });
+        }
+
+        if (vetResult.length === 0) {
+          console.error('❌ No veterinarian record found for usr_id:', user.usr_id);
+          return res.status(404).json({ message: 'Veterinarian record not found' });
+        }
+
+        const vt_id = vetResult[0].vt_id;
+        console.log('✅ Veterinarian vt_id:', vt_id);
+
+        return res.status(200).json({
+          message: 'Login successful',
+          userId: user.usr_id,
+          firstName: user.usr_firstName,
+          lastName: user.usr_lastName,
+          userType: user.usr_type,
+          vt_id: vt_id // ✅ Include vt_id for veterinarians
+        });
+      });
+    } 
+    // ✅ If user is a vet admin, fetch their va_id
+    else if (user.usr_type === 'vetAdmin') {
+      const adminSQL = 'SELECT va_id FROM vet_admin_t WHERE usr_id = ?';
+      
+      db.query(adminSQL, [user.usr_id], (adminErr, adminResult) => {
+        if (adminErr) {
+          console.error('❌ Error fetching vet admin ID:', adminErr);
+          return res.status(500).json({ message: 'Database error' });
+        }
+
+        if (adminResult.length === 0) {
+          console.error('❌ No vet admin record found for usr_id:', user.usr_id);
+          return res.status(404).json({ message: 'Vet admin record not found' });
+        }
+
+        const va_id = adminResult[0].va_id;
+        console.log('✅ Vet Admin va_id:', va_id);
+
+        return res.status(200).json({
+          message: 'Login successful',
+          userId: user.usr_id,
+          firstName: user.usr_firstName,
+          lastName: user.usr_lastName,
+          userType: user.usr_type,
+          va_id: va_id // ✅ Include va_id for vet admins
+        });
+      });
+    }
+    // ✅ For pet parents, return basic info
+    else {
+      return res.status(200).json({
+        message: 'Login successful',
+        userId: user.usr_id,
+        firstName: user.usr_firstName,
+        lastName: user.usr_lastName,
+        userType: user.usr_type
+      });
+    }
   });
 });
 
@@ -2895,4 +2954,87 @@ const createNotification = (usr_id, pet_id, appt_id, type, message, appt_date = 
   });
 };
 
+//Chat backend
+// -------------------------------------------------------------
+// 🟢 GET PATIENTS ASSIGNED TO SPECIFIC VET
+// -------------------------------------------------------------
+app.get('/api/vet-patients/:vt_id', (req, res) => {
+  const { vt_id } = req.params;
 
+  const sql = `
+    SELECT 
+      pet.pet_id,
+      pet.pet_name,
+      pet.pet_species,
+      pet.pet_age,
+      pet.pet_gender,
+      pet.pet_breed,
+      pet.pet_weight,
+      pet.pet_hasVaccination,
+      pet.pet_vaccinationDate,
+      pet.pet_hasMedication,
+      pet.pet_medicationDetails,
+      pet.pet_hasAllergies,
+      pet.pet_allergyDetails,
+      pet.pet_dietType,
+      pet.pet_behavioralNotes,
+      pet.pet_lastUpdated,
+      pp.pp_id,
+      pp.pp_assignedClinic,
+      pp.createdAt as pp_createdAt,
+      u.usr_id,
+      u.usr_firstName as owner_firstName,
+      u.usr_lastName as owner_lastName,
+      u.usr_email as owner_email
+    FROM pet_t pet
+    INNER JOIN pet_parent_t pp ON pet.pp_id = pp.pp_id
+    INNER JOIN user_t u ON pp.usr_id = u.usr_id
+    WHERE pet.pet_assignedVet = ?
+    ORDER BY pet.pet_lastUpdated DESC
+  `;
+
+  db.query(sql, [vt_id], (err, result) => {
+    if (err) {
+      console.error('❌ Error fetching vet patients:', err);
+      return res.status(500).json({ error: 'Failed to fetch vet patients' });
+    }
+
+    console.log(`✅ Retrieved ${result.length} patients for vet ${vt_id}`);
+    res.status(200).json(result);
+  });
+});
+
+// GET /api/scheduled-appointment/:pet_id - Get scheduled appointment for chat view
+app.get('/api/scheduled-appointment/:pet_id', (req, res) => {
+  const { pet_id } = req.params;
+
+  const sql = `
+    SELECT 
+      a.appt_id,
+      a.appt_type,
+      a.consultation_type,
+      a.appt_description,
+      a.appt_date,
+      a.appt_status,
+      a.created_at,
+      pet.pet_name
+    FROM appointment_t a
+    INNER JOIN pet_t pet ON a.pet_id = pet.pet_id
+    WHERE a.pet_id = ? AND a.appt_status = 'scheduled'
+    ORDER BY a.appt_date DESC
+    LIMIT 1
+  `;
+
+  db.query(sql, [pet_id], (err, result) => {
+    if (err) {
+      console.error('❌ Error fetching appointment details:', err);
+      return res.status(500).json({ error: 'Failed to fetch appointment details' });
+    }
+
+    if (result.length === 0) {
+      return res.status(404).json({ error: 'No scheduled appointment found' });
+    }
+
+    res.status(200).json(result[0]);
+  });
+});

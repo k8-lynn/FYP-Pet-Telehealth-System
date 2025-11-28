@@ -58,15 +58,17 @@ const Login = () => {
           }, 2000);
         } 
 
+        // ✅ Veterinarian Login
         else if (data.userType === 'veterinarian' || data.user_type === 'veterinarian') {
           sessionStorage.setItem('firstName', data.firstName);
           sessionStorage.setItem('userid', data.userId);
           sessionStorage.setItem('userType', data.userType);
-        
+          sessionStorage.setItem('vt_id', data.vt_id); // ✅ Store veterinarian ID
+
           setShowSuccess(true);
-        
+
           setTimeout(() => {
-            navigate('/vet-dashboard'); // ✅ Send to veterinarian dashboard
+            navigate('/vet-dashboard');
           }, 2000);
         }
         
