@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Send, Paperclip, Video, Phone, Search, MoreVertical, Calendar, FileText, Camera, X, ChevronDown, Clock, ChevronLeft, Menu, MessageCircle } from 'lucide-react';
+import { Send, Paperclip, Video, Phone, Search, MoreVertical, Calendar, FileText, Camera, X, ChevronDown, Clock, ChevronLeft, Menu, MessageCircle, MapPin } from 'lucide-react';
 import PawPattern from "./components/PawPattern";
 import VetNavbar from './components/vet-navbar';
 import ProfileNotification from "./components/ProfileNotification";
@@ -18,6 +18,10 @@ const VetChat = () => {
   const [showAppointmentModal, setShowAppointmentModal] = useState(false);
   const [appointmentDetails, setAppointmentDetails] = useState(null);
   const [loadingAppointment, setLoadingAppointment] = useState(false);
+  const [vtId, setVtId] = useState(null);
+  const [userid, setUserid] = useState(null);
+  const [clinicInfo, setClinicInfo] = useState({});
+  const [lastVisitData, setLastVisitData] = useState(null);
 
 React.useEffect(() => {
   const storedName = sessionStorage.getItem('firstName');
@@ -42,9 +46,43 @@ React.useEffect(() => {
 React.useEffect(() => {
   if (selectedChat && currentChat?.petData?.pet_id) {
     fetchAppointmentDetails(currentChat.petData.pet_id);
+    fetchLastVisit(currentChat.petData.pet_id);
   }
 }, [selectedChat]); // eslint-disable-line react-hooks/exhaustive-deps
 
+// Load userid from sessionStorage
+React.useEffect(() => {
+  const storedUserId = sessionStorage.getItem('userid');
+  if (storedUserId) {
+    setUserid(storedUserId);
+  }
+}, []);
+
+// Fetch vet info
+React.useEffect(() => {
+  const fetchVetInfo = async () => {
+    if (!userid) return;
+
+    try {
+      const response = await fetch(`http://localhost:5000/api/profile/${userid}`);
+      const data = await response.json();
+
+      if (response.ok) {
+        setVtId(data.vt_id);
+        setClinicInfo({
+          vetLocation: data.vt_vetLocation,
+          clinicName: data.vt_clinicName,
+          clinicPhone: data.vt_clinicPhone,
+          clinicEmail: data.vt_clinicEmail
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching vet info:', error);
+    }
+  };
+
+  fetchVetInfo();
+}, [userid]);
 
 
     // Fetch patients assigned to this vet
@@ -116,6 +154,28 @@ React.useEffect(() => {
     }
     };
 
+    const fetchLastVisit = async (pet_id) => {
+      try {
+        const response = await fetch(`http://localhost:5000/api/last-completed-appointment/${pet_id}`);
+        
+        if (response.status === 404) {
+          console.log('No completed appointment found');
+          setLastVisitData(null);
+          return;
+        }
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        setLastVisitData(data);
+      } catch (error) {
+        console.error('❌ Error fetching last visit:', error);
+        setLastVisitData(null);
+      }
+    };
+
     const formatDate = (dateString) => {
     const date = new Date(dateString);
     return date.toLocaleString('en-US', {
@@ -155,8 +215,12 @@ const currentPet = currentChat ? {
   image: currentChat.petData.pet_species?.toLowerCase().includes('dog') ? '🐕' : '🐱',
   owner: `${currentChat.petData.owner_firstName} ${currentChat.petData.owner_lastName}`,
   ownerEmail: currentChat.petData.owner_email,
-  lastVisit: currentChat.petData.pet_lastUpdated ? new Date(currentChat.petData.pet_lastUpdated).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A',
-  nextAppointment: '-',
+  lastVisit: lastVisitData && lastVisitData.appt_date 
+  ? new Date(lastVisitData.appt_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+  : 'No previous visits',
+  nextAppointment: appointmentDetails && appointmentDetails.appt_date
+    ? new Date(appointmentDetails.appt_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true })
+    : '-',
   conditions: currentChat.petData.pet_behavioralNotes ? [currentChat.petData.pet_behavioralNotes] : ['Regular Checkup'],
   behavioralNotes: currentChat.petData.pet_behavioralNotes || 'No behavioral notes recorded',
   medications: currentChat.petData.pet_hasMedication === 'yes' && currentChat.petData.pet_medicationDetails 
@@ -177,7 +241,13 @@ const currentPet = currentChat ? {
       <VetNavbar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
 
       <div className={`main-content ${!sidebarOpen ? 'sidebar-collapsed' : ''}`}>
+      <div className="vetadmin-header">
+        <div className="location-info">
+          <MapPin size={20} className="location-icon" />
+          <span className="location-text">{clinicInfo.clinicName || 'PawCare Veterinary Clinic'}</span>
+        </div>
         <ProfileNotification firstName={firstName} />
+      </div>
 
         <div className="chat-container">
           {/* Chat List Sidebar */}

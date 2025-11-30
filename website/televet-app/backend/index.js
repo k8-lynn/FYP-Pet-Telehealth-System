@@ -3038,3 +3038,118 @@ app.get('/api/scheduled-appointment/:pet_id', (req, res) => {
     res.status(200).json(result[0]);
   });
 });
+
+// GET /api/last-completed-appointment/:pet_id - Get last completed appointment
+app.get('/api/last-completed-appointment/:pet_id', (req, res) => {
+  const { pet_id } = req.params;
+
+  const sql = `
+    SELECT 
+      a.appt_id,
+      a.appt_type,
+      a.appt_date,
+      a.appt_status
+    FROM appointment_t a
+    WHERE a.pet_id = ? AND a.appt_status = 'completed'
+    ORDER BY a.appt_date DESC
+    LIMIT 1
+  `;
+
+  db.query(sql, [pet_id], (err, result) => {
+    if (err) {
+      console.error('❌ Error fetching last appointment:', err);
+      return res.status(500).json({ error: 'Failed to fetch last appointment' });
+    }
+
+    if (result.length === 0) {
+      return res.status(404).json({ error: 'No completed appointment found' });
+    }
+
+    res.status(200).json(result[0]);
+  });
+});
+
+// GET /api/pets/by-parent/:pp_id - Get pets by pet parent ID (for chat)
+app.get('/api/pets/by-parent/:pp_id', (req, res) => {
+  const { pp_id } = req.params;
+
+  console.log('🔍 Fetching pets for pp_id:', pp_id);
+
+  const sql = `
+    SELECT 
+      pet.*,
+      pp.pp_assignedClinic,
+      pp.createdAt as pp_createdAt
+    FROM pet_t pet
+    LEFT JOIN pet_parent_t pp ON pet.pp_id = pp.pp_id
+    WHERE pet.pp_id = ?
+    ORDER BY pet.pet_lastUpdated DESC
+  `;
+
+  db.query(sql, [pp_id], (err, result) => {
+    if (err) {
+      console.error('❌ Error fetching pets:', err);
+      return res.status(500).json({ error: 'Failed to fetch pets' });
+    }
+
+    console.log(`✅ Query executed for pp_id: ${pp_id}`);
+    console.log(`📊 Found ${result.length} pets`);
+    console.log('📋 First pet:', result[0]);
+    
+    res.status(200).json(result);
+  });
+});
+
+// GET /api/petparent/:usr_id - Get pet parent info
+app.get('/api/petparent/:usr_id', (req, res) => {
+  const { usr_id } = req.params;
+
+  const sql = `
+    SELECT pp_id, usr_id, pp_assignedClinic, createdAt
+    FROM pet_parent_t
+    WHERE usr_id = ?
+  `;
+
+  db.query(sql, [usr_id], (err, result) => {
+    if (err) {
+      console.error('❌ Error fetching pet parent:', err);
+      return res.status(500).json({ error: 'Failed to fetch pet parent' });
+    }
+
+    if (result.length === 0) {
+      return res.status(404).json({ error: 'Pet parent not found' });
+    }
+
+    console.log('✅ Pet parent fetched for usr_id:', usr_id, '→ pp_id:', result[0].pp_id);
+    res.status(200).json(result[0]);
+  });
+});
+
+// GET /api/veterinarian/:vt_id - Get vet info by vt_id
+app.get('/api/veterinarian/:vt_id', (req, res) => {
+  const { vt_id } = req.params;
+
+  const sql = `
+    SELECT 
+      vt.*,
+      u.usr_firstName,
+      u.usr_lastName,
+      u.usr_email
+    FROM veterinarian_t vt
+    INNER JOIN user_t u ON vt.usr_id = u.usr_id
+    WHERE vt.vt_id = ?
+  `;
+
+  db.query(sql, [vt_id], (err, result) => {
+    if (err) {
+      console.error('❌ Error fetching veterinarian:', err);
+      return res.status(500).json({ error: 'Failed to fetch veterinarian' });
+    }
+
+    if (result.length === 0) {
+      return res.status(404).json({ error: 'Veterinarian not found' });
+    }
+
+    res.status(200).json(result[0]);
+  });
+});
