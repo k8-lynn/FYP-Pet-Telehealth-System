@@ -1,3 +1,4 @@
+//vet-chat.jsx
 import React, { useState } from 'react';
 import { Send, Paperclip, Video, Phone, Search, MoreVertical, Calendar, FileText, Camera, X, ChevronDown, Clock, ChevronLeft, Menu, MessageCircle, MapPin } from 'lucide-react';
 import PawPattern from "./components/PawPattern";

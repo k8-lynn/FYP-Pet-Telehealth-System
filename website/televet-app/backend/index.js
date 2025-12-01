@@ -17,14 +17,13 @@ app.use(express.json());
 const server = createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: "http://localhost:5173", // ✅ your actual Vite React app
+    origin: "http://localhost:5173",
     methods: ["GET", "POST", "PUT"],
     credentials: true
   }
 });
 
-
-// ✅ Log connections
+// ✅ Socket.IO connection handling
 io.on('connection', (socket) => {
   console.log('🧩 A user connected:', socket.id);
   
@@ -35,6 +34,23 @@ io.on('connection', (socket) => {
   socket.on('joinUser', (userId) => {
     socket.join(`user_${userId}`);
     console.log(`✅ User ${userId} joined room: user_${userId}`);
+  });
+  
+  // ✅ Join chat room
+  socket.on('joinChat', (chatId) => {
+    socket.join(`chat_${chatId}`);
+    console.log(`💬 Socket ${socket.id} joined chat: chat_${chatId}`);
+  });
+  
+  // ✅ Leave chat room
+  socket.on('leaveChat', (chatId) => {
+    socket.leave(`chat_${chatId}`);
+    console.log(`👋 Socket ${socket.id} left chat: chat_${chatId}`);
+  });
+  
+  // ✅ Typing indicator
+  socket.on('typing', ({ chatId, userId, isTyping }) => {
+    socket.to(`chat_${chatId}`).emit('userTyping', { userId, isTyping });
   });
   
   socket.on('disconnect', (reason) => {
@@ -3152,4 +3168,143 @@ app.get('/api/veterinarian/:vt_id', (req, res) => {
 
     res.status(200).json(result[0]);
   });
+});
+
+// =============== CHAT ENDPOINTS ===============
+
+// Get or create chat between pet parent and vet
+app.post('/api/chat/get-or-create', (req, res) => {
+  const { pp_id, vt_id } = req.body;
+  
+  // Check if chat exists
+  db.query(
+    'SELECT * FROM chat_t WHERE pp_id = ? AND vt_id = ?',
+    [pp_id, vt_id],
+    (err, results) => {
+      if (err) return res.status(500).json({ error: err.message });
+      
+      if (results.length > 0) {
+        return res.json(results[0]);
+      }
+      
+      // Create new chat
+      db.query(
+        'INSERT INTO chat_t (pp_id, vt_id) VALUES (?, ?)',
+        [pp_id, vt_id],
+        (err, result) => {
+          if (err) return res.status(500).json({ error: err.message });
+          
+          db.query(
+            'SELECT * FROM chat_t WHERE chat_id = ?',
+            [result.insertId],
+            (err, newChat) => {
+              if (err) return res.status(500).json({ error: err.message });
+              res.json(newChat[0]);
+            }
+          );
+        }
+      );
+    }
+  );
+});
+
+// Get chat messages
+app.get('/api/chat/:chat_id/messages', (req, res) => {
+  const { chat_id } = req.params;
+  
+  db.query(
+    `SELECT cm.*, u.usr_firstName, u.usr_lastName 
+     FROM chat_msg_t cm
+     JOIN user_t u ON cm.sender_id = u.usr_id
+     WHERE cm.chat_id = ?
+     ORDER BY cm.created_at ASC`,
+    [chat_id],
+    (err, results) => {
+      if (err) return res.status(500).json({ error: err.message });
+      res.json(results);
+    }
+  );
+});
+
+// 🔧 FIXED: Send message endpoint - removed duplicate res.json()
+app.post('/api/chat/send-message', (req, res) => {
+  const io = req.app.get('io');
+  const { chat_id, sender_id, sender_role, msg, msg_type = 'text' } = req.body;
+  
+  db.query(
+    'INSERT INTO chat_msg_t (chat_id, sender_id, sender_role, msg, msg_type) VALUES (?, ?, ?, ?, ?)',
+    [chat_id, sender_id, sender_role, msg, msg_type],
+    (err, result) => {
+      if (err) return res.status(500).json({ error: err.message });
+      
+      // Update last message in chat_t
+      db.query(
+        'UPDATE chat_t SET last_msg = ?, last_msg_at = NOW() WHERE chat_id = ?',
+        [msg, chat_id],
+        (err) => {
+          if (err) console.error('Error updating chat:', err);
+        }
+      );
+      
+      // Get the full message data and emit
+      db.query(
+        `SELECT cm.*, u.usr_firstName, u.usr_lastName 
+         FROM chat_msg_t cm
+         JOIN user_t u ON cm.sender_id = u.usr_id
+         WHERE cm.msg_id = ?`,
+        [result.insertId],
+        (err, newMsg) => {
+          if (err) return res.status(500).json({ error: err.message });
+          
+          console.log('📤 About to emit newMessage to room:', `chat_${chat_id}`);
+          console.log('📦 Message data:', newMsg[0]);
+          
+          // Emit to chat room
+          io.to(`chat_${chat_id}`).emit('newMessage', newMsg[0]);
+          
+          console.log('✅ Emitted newMessage event');
+          
+          // ✅ ONLY ONE res.json() call
+          res.json(newMsg[0]);
+        }
+      );
+    }
+  );
+});
+
+// Mark messages as read
+app.put('/api/chat/:chat_id/mark-read', (req, res) => {
+  const { chat_id } = req.params;
+  const { usr_id } = req.body;
+  
+  db.query(
+    `UPDATE chat_msg_t 
+     SET is_read = 'yes' 
+     WHERE chat_id = ? AND sender_id != ? AND is_read = 'no'`,
+    [chat_id, usr_id],
+    (err) => {
+      if (err) return res.status(500).json({ error: err.message });
+      res.json({ success: true });
+    }
+  );
+});
+
+// Update online status
+app.put('/api/chat/online-status', (req, res) => {
+  const { chat_id, usr_id, is_online } = req.body;
+  const io = req.app.get('io');
+  
+  db.query(
+    `INSERT INTO chat_status_t (usr_id, chat_id, is_online, last_seen)
+     VALUES (?, ?, ?, NOW())
+     ON DUPLICATE KEY UPDATE is_online = ?, last_seen = NOW()`,
+    [usr_id, chat_id, is_online, is_online],
+    (err) => {
+      if (err) return res.status(500).json({ error: err.message });
+      
+      // Emit status change
+      io.to(`chat_${chat_id}`).emit('statusChange', { usr_id, is_online });
+      res.json({ success: true });
+    }
+  );
 });

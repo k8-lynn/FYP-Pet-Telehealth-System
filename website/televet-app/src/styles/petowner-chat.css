@@ -544,9 +544,10 @@
 
 .message-time {
     font-size: 0.65rem;
-    color: #94a3b8;
-    font-weight: 600;
-    padding: 0 0.4rem;
+    font-weight: 500;
+    display: block;
+    text-align: right;
+    margin-top: 10px;
 }
 
 /* Message Input */
@@ -1082,4 +1083,8 @@
     .message-content {
     max-width: 80%;
     }
+}
+
+.message.message-sent .message-time {
+    color: #576c8b;
 }

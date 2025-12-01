@@ -6,6 +6,7 @@ import PetOwnerNavbar from './components/petowner-navbar';
 import ProfileNotification from "./components/ProfileNotification";
 import AppointmentDetailsModal from './components/AppointmentDetailsModal';
 import './styles/petowner-chat.css';
+import { useChat } from './hooks/useChat';
 
 const PetOwnerChat = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -22,6 +23,13 @@ const PetOwnerChat = () => {
   const [userid, setUserid] = useState(null);
   const [ppId, setPpId] = useState(null);
   const [lastVisitData, setLastVisitData] = useState(null);
+
+  const [chatId, setChatId] = useState(null);
+  const { messages, isConnected, isTyping, fetchMessages, sendMessage, sendTyping } = useChat(
+    chatId, 
+    userid, 
+    'pp'
+  );
 
   React.useEffect(() => {
     const storedName = sessionStorage.getItem('firstName');
@@ -43,13 +51,37 @@ const PetOwnerChat = () => {
   }, []);
 
   // Fetch appointment details when selectedChat changes
+  // Update the selectedChat useEffect:
   React.useEffect(() => {
     if (selectedChat && currentChat?.petData?.pet_id) {
       fetchAppointmentDetails(currentChat.petData.pet_id);
       fetchLastVisit(currentChat.petData.pet_id);
+      
+      // Initialize chat
+      if (ppId && currentChat.petData.pet_assignedVet) {
+        initializeChat(ppId, currentChat.petData.pet_assignedVet);
+      }
     }
-  }, [selectedChat]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [selectedChat, ppId]); // eslint-disable-line
 
+  // Fetch messages when chatId changes
+  React.useEffect(() => {
+    if (chatId) {
+      console.log('🔄 chatId changed, fetching messages for chat_id:', chatId);
+      fetchMessages();
+    }
+  }, [chatId, fetchMessages]);
+
+  React.useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+  
+  const scrollToBottom = () => {
+    const messagesArea = document.querySelector('.messages-area');
+    if (messagesArea) {
+      messagesArea.scrollTop = messagesArea.scrollHeight;
+    }
+  };
   // In your frontend - petowner-chat.jsx
   const fetchPetParentInfo = async (userId) => {
     try {
@@ -151,6 +183,22 @@ const PetOwnerChat = () => {
     } catch (error) {
       console.error('❌ Error fetching pets:', error);
       setLoading(false);
+    }
+  };
+
+  // Add after fetchMyPets function:
+  const initializeChat = async (pp_id, vt_id) => {
+    try {
+      const response = await fetch('http://localhost:5000/api/chat/get-or-create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pp_id, vt_id })
+      });
+      const chat = await response.json();
+      setChatId(chat.chat_id);
+      return chat.chat_id;
+    } catch (error) {
+      console.error('Error initializing chat:', error);
     }
   };
 
@@ -428,19 +476,46 @@ const PetOwnerChat = () => {
 
             {/* Messages Area */}
             <div className="messages-area">
-              <div className="empty-messages-state">
-                <MessageCircle size={64} className="empty-message-icon" strokeWidth={1.5} />
-                <p className="empty-message-text">No messages yet</p>
-                {appointmentDetails && appointmentDetails.appt_date ? (
-                  <p className="next-consultation">
-                    Next consultation: {formatDate(appointmentDetails.appt_date)}
-                  </p>
-                ) : (
-                  <p className="next-consultation">
-                    Next consultation: -
-                  </p>
-                )}
-              </div>
+              {messages.length === 0 ? (
+                <div className="empty-messages-state">
+                  <MessageCircle size={64} className="empty-message-icon" strokeWidth={1.5} />
+                  <p className="empty-message-text">No messages yet</p>
+                  {appointmentDetails && appointmentDetails.appt_date ? (
+                    <p className="next-consultation">
+                      Next consultation: {formatDate(appointmentDetails.appt_date)}
+                    </p>
+                  ) : (
+                    <p className="next-consultation">Next consultation: -</p>
+                  )}
+                </div>
+              ) : (
+                <>
+                  {messages.map((msg) => (
+                    <div 
+                      key={msg.msg_id}
+                      className={`message message-${msg.sender_role === 'pp' ? 'sent' : 'received'}`}
+                    >
+                      <div className="message-content">
+                        <div className="message-bubble">
+                          <p>{msg.msg}</p>
+                          <span className="message-time">
+                            {new Date(msg.created_at).toLocaleTimeString('en-US', {
+                              hour: 'numeric',
+                              minute: '2-digit',
+                              hour12: true
+                            })}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  {isTyping && (
+                    <div className="typing-indicator">
+                      <span></span><span></span><span></span>
+                    </div>
+                  )}
+                </>
+              )}
             </div>
 
             {/* Message Input */}
@@ -456,9 +531,31 @@ const PetOwnerChat = () => {
                 className="message-input"
                 placeholder="Type your message..."
                 value={message}
-                onChange={(e) => setMessage(e.target.value)}
+                onChange={(e) => {
+                  setMessage(e.target.value);
+                  sendTyping(e.target.value.length > 0);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    if (message.trim()) {
+                      sendMessage(message);
+                      setMessage('');
+                      sendTyping(false);
+                    }
+                  }
+                }}
               />
-              <button className="send-button">
+              <button 
+                className="send-button"
+                onClick={async () => {
+                  if (message.trim()) {
+                    await sendMessage(message);
+                    setMessage('');  // ✅ This already exists, should be working
+                    sendTyping(false);
+                  }
+                }}
+              >
                 <Send size={18} />
               </button>
             </div>
