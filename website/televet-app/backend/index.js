@@ -3228,7 +3228,7 @@ app.get('/api/chat/:chat_id/messages', (req, res) => {
   );
 });
 
-// 🔧 FIXED: Send message endpoint
+// Send message endpoint
 app.post('/api/chat/send-message', (req, res) => {
   const io = req.app.get('io');
   const { chat_id, sender_id, sender_role, msg, msg_type = 'text' } = req.body;
@@ -3259,8 +3259,6 @@ app.post('/api/chat/send-message', (req, res) => {
           console.log('📤 About to emit newMessage to room:', `chat_${chat_id}`);
           console.log('📦 Message data:', newMsg[0]);
           
-          // ✅ Emit to everyone in the room
-          // The sender will ignore it because they already have it optimistically
           io.to(`chat_${chat_id}`).emit('newMessage', newMsg[0]);
           
           console.log('✅ Emitted newMessage event');
@@ -3289,7 +3287,7 @@ app.put('/api/chat/:chat_id/mark-read', (req, res) => {
   );
 });
 
-// Update online status
+// Update chat-specific online status
 app.put('/api/chat/online-status', (req, res) => {
   const { chat_id, usr_id, is_online } = req.body;
   const io = req.app.get('io');
@@ -3302,9 +3300,76 @@ app.put('/api/chat/online-status', (req, res) => {
     (err) => {
       if (err) return res.status(500).json({ error: err.message });
       
-      // Emit status change
       io.to(`chat_${chat_id}`).emit('statusChange', { usr_id, is_online });
       res.json({ success: true });
+    }
+  );
+});
+
+// =============== USER ONLINE STATUS ENDPOINTS ===============
+
+// GET user online status
+app.get('/api/user/online-status/:usr_id', (req, res) => {
+  const { usr_id } = req.params;
+  
+  console.log('📥 GET online status for usr_id:', usr_id);
+  
+  db.query(
+    'SELECT usr_isOnline FROM user_t WHERE usr_id = ?',
+    [usr_id],
+    (err, result) => {
+      if (err) return res.status(500).json({ error: err.message });
+      if (result.length === 0) return res.status(404).json({ error: 'User not found' });
+      
+      console.log('✅ Found user status:', result[0]);
+      
+      res.json({ is_online: result[0].usr_isOnline === 'yes' });
+    }
+  );
+});
+
+// PUT user online status
+app.put('/api/user/online-status', (req, res) => {
+  const { usr_id, is_online } = req.body;
+  const io = req.app.get('io');
+  
+  console.log('📥 Received online status update:', { usr_id, is_online });
+  
+  db.query(
+    `UPDATE user_t SET usr_isOnline = ? WHERE usr_id = ?`,
+    [is_online, usr_id],
+    (err, result) => {
+      if (err) {
+        console.error('❌ Database error:', err);
+        return res.status(500).json({ error: err.message });
+      }
+      
+      console.log('✅ Update result:', result);
+      console.log('📊 Rows changed:', result.changedRows);
+      console.log('📊 Rows affected:', result.affectedRows);
+      
+      io.emit('userStatusChanged', { usr_id, is_online });
+      res.json({ success: true });
+    }
+  );
+});
+
+// Get chat details including user IDs
+app.get('/api/chat/:chat_id/details', (req, res) => {
+  const { chat_id } = req.params;
+  
+  db.query(
+    `SELECT c.*, pp.usr_id as pp_usr_id, vt.usr_id as vt_usr_id
+     FROM chat_t c
+     JOIN pet_parent_t pp ON c.pp_id = pp.pp_id
+     JOIN veterinarian_t vt ON c.vt_id = vt.vt_id
+     WHERE c.chat_id = ?`,
+    [chat_id],
+    (err, result) => {
+      if (err) return res.status(500).json({ error: err.message });
+      if (result.length === 0) return res.status(404).json({ error: 'Chat not found' });
+      
+      res.json(result[0]);
     }
   );
 });

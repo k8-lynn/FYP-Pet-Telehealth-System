@@ -26,11 +26,53 @@ const VetChat = () => {
   const [lastVisitData, setLastVisitData] = useState(null);
 
   const [chatId, setChatId] = useState(null);
-  const { messages, isTyping, fetchMessages, sendMessage, sendTyping } = useChat(
+  const { messages, isTyping, otherUserOnline, fetchMessages, sendMessage, sendTyping } = useChat(
     chatId, 
     userid, 
-    'vt'
+    'vt'  // ✅ Change to 'vt' for vet
   );
+
+  // Load userid from sessionStorage
+  React.useEffect(() => {
+    const storedUserId = sessionStorage.getItem('userid');
+    console.log('🔑 Loading userid from session:', storedUserId); // ADD THIS
+    if (storedUserId) {
+      setUserid(storedUserId);
+    }
+  }, []);
+
+  const formatDateDivider = (dateString) => {
+  const date = new Date(dateString);
+  const today = new Date();
+  const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    
+    // Reset time to compare only dates
+    today.setHours(0, 0, 0, 0);
+    yesterday.setHours(0, 0, 0, 0);
+    date.setHours(0, 0, 0, 0);
+    
+    if (date.getTime() === today.getTime()) {
+      return 'Today';
+    } else if (date.getTime() === yesterday.getTime()) {
+      return 'Yesterday';
+    } else {
+      return date.toLocaleDateString('en-US', { 
+        day: 'numeric', 
+        month: 'long', 
+        year: 'numeric' 
+      });
+    }
+  };
+
+  const shouldShowDateDivider = (currentMsg, previousMsg) => {
+    if (!previousMsg) return true;
+    
+    const currentDate = new Date(currentMsg.created_at).toDateString();
+    const previousDate = new Date(previousMsg.created_at).toDateString();
+    
+    return currentDate !== previousDate;
+  };
 
   React.useEffect(() => {
     const storedName = sessionStorage.getItem('firstName');
@@ -63,14 +105,6 @@ const VetChat = () => {
       }
     }
   }, [selectedChat, vtId]); // eslint-disable-line
-
-  // Load userid from sessionStorage
-  React.useEffect(() => {
-    const storedUserId = sessionStorage.getItem('userid');
-    if (storedUserId) {
-      setUserid(storedUserId);
-    }
-  }, []);
 
   // Fetch vet info
   React.useEffect(() => {
@@ -105,6 +139,61 @@ const VetChat = () => {
       fetchMessages();
     }
   }, [chatId, fetchMessages]);
+
+// Update online status when component mounts/unmounts
+React.useEffect(() => {
+  let isMounted = true; // Track if component is still mounted
+  
+  const updateOnlineStatus = async (status) => {
+    if (!userid) return;
+    
+    console.log('🔄 Updating online status to:', status, 'for userid:', userid);
+    
+    try {
+      const response = await fetch('http://localhost:5000/api/user/online-status', {  // ✅ Add const response
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ usr_id: userid, is_online: status })
+      });
+      
+      const data = await response.json();
+      console.log('✅ Status update response:', data);
+      
+    } catch (error) {
+      console.error('Error updating online status:', error);
+    }
+  };
+  
+  updateOnlineStatus('yes');
+  
+  // Only set offline on actual unmount, not on re-renders
+  return () => {
+    isMounted = false;
+    // Add a small delay to distinguish between re-renders and actual unmount
+    setTimeout(() => {
+      if (!isMounted) {
+        updateOnlineStatus('no');
+      }
+    }, 100);
+  };
+}, [userid]);
+
+// Handle page visibility change
+React.useEffect(() => {
+  const handleVisibilityChange = () => {
+    if (userid) {
+      const status = document.hidden ? 'no' : 'yes';
+      fetch('http://localhost:5000/api/user/online-status', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ usr_id: userid, is_online: status })
+      });
+    }
+  };
+  
+  document.addEventListener('visibilitychange', handleVisibilityChange);
+  return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+}, [userid]);
 
   React.useEffect(() => {
     scrollToBottom();
@@ -246,7 +335,7 @@ const VetChat = () => {
     lastMessage: 'No recent messages',
     time: new Date(patient.pet_lastUpdated || patient.pp_createdAt).toLocaleDateString(),
     unread: 0,
-    online: false,
+    online: otherUserOnline && selectedChat === `patient-${patient.pet_id}`,
     petData: patient
   }));
 
@@ -389,7 +478,7 @@ const VetChat = () => {
                 <div>
                   <h3>{currentChat?.name}</h3>
                   <p className="chat-header-status">
-                    {currentChat?.online ? 'Online' : 'Offline'} • {currentChat?.petName} ({currentChat?.petType})
+                    {otherUserOnline ? 'Online' : 'Offline'} • {currentChat?.petName} ({currentChat?.petType})
                   </p>
                 </div>
               </div>
@@ -450,24 +539,30 @@ const VetChat = () => {
                 </div>
               ) : (
                 <>
-                  {messages.map((msg) => (
-                    <div 
-                      key={msg.msg_id}
-                      className={`message message-${msg.sender_role === 'vt' ? 'sent' : 'received'}`}
-                    >
-                      <div className="message-content">
-                        <div className="message-bubble">
-                          <p>{msg.msg}</p>
+                  {messages.map((msg, index) => (
+                    <React.Fragment key={msg.msg_id}>
+                      {shouldShowDateDivider(msg, messages[index - 1]) && (
+                        <div className="date-divider">
+                          <span>{formatDateDivider(msg.created_at)}</span>
                         </div>
-                        <span className="message-time">
-                          {new Date(msg.created_at).toLocaleTimeString('en-US', {
-                            hour: 'numeric',
-                            minute: '2-digit',
-                            hour12: true
-                          })}
-                        </span>
+                      )}
+                      <div 
+                        className={`message message-${msg.sender_role === 'vt' ? 'sent' : 'received'}`}
+                      >
+                        <div className="message-content">
+                          <div className="message-bubble">
+                            <p>{msg.msg}</p>
+                          </div>
+                          <span className="message-time">
+                            {new Date(msg.created_at).toLocaleTimeString('en-US', {
+                              hour: 'numeric',
+                              minute: '2-digit',
+                              hour12: true
+                            })}
+                          </span>
+                        </div>
                       </div>
-                    </div>
+                    </React.Fragment>
                   ))}
                   {isTyping && (
                     <div className="typing-indicator">

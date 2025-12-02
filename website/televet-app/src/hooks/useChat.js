@@ -9,6 +9,8 @@ export const useChat = (chatId, userId, userRole) => {
   const [isConnected, setIsConnected] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
   const socketRef = useRef(null);
+  const [otherUserOnline, setOtherUserOnline] = useState(false);
+  const [otherUserId, setOtherUserId] = useState(null);
 
   // ✅ Initialize socket connection ONCE
   useEffect(() => {
@@ -91,6 +93,53 @@ export const useChat = (chatId, userId, userRole) => {
       }
     };
   }, [userId]); // Only re-run if userId changes
+
+// Fetch other user's online status
+  useEffect(() => {
+    const fetchOtherUserStatus = async () => {
+      if (!chatId) return;
+      
+      try {
+        // Get chat details to find the other user
+        const chatResponse = await fetch(`http://localhost:5000/api/chat/${chatId}/details`);
+        const chatData = await chatResponse.json();
+        
+        // Determine other user's ID based on current user's role
+        const otherUserId = userRole === 'pp' ? chatData.vt_usr_id : chatData.pp_usr_id;
+        setOtherUserId(otherUserId);
+        
+        // Fetch their online status
+        const statusResponse = await fetch(`http://localhost:5000/api/user/online-status/${otherUserId}`);
+        const statusData = await statusResponse.json();
+        
+        setOtherUserOnline(statusData.is_online);
+      } catch (error) {
+        console.error('Error fetching user status:', error);
+      }
+    };
+    
+    fetchOtherUserStatus();
+  }, [chatId, userRole]);
+
+  // Listen for status changes
+  useEffect(() => {
+    if (!socketRef.current || !otherUserId) return;
+    
+    const handleStatusChange = ({ usr_id, is_online }) => {
+      // Only update if it's the other user in this chat
+      if (String(usr_id) === String(otherUserId)) {
+        setOtherUserOnline(is_online === 'yes');
+      }
+    };
+    
+    socketRef.current.on('userStatusChanged', handleStatusChange);
+    
+    return () => {
+      if (socketRef.current) {
+        socketRef.current.off('userStatusChanged', handleStatusChange);
+      }
+    };
+  }, [otherUserId]);
   
   // ✅ Join/leave chat rooms when chatId changes
   useEffect(() => {
@@ -185,6 +234,7 @@ export const useChat = (chatId, userId, userRole) => {
     messages,
     isConnected,
     isTyping,
+    otherUserOnline,  // ✅ Add this
     fetchMessages,
     sendMessage,
     sendTyping
