@@ -37,9 +37,11 @@ io.on('connection', (socket) => {
   });
   
   // ✅ Join chat room
+  // In your io.on('connection') block, update the joinChat handler:
   socket.on('joinChat', (chatId) => {
     socket.join(`chat_${chatId}`);
     console.log(`💬 Socket ${socket.id} joined chat: chat_${chatId}`);
+    socket.emit('joinedChat', { chatId, success: true }); // ADD THIS LINE
   });
   
   // ✅ Leave chat room
@@ -3226,7 +3228,7 @@ app.get('/api/chat/:chat_id/messages', (req, res) => {
   );
 });
 
-// 🔧 FIXED: Send message endpoint - removed duplicate res.json()
+// 🔧 FIXED: Send message endpoint
 app.post('/api/chat/send-message', (req, res) => {
   const io = req.app.get('io');
   const { chat_id, sender_id, sender_role, msg, msg_type = 'text' } = req.body;
@@ -3237,7 +3239,6 @@ app.post('/api/chat/send-message', (req, res) => {
     (err, result) => {
       if (err) return res.status(500).json({ error: err.message });
       
-      // Update last message in chat_t
       db.query(
         'UPDATE chat_t SET last_msg = ?, last_msg_at = NOW() WHERE chat_id = ?',
         [msg, chat_id],
@@ -3246,7 +3247,6 @@ app.post('/api/chat/send-message', (req, res) => {
         }
       );
       
-      // Get the full message data and emit
       db.query(
         `SELECT cm.*, u.usr_firstName, u.usr_lastName 
          FROM chat_msg_t cm
@@ -3259,12 +3259,12 @@ app.post('/api/chat/send-message', (req, res) => {
           console.log('📤 About to emit newMessage to room:', `chat_${chat_id}`);
           console.log('📦 Message data:', newMsg[0]);
           
-          // Emit to chat room
+          // ✅ Emit to everyone in the room
+          // The sender will ignore it because they already have it optimistically
           io.to(`chat_${chat_id}`).emit('newMessage', newMsg[0]);
           
           console.log('✅ Emitted newMessage event');
           
-          // ✅ ONLY ONE res.json() call
           res.json(newMsg[0]);
         }
       );

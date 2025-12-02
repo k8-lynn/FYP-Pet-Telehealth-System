@@ -25,12 +25,11 @@ const PetOwnerChat = () => {
   const [lastVisitData, setLastVisitData] = useState(null);
 
   const [chatId, setChatId] = useState(null);
-  const { messages, isConnected, isTyping, fetchMessages, sendMessage, sendTyping } = useChat(
+  const { messages, isTyping, fetchMessages, sendMessage, sendTyping } = useChat(
     chatId, 
     userid, 
     'pp'
   );
-
   React.useEffect(() => {
     const storedName = sessionStorage.getItem('firstName');
     const storedUserId = sessionStorage.getItem('userid');
@@ -48,6 +47,7 @@ const PetOwnerChat = () => {
       console.log('⚠️ No userid found in session storage');
       setLoading(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Fetch appointment details when selectedChat changes
@@ -498,14 +498,14 @@ const PetOwnerChat = () => {
                       <div className="message-content">
                         <div className="message-bubble">
                           <p>{msg.msg}</p>
-                          <span className="message-time">
-                            {new Date(msg.created_at).toLocaleTimeString('en-US', {
-                              hour: 'numeric',
-                              minute: '2-digit',
-                              hour12: true
-                            })}
-                          </span>
                         </div>
+                        <span className="message-time">
+                          {new Date(msg.created_at).toLocaleTimeString('en-US', {
+                            hour: 'numeric',
+                            minute: '2-digit',
+                            hour12: true
+                          })}
+                        </span>
                       </div>
                     </div>
                   ))}

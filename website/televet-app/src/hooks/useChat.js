@@ -10,79 +10,114 @@ export const useChat = (chatId, userId, userRole) => {
   const [isTyping, setIsTyping] = useState(false);
   const socketRef = useRef(null);
 
+  // ✅ Initialize socket connection ONCE
   useEffect(() => {
     if (!userId) return;
-  
-    // Initialize socket connection ONCE
+
     if (!socketRef.current) {
+      console.log('🔌 Initializing socket for userId:', userId);
+      
       socketRef.current = io(SOCKET_URL, {
         transports: ['websocket', 'polling']
       });
-  
+
       socketRef.current.on('connect', () => {
-        console.log('✅ Socket connected');
+        console.log('✅ Socket connected, ID:', socketRef.current.id);
         setIsConnected(true);
         socketRef.current.emit('joinUser', userId);
+        console.log('📤 Emitted joinUser event for userId:', userId);
       });
-  
+
       socketRef.current.on('disconnect', () => {
         console.log('❌ Socket disconnected');
         setIsConnected(false);
       });
+      
+      socketRef.current.on('welcome', (data) => {
+        console.log('👋 Received welcome:', data);
+      });
+
+      socketRef.current.on('joinedChat', (data) => {
+        console.log('✅ Confirmed joined chat room:', data.chatId);
+      });
+
+      // In the handleNewMessage function, change it to:
+      const handleNewMessage = (message) => {
+        console.log('🎉 NEW MESSAGE RECEIVED VIA SOCKET:', message);
+        console.log('🔍 Comparing:', { 
+          messageSenderId: message.sender_id, 
+          messageSenderIdType: typeof message.sender_id,
+          currentUserId: userId, 
+          currentUserIdType: typeof userId 
+        });
+        
+        setMessages(prev => {
+          // ✅ Convert both to strings for comparison
+          if (String(message.sender_id) === String(userId)) {
+            console.log('⚠️ Ignoring own message from socket (already added optimistically)');
+            return prev;
+          }
+          
+          // For receivers: check if message already exists by msg_id
+          const exists = prev.some(msg => msg.msg_id === message.msg_id);
+          
+          if (exists) {
+            console.log('⚠️ Message already exists, skipping duplicate');
+            return prev;
+          }
+          
+          console.log('✅ Adding new message to state');
+          return [...prev, message];
+        });
+      };
+
+      socketRef.current.on('newMessage', handleNewMessage);
+      console.log('✅ newMessage listener attached');
+
+      // ✅ ATTACH TYPING LISTENER HERE TOO
+      const handleTyping = ({ userId: typingUserId, isTyping }) => {
+        if (typingUserId !== userId) {
+          setIsTyping(isTyping);
+        }
+      };
+
+      socketRef.current.on('userTyping', handleTyping);
     }
-  
+
     return () => {
       if (socketRef.current) {
         socketRef.current.disconnect();
+        socketRef.current = null;
       }
     };
-  }, [userId]);
+  }, [userId]); // Only re-run if userId changes
   
-  // ✅ NEW: Separate effect for joining/leaving chat rooms
+  // ✅ Join/leave chat rooms when chatId changes
   useEffect(() => {
     if (!socketRef.current || !chatId) return;
-  
-    console.log('🚪 Joining chat room:', chatId);
-    socketRef.current.emit('joinChat', chatId);
-  
-    return () => {
-      console.log('👋 Leaving chat room:', chatId);
-      socketRef.current.emit('leaveChat', chatId);
-    };
-  }, [chatId]);
 
-  // Listen for new messages
-useEffect(() => {
-    if (!socketRef.current) return;
-  
-    const handleNewMessage = (message) => {
-      console.log('🎉 NEW MESSAGE RECEIVED VIA SOCKET:', message);
-      setMessages(prev => [...prev, message]);
-    };
-  
-    socketRef.current.on('newMessage', handleNewMessage);
-  
-    return () => {
-      socketRef.current.off('newMessage', handleNewMessage);
-    };
-  }, []);
-
-  // Listen for typing indicator
-  useEffect(() => {
-    if (!socketRef.current || !userId) return;
-
-    const handleTyping = ({ userId: typingUserId, isTyping }) => {
-      if (typingUserId !== userId) {
-        setIsTyping(isTyping);
+    const joinRoom = () => {
+      if (socketRef.current.connected) {
+        console.log('🚪 Joining chat room:', chatId);
+        socketRef.current.emit('joinChat', chatId);
+      } else {
+        console.log('⚠️ Socket not connected yet, waiting...');
+        socketRef.current.once('connect', () => {
+          console.log('✅ Now connected, joining chat room:', chatId);
+          socketRef.current.emit('joinChat', chatId);
+        });
       }
     };
 
-    socketRef.current.on('userTyping', handleTyping);
+    joinRoom();
 
     return () => {
-      socketRef.current.off('userTyping', handleTyping);
+      if (socketRef.current && socketRef.current.connected) {
+        console.log('👋 Leaving chat room:', chatId);
+        socketRef.current.emit('leaveChat', chatId);
+      }
     };
-  }, [userId]);
+  }, [chatId]);
 
   // Fetch messages
   const fetchMessages = useCallback(async () => {
@@ -102,8 +137,9 @@ useEffect(() => {
   const sendMessage = useCallback(async (messageText) => {
     if (!chatId || !messageText.trim() || !userId) return;
   
+    const tempId = `temp-${Date.now()}`;
     const tempMessage = {
-      msg_id: `temp-${Date.now()}`,
+      msg_id: tempId,
       chat_id: chatId,
       sender_id: userId,
       sender_role: userRole,
@@ -129,12 +165,12 @@ useEffect(() => {
       
       setMessages(prev => 
         prev.map(msg => 
-          msg.msg_id === tempMessage.msg_id ? newMessage : msg
+          msg.msg_id === tempId ? newMessage : msg
         )
       );
     } catch (error) {
       console.error('Error sending message:', error);
-      setMessages(prev => prev.filter(msg => msg.msg_id !== tempMessage.msg_id));
+      setMessages(prev => prev.filter(msg => msg.msg_id !== tempId));
     }
   }, [chatId, userId, userRole]);
 
