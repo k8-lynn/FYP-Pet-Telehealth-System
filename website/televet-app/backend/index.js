@@ -54,6 +54,12 @@ io.on('connection', (socket) => {
   socket.on('typing', ({ chatId, userId, isTyping }) => {
     socket.to(`chat_${chatId}`).emit('userTyping', { userId, isTyping });
   });
+
+  // Add this with your other socket.on handlers
+  socket.on('messagesRead', ({ chatId, userId }) => {
+    console.log('📖 Messages read in chat:', chatId, 'by user:', userId);
+    io.to(`chat_${chatId}`).emit('messagesRead', { userId });
+  });
   
   socket.on('disconnect', (reason) => {
     console.log('❌ User disconnected:', socket.id, 'Reason:', reason);
@@ -3003,12 +3009,22 @@ app.get('/api/vet-patients/:vt_id', (req, res) => {
       u.usr_id,
       u.usr_firstName as owner_firstName,
       u.usr_lastName as owner_lastName,
-      u.usr_email as owner_email
+      u.usr_email as owner_email,
+      c.chat_id,
+      c.last_msg,
+      c.last_msg_at,
+      (SELECT COUNT(*) 
+       FROM chat_msg_t cm 
+       WHERE cm.chat_id = c.chat_id 
+       AND cm.sender_role = 'pp' 
+       AND cm.is_read = 'no'
+      ) as unread_count
     FROM pet_t pet
     INNER JOIN pet_parent_t pp ON pet.pp_id = pp.pp_id
     INNER JOIN user_t u ON pp.usr_id = u.usr_id
+    LEFT JOIN chat_t c ON c.pp_id = pp.pp_id AND c.vt_id = pet.pet_assignedVet
     WHERE pet.pet_assignedVet = ?
-    ORDER BY pet.pet_lastUpdated DESC
+    ORDER BY c.last_msg_at DESC, pet.pet_lastUpdated DESC
   `;
 
   db.query(sql, [vt_id], (err, result) => {
@@ -3097,11 +3113,21 @@ app.get('/api/pets/by-parent/:pp_id', (req, res) => {
     SELECT 
       pet.*,
       pp.pp_assignedClinic,
-      pp.createdAt as pp_createdAt
+      pp.createdAt as pp_createdAt,
+      c.chat_id,
+      c.last_msg,
+      c.last_msg_at,
+      (SELECT COUNT(*) 
+       FROM chat_msg_t cm 
+       WHERE cm.chat_id = c.chat_id 
+       AND cm.sender_role = 'vt' 
+       AND cm.is_read = 'no'
+      ) as unread_count
     FROM pet_t pet
     LEFT JOIN pet_parent_t pp ON pet.pp_id = pp.pp_id
+    LEFT JOIN chat_t c ON c.pp_id = pet.pp_id AND c.vt_id = pet.pet_assignedVet
     WHERE pet.pp_id = ?
-    ORDER BY pet.pet_lastUpdated DESC
+    ORDER BY c.last_msg_at DESC, pet.pet_lastUpdated DESC
   `;
 
   db.query(sql, [pp_id], (err, result) => {
@@ -3112,7 +3138,6 @@ app.get('/api/pets/by-parent/:pp_id', (req, res) => {
 
     console.log(`✅ Query executed for pp_id: ${pp_id}`);
     console.log(`📊 Found ${result.length} pets`);
-    console.log('📋 First pet:', result[0]);
     
     res.status(200).json(result);
   });

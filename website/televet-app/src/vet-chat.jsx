@@ -7,6 +7,7 @@ import ProfileNotification from "./components/ProfileNotification";
 import AppointmentDetailsModal from './components/AppointmentDetailsModal';
 import './styles/vet-chat.css';
 import { useChat } from './hooks/useChat';
+import { useNotification } from './components/NotificationProvider';
 
 const VetChat = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -24,13 +25,21 @@ const VetChat = () => {
   const [userid, setUserid] = useState(null);
   const [clinicInfo, setClinicInfo] = useState({});
   const [lastVisitData, setLastVisitData] = useState(null);
+  const { socket } = useNotification();
 
   const [chatId, setChatId] = useState(null);
-  const { messages, isTyping, otherUserOnline, fetchMessages, sendMessage, sendTyping } = useChat(
+  const { messages, isTyping, otherUserOnline, fetchMessages, sendMessage, sendTyping, markAsRead } = useChat(
     chatId, 
     userid, 
-    'vt'  // ✅ Change to 'vt' for vet
+    'vt'  // or 'vt' for vet
   );
+
+  // Request notification permission on mount
+  React.useEffect(() => {
+    if (Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+  }, []);
 
   // Load userid from sessionStorage
   React.useEffect(() => {
@@ -40,6 +49,13 @@ const VetChat = () => {
       setUserid(storedUserId);
     }
   }, []);
+
+  // Mark messages as read when viewing chat
+  React.useEffect(() => {
+    if (chatId && selectedChat) {
+      markAsRead();
+    }
+  }, [chatId, selectedChat, markAsRead]);
 
   const formatDateDivider = (dateString) => {
   const date = new Date(dateString);
@@ -332,14 +348,46 @@ React.useEffect(() => {
     petName: patient.pet_name,
     petType: patient.pet_species,
     avatar: `${patient.owner_firstName?.charAt(0) || ''}${patient.owner_lastName?.charAt(0) || ''}`,
-    lastMessage: 'No recent messages',
-    time: new Date(patient.pet_lastUpdated || patient.pp_createdAt).toLocaleDateString(),
-    unread: 0,
+    lastMessage: patient.last_msg || 'No recent messages',
+    time: patient.last_msg_at 
+      ? new Date(patient.last_msg_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
+      : new Date(patient.pet_lastUpdated || patient.pp_createdAt).toLocaleDateString(),
+    unread: patient.unread_count || 0,
     online: otherUserOnline && selectedChat === `patient-${patient.pet_id}`,
     petData: patient
   }));
 
   const currentChat = chats.find(c => c.id === selectedChat);
+  // Listen for new messages and show notifications
+  React.useEffect(() => {
+    if (!socket || !chatId) return;
+
+    const handleNewMessage = (message) => {
+      // Only show notification if message is from other user
+      if (String(message.sender_id) !== String(userid)) {
+        const senderName = currentChat?.name || 'User';
+        
+        // Create toast notification
+        const audio = new Audio('/notification.mp3');
+        audio.play().catch(() => console.log('Could not play sound'));
+        
+        // Show browser notification if permitted
+        if (Notification.permission === 'granted') {
+          new Notification(senderName, {
+            body: message.msg,
+            icon: '/paw-icon.png'
+          });
+        }
+      }
+    };
+
+    socket.on('newMessage', handleNewMessage);
+
+    return () => {
+      socket.off('newMessage', handleNewMessage);
+    };
+  }, [socket, chatId, userid, currentChat]);
+
   const currentPet = currentChat ? {
     name: currentChat.petData.pet_name,
     species: currentChat.petData.pet_species,
@@ -559,6 +607,11 @@ React.useEffect(() => {
                               minute: '2-digit',
                               hour12: true
                             })}
+                            {msg.sender_role === 'vt' && (
+                              <span style={{ marginLeft: '4px' }}>
+                                {msg.is_read === 'yes' ? '✓✓' : '✓'}
+                              </span>
+                            )}
                           </span>
                         </div>
                       </div>

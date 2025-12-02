@@ -76,6 +76,19 @@ export const useChat = (chatId, userId, userRole) => {
       socketRef.current.on('newMessage', handleNewMessage);
       console.log('✅ newMessage listener attached');
 
+      // Add this after the newMessage listener setup
+      const handleMessagesRead = ({ userId: readByUserId }) => {
+        if (readByUserId !== userId) {
+          setMessages(prev => 
+            prev.map(msg => 
+              msg.sender_id === userId ? { ...msg, is_read: 'yes' } : msg
+            )
+          );
+        }
+      };
+
+      socketRef.current.on('messagesRead', handleMessagesRead);
+
       // ✅ ATTACH TYPING LISTENER HERE TOO
       const handleTyping = ({ userId: typingUserId, isTyping }) => {
         if (typingUserId !== userId) {
@@ -193,9 +206,10 @@ export const useChat = (chatId, userId, userRole) => {
       sender_id: userId,
       sender_role: userRole,
       msg: messageText.trim(),
-      created_at: new Date().toISOString()
+      created_at: new Date().toISOString(),
+      is_read: 'no'
     };
-    
+
     setMessages(prev => [...prev, tempMessage]);
   
     try {
@@ -223,20 +237,41 @@ export const useChat = (chatId, userId, userRole) => {
     }
   }, [chatId, userId, userRole]);
 
+  // Mark messages as read
+const markAsRead = useCallback(async () => {
+  if (!chatId || !userId) return;
+  
+  try {
+    await fetch(`http://localhost:5000/api/chat/${chatId}/mark-read`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ usr_id: userId })
+    });
+    
+    // Emit read receipt via socket
+    if (socketRef.current) {
+      socketRef.current.emit('messagesRead', { chatId, userId });
+    }
+  } catch (error) {
+    console.error('Error marking messages as read:', error);
+  }
+}, [chatId, userId]);
+
   // Send typing indicator
   const sendTyping = useCallback((isTyping) => {
     if (socketRef.current && chatId && userId) {
       socketRef.current.emit('typing', { chatId, userId, isTyping });
     }
   }, [chatId, userId]);
-
+  
   return {
     messages,
     isConnected,
     isTyping,
-    otherUserOnline,  // ✅ Add this
+    otherUserOnline,
     fetchMessages,
     sendMessage,
-    sendTyping
+    sendTyping,
+    markAsRead  // ✅ Add this
   };
 };

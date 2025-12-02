@@ -7,6 +7,7 @@ import ProfileNotification from "./components/ProfileNotification";
 import AppointmentDetailsModal from './components/AppointmentDetailsModal';
 import './styles/petowner-chat.css';
 import { useChat } from './hooks/useChat';
+import { useNotification } from './components/NotificationProvider';
 
 const PetOwnerChat = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -23,9 +24,10 @@ const PetOwnerChat = () => {
   const [userid, setUserid] = useState(null);
   const [ppId, setPpId] = useState(null);
   const [lastVisitData, setLastVisitData] = useState(null);
+  const { socket } = useNotification();
 
   const [chatId, setChatId] = useState(null);
-  const { messages, isTyping, otherUserOnline, fetchMessages, sendMessage, sendTyping } = useChat(
+  const { messages, isTyping, otherUserOnline, fetchMessages, sendMessage, sendTyping, markAsRead } = useChat(
     chatId, 
     userid, 
     'pp'
@@ -92,6 +94,13 @@ React.useEffect(() => {
   };
 }, [userid]);
 
+  // Request notification permission on mount
+  React.useEffect(() => {
+    if (Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+  }, []);
+
 // Handle page visibility change
 React.useEffect(() => {
   const handleVisibilityChange = () => {
@@ -108,6 +117,13 @@ React.useEffect(() => {
   document.addEventListener('visibilitychange', handleVisibilityChange);
   return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
 }, [userid]);
+
+// Mark messages as read when viewing chat
+React.useEffect(() => {
+  if (chatId && selectedChat) {
+    markAsRead();
+  }
+}, [chatId, selectedChat, markAsRead]);
 
 const shouldShowDateDivider = (currentMsg, previousMsg) => {
   if (!previousMsg) return true;
@@ -369,9 +385,11 @@ const shouldShowDateDivider = (currentMsg, previousMsg) => {
     avatar: pet.vet_firstName && pet.vet_lastName 
       ? `${pet.vet_firstName.charAt(0)}${pet.vet_lastName.charAt(0)}` 
       : 'V',
-    lastMessage: 'No recent messages',
-    time: new Date(pet.pet_lastUpdated || Date.now()).toLocaleDateString(),
-    unread: 0,
+    lastMessage: pet.last_msg || 'No recent messages',
+    time: pet.last_msg_at 
+      ? new Date(pet.last_msg_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
+      : new Date(pet.pet_lastUpdated || Date.now()).toLocaleDateString(),
+    unread: pet.unread_count || 0,
     online: otherUserOnline && selectedChat === `pet-${pet.pet_id}`,
     petName: pet.pet_name,
     petType: pet.pet_species,
@@ -379,6 +397,36 @@ const shouldShowDateDivider = (currentMsg, previousMsg) => {
   }));
 
   const currentChat = chats.find(c => c.id === selectedChat);
+
+  // Listen for new messages and show notifications
+  React.useEffect(() => {
+    if (!socket || !chatId) return;
+
+    const handleNewMessage = (message) => {
+      // Only show notification if message is from other user
+      if (String(message.sender_id) !== String(userid)) {
+        const senderName = currentChat?.name || 'User';
+        
+        // Create toast notification
+        const audio = new Audio('/notification.mp3');
+        audio.play().catch(() => console.log('Could not play sound'));
+        
+        // Show browser notification if permitted
+        if (Notification.permission === 'granted') {
+          new Notification(senderName, {
+            body: message.msg,
+            icon: '/paw-icon.png'
+          });
+        }
+      }
+    };
+
+    socket.on('newMessage', handleNewMessage);
+
+    return () => {
+      socket.off('newMessage', handleNewMessage);
+    };
+  }, [socket, chatId, userid, currentChat]);
   
   const currentPet = currentChat ? {
     name: currentChat.petData.pet_name,
@@ -599,6 +647,11 @@ const shouldShowDateDivider = (currentMsg, previousMsg) => {
                               minute: '2-digit',
                               hour12: true
                             })}
+                            {msg.sender_role === 'pp' && (
+                              <span style={{ marginLeft: '4px' }}>
+                                {msg.is_read === 'yes' ? '✓✓' : '✓'}
+                              </span>
+                            )}
                           </span>
                         </div>
                       </div>
