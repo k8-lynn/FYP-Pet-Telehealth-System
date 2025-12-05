@@ -34,6 +34,9 @@ io.on('connection', (socket) => {
   socket.on('joinUser', (userId) => {
     socket.join(`user_${userId}`);
     console.log(`✅ User ${userId} joined room: user_${userId}`);
+    
+    // Store userId with socket
+    socket.userId = userId;
   });
   
   // ✅ Join chat room
@@ -49,6 +52,17 @@ io.on('connection', (socket) => {
     socket.leave(`chat_${chatId}`);
     console.log(`👋 Socket ${socket.id} left chat: chat_${chatId}`);
   });
+
+  // ✅ Track which chat the user is actively viewing
+  socket.on('setActiveChat', ({ chatId, active }) => {
+    if (active) {
+      socket.activeChat = chatId;
+      console.log(`👁️ User viewing chat: ${chatId}`);
+    } else {
+      socket.activeChat = null;
+      console.log(`👁️ User left chat: ${chatId}`);
+    }
+  });
   
   // ✅ Typing indicator
   socket.on('typing', ({ chatId, userId, isTyping }) => {
@@ -58,7 +72,8 @@ io.on('connection', (socket) => {
   // Add this with your other socket.on handlers
   socket.on('messagesRead', ({ chatId, userId }) => {
     console.log('📖 Messages read in chat:', chatId, 'by user:', userId);
-    io.to(`chat_${chatId}`).emit('messagesRead', { userId });
+    // Broadcast to everyone, not just the chat room
+    io.emit('messagesRead', { chatId, userId });
   });
   
   socket.on('disconnect', (reason) => {
@@ -2985,7 +3000,23 @@ const createNotification = (usr_id, pet_id, appt_id, type, message, appt_date = 
 app.get('/api/vet-patients/:vt_id', (req, res) => {
   const { vt_id } = req.params;
 
-  const sql = `
+  // First, get the vet's usr_id
+  const getUserIdSql = 'SELECT usr_id FROM veterinarian_t WHERE vt_id = ?';
+  
+  db.query(getUserIdSql, [vt_id], (err, vetResult) => {
+    if (err) {
+      console.error('❌ Error fetching vet usr_id:', err);
+      return res.status(500).json({ error: 'Failed to fetch vet info' });
+    }
+    
+    if (vetResult.length === 0) {
+      return res.status(404).json({ error: 'Veterinarian not found' });
+    }
+    
+    const vet_usr_id = vetResult[0].usr_id;
+    console.log('🔍 Vet usr_id:', vet_usr_id); // Debug log
+
+    const sql = `
     SELECT 
       pet.pet_id,
       pet.pet_name,
@@ -3010,31 +3041,38 @@ app.get('/api/vet-patients/:vt_id', (req, res) => {
       u.usr_firstName as owner_firstName,
       u.usr_lastName as owner_lastName,
       u.usr_email as owner_email,
+      u.usr_isOnline as owner_usr_isOnline,
       c.chat_id,
       c.last_msg,
       c.last_msg_at,
-      (SELECT COUNT(*) 
+      COALESCE((SELECT COUNT(*) 
        FROM chat_msg_t cm 
        WHERE cm.chat_id = c.chat_id 
-       AND cm.sender_role = 'pp' 
+       AND cm.sender_id != ?
        AND cm.is_read = 'no'
-      ) as unread_count
+      ), 0) as unread_count
     FROM pet_t pet
     INNER JOIN pet_parent_t pp ON pet.pp_id = pp.pp_id
     INNER JOIN user_t u ON pp.usr_id = u.usr_id
     LEFT JOIN chat_t c ON c.pp_id = pp.pp_id AND c.vt_id = pet.pet_assignedVet
     WHERE pet.pet_assignedVet = ?
     ORDER BY c.last_msg_at DESC, pet.pet_lastUpdated DESC
-  `;
+    `;
 
-  db.query(sql, [vt_id], (err, result) => {
-    if (err) {
-      console.error('❌ Error fetching vet patients:', err);
-      return res.status(500).json({ error: 'Failed to fetch vet patients' });
-    }
+    db.query(sql, [vet_usr_id, vt_id], (err, result) => {
+      if (err) {
+        console.error('❌ Error fetching vet patients:', err);
+        return res.status(500).json({ error: 'Failed to fetch vet patients' });
+      }
 
-    console.log(`✅ Retrieved ${result.length} patients for vet ${vt_id}`);
-    res.status(200).json(result);
+      console.log(`✅ Retrieved ${result.length} patients for vet ${vt_id}`);
+      // Debug: log unread counts
+      result.forEach(r => {
+        console.log(`Pet ${r.pet_name}: unread_count = ${r.unread_count}`);
+      });
+      
+      res.status(200).json(result);
+    });
   });
 });
 
@@ -3109,37 +3147,61 @@ app.get('/api/pets/by-parent/:pp_id', (req, res) => {
 
   console.log('🔍 Fetching pets for pp_id:', pp_id);
 
-  const sql = `
-    SELECT 
-      pet.*,
-      pp.pp_assignedClinic,
-      pp.createdAt as pp_createdAt,
-      c.chat_id,
-      c.last_msg,
-      c.last_msg_at,
-      (SELECT COUNT(*) 
-       FROM chat_msg_t cm 
-       WHERE cm.chat_id = c.chat_id 
-       AND cm.sender_role = 'vt' 
-       AND cm.is_read = 'no'
-      ) as unread_count
-    FROM pet_t pet
-    LEFT JOIN pet_parent_t pp ON pet.pp_id = pp.pp_id
-    LEFT JOIN chat_t c ON c.pp_id = pet.pp_id AND c.vt_id = pet.pet_assignedVet
-    WHERE pet.pp_id = ?
-    ORDER BY c.last_msg_at DESC, pet.pet_lastUpdated DESC
-  `;
-
-  db.query(sql, [pp_id], (err, result) => {
+  // First, get the pet parent's usr_id
+  const getUserIdSql = 'SELECT usr_id FROM pet_parent_t WHERE pp_id = ?';
+  
+  db.query(getUserIdSql, [pp_id], (err, ppResult) => {
     if (err) {
-      console.error('❌ Error fetching pets:', err);
-      return res.status(500).json({ error: 'Failed to fetch pets' });
+      console.error('❌ Error fetching pet parent usr_id:', err);
+      return res.status(500).json({ error: 'Failed to fetch pet parent info' });
     }
-
-    console.log(`✅ Query executed for pp_id: ${pp_id}`);
-    console.log(`📊 Found ${result.length} pets`);
     
-    res.status(200).json(result);
+    if (ppResult.length === 0) {
+      return res.status(404).json({ error: 'Pet parent not found' });
+    }
+    
+    const pp_usr_id = ppResult[0].usr_id;
+    console.log('🔍 Pet parent usr_id:', pp_usr_id); // Debug log
+
+    const sql = `
+      SELECT 
+        pet.*,
+        pp.pp_assignedClinic,
+        pp.createdAt as pp_createdAt,
+        c.chat_id,
+        c.last_msg,
+        c.last_msg_at,
+        vu.usr_isOnline as vet_usr_isOnline,
+        COALESCE((SELECT COUNT(*) 
+         FROM chat_msg_t cm 
+         WHERE cm.chat_id = c.chat_id 
+         AND cm.sender_id != ?
+         AND cm.is_read = 'no'
+        ), 0) as unread_count
+      FROM pet_t pet
+      LEFT JOIN pet_parent_t pp ON pet.pp_id = pp.pp_id
+      LEFT JOIN chat_t c ON c.pp_id = pet.pp_id AND c.vt_id = pet.pet_assignedVet
+      LEFT JOIN veterinarian_t vt ON pet.pet_assignedVet = vt.vt_id
+      LEFT JOIN user_t vu ON vt.usr_id = vu.usr_id
+      WHERE pet.pp_id = ?
+      ORDER BY c.last_msg_at DESC, pet.pet_lastUpdated DESC
+    `;
+
+    db.query(sql, [pp_usr_id, pp_id], (err, result) => {
+      if (err) {
+        console.error('❌ Error fetching pets:', err);
+        return res.status(500).json({ error: 'Failed to fetch pets' });
+      }
+
+      console.log(`✅ Query executed for pp_id: ${pp_id}`);
+      console.log(`📊 Found ${result.length} pets`);
+      // Debug: log unread counts
+      result.forEach(r => {
+        console.log(`Pet ${r.pet_name}: unread_count = ${r.unread_count}`);
+      });
+      
+      res.status(200).json(result);
+    });
   });
 });
 
@@ -3281,14 +3343,70 @@ app.post('/api/chat/send-message', (req, res) => {
         (err, newMsg) => {
           if (err) return res.status(500).json({ error: err.message });
           
-          console.log('📤 About to emit newMessage to room:', `chat_${chat_id}`);
-          console.log('📦 Message data:', newMsg[0]);
+          const message = newMsg[0];
           
-          io.to(`chat_${chat_id}`).emit('newMessage', newMsg[0]);
+          console.log('📤 About to emit newMessage to room:', `chat_${chat_id}`);
+          console.log('📦 Message data:', message);
+          
+          // Emit to chat room
+          io.to(`chat_${chat_id}`).emit('newMessage', { ...message, chat_id });
+
+          //broadcast to ALL users so their lists update:
+          io.emit('chatListUpdate', { 
+            chat_id, 
+            last_msg: msg, 
+            last_msg_at: new Date(),
+            sender_id 
+          });
           
           console.log('✅ Emitted newMessage event');
           
-          res.json(newMsg[0]);
+          // ✅ Get receiver info and send notification
+          db.query(
+            `SELECT c.pp_id, c.vt_id, pp.usr_id as pp_usr_id, vt.usr_id as vt_usr_id,
+                    pet.pet_id, pet.pet_name
+             FROM chat_t c
+             JOIN pet_parent_t pp ON c.pp_id = pp.pp_id
+             JOIN veterinarian_t vt ON c.vt_id = vt.vt_id
+             LEFT JOIN pet_t pet ON pet.pp_id = c.pp_id AND pet.pet_assignedVet = c.vt_id
+             WHERE c.chat_id = ?
+             LIMIT 1`,
+            [chat_id],
+            (err, chatData) => {
+              if (err || chatData.length === 0) return res.json(message);
+              
+              const receiverId = sender_role === 'pp' 
+                ? chatData[0].vt_usr_id 
+                : chatData[0].pp_usr_id;
+              
+              const senderName = `${message.usr_firstName} ${message.usr_lastName}`;
+              
+              console.log('📨 Sending notification to user:', receiverId);
+              
+              // ✅ CREATE DATABASE NOTIFICATION for the message
+              const pet_id = chatData[0].pet_id || null;
+              const notificationMessage = `${senderName}: ${msg}`;
+              
+              createNotification(
+                receiverId, 
+                pet_id, 
+                null, // no appointment for chat messages
+                'message', 
+                notificationMessage,
+                null // no appointment date
+              );
+              
+              // Send real-time socket notification to receiver
+              io.to(`user_${receiverId}`).emit('newMessageNotification', {
+                senderName: senderName,
+                message: msg,
+                chat_id: chat_id,
+                sender_id: sender_id
+              });
+              
+              res.json(message);
+            }
+          );
         }
       );
     }

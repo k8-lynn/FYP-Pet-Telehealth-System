@@ -1,6 +1,6 @@
 // toast.jsx
 import React from 'react';
-import { CheckCircle, Clock, AlertCircle, Info } from 'lucide-react';
+import { CheckCircle, Clock, AlertCircle, Info, MessageCircle } from 'lucide-react'; // ✅ Add MessageCircle
 import '../styles/toast.css';
 
 const Toast = ({ type = 'success', title, message }) => {
@@ -8,7 +8,8 @@ const Toast = ({ type = 'success', title, message }) => {
     success: CheckCircle,
     pending: Clock,
     error: AlertCircle,
-    info: Info
+    info: Info,
+    message: MessageCircle  // ✅ Now properly imported
   };
 
   const Icon = icons[type] || CheckCircle;

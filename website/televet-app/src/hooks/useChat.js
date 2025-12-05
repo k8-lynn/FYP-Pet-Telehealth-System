@@ -11,6 +11,7 @@ export const useChat = (chatId, userId, userRole) => {
   const socketRef = useRef(null);
   const [otherUserOnline, setOtherUserOnline] = useState(false);
   const [otherUserId, setOtherUserId] = useState(null);
+  const [isInChatView, setIsInChatView] = useState(false);
 
   // ✅ Initialize socket connection ONCE
   useEffect(() => {
@@ -78,16 +79,19 @@ export const useChat = (chatId, userId, userRole) => {
 
       // Add this after the newMessage listener setup
       const handleMessagesRead = ({ userId: readByUserId }) => {
-        if (readByUserId !== userId) {
+        console.log('📖 Received messagesRead event for user:', readByUserId);
+        if (String(readByUserId) !== String(userId)) {
+          console.log('✅ Updating messages to read status');
           setMessages(prev => 
             prev.map(msg => 
-              msg.sender_id === userId ? { ...msg, is_read: 'yes' } : msg
+              String(msg.sender_id) === String(userId) ? { ...msg, is_read: 'yes' } : msg
             )
           );
         }
       };
 
       socketRef.current.on('messagesRead', handleMessagesRead);
+      console.log('✅ messagesRead listener attached');
 
       // ✅ ATTACH TYPING LISTENER HERE TOO
       const handleTyping = ({ userId: typingUserId, isTyping }) => {
@@ -248,7 +252,7 @@ const markAsRead = useCallback(async () => {
       body: JSON.stringify({ usr_id: userId })
     });
     
-    // Emit read receipt via socket
+    // ✅ Emit socket event so other user's message list updates
     if (socketRef.current) {
       socketRef.current.emit('messagesRead', { chatId, userId });
     }
@@ -263,6 +267,14 @@ const markAsRead = useCallback(async () => {
       socketRef.current.emit('typing', { chatId, userId, isTyping });
     }
   }, [chatId, userId]);
+
+  // Add this function before the return statement:
+  const setActiveChat = useCallback((active) => {
+    setIsInChatView(active);
+    if (socketRef.current && chatId) {
+      socketRef.current.emit('setActiveChat', { chatId, active });
+    }
+  }, [chatId]);
   
   return {
     messages,
@@ -272,6 +284,7 @@ const markAsRead = useCallback(async () => {
     fetchMessages,
     sendMessage,
     sendTyping,
-    markAsRead  // ✅ Add this
+    markAsRead,  // ✅ Add this
+    setActiveChat
   };
 };

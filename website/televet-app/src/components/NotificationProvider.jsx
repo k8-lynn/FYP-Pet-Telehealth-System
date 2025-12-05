@@ -1,5 +1,5 @@
-// NotificationProvider.jsx
-import React, { createContext, useState, useEffect, useContext } from 'react';
+// NotificationProvider.jsx (current one)
+import React, { createContext, useState, useEffect, useContext, useRef } from 'react';
 import { io } from 'socket.io-client';
 import ToastContainer from './ToastContainer';
 
@@ -18,9 +18,17 @@ export const NotificationProvider = ({ children }) => {
   const [toast, setToast] = useState(null);
   const [socket, setSocket] = useState(null);
   const [notifications, setNotifications] = useState([]);
+  const isOnChatPageRef = useRef(false);
 
   useEffect(() => {
-    // ✅ Use sessionStorage with correct key
+    // ✅ Set up the global function FIRST before connecting socket
+    window.setIsOnChatPage = (value) => {
+      console.log('🔄 Setting isOnChatPage to:', value);
+      isOnChatPageRef.current = value;
+    };
+
+    window.showToast = showToast;
+    
     const usr_id = sessionStorage.getItem('userid');
     const userType = sessionStorage.getItem('userType');
 
@@ -56,13 +64,26 @@ export const NotificationProvider = ({ children }) => {
       console.error('❌ Socket connection error:', error);
     });
 
-    // Listen for new notifications
+    // ✅ Socket listener is now set up AFTER the ref function
     newSocket.on('newNotification', (notification) => {
       console.log('📩 Received notification:', notification);
-
+      console.log('📍 Current isOnChatPage (from ref):', isOnChatPageRef.current);
+      console.log('📍 Current window.location.pathname:', window.location.pathname);
+    
       // Add to notifications list
       setNotifications(prev => [notification, ...prev]);
-
+    
+      // ✅ Check BOTH the ref AND the current URL path
+      const isOnChatPage = isOnChatPageRef.current || 
+                           window.location.pathname === '/petowner-chat' || 
+                           window.location.pathname === '/vet-chat';
+      
+      // ✅ Check if on chat page AND if it's a message notification
+      if (notification.notification_type === 'message' && isOnChatPage) {
+        console.log('⏭️ Skipping toast for message notification (user is on chat page)');
+        return;
+      }
+    
       // Show toast based on notification type
       const toastConfig = {
         'approved': {
@@ -89,19 +110,24 @@ export const NotificationProvider = ({ children }) => {
           type: 'success',
           title: '✅ Appointment Completed',
           message: notification.notification_message
+        },
+        'message': {
+          type: 'message',
+          title: 'New Message',
+          message: notification.notification_message
         }
       };
-
+    
       const toastData = toastConfig[notification.notification_type] || {
         type: 'info',
         title: 'New Notification',
         message: notification.notification_message
       };
-
+    
+      console.log(`🍞 Creating toast for ${notification.notification_type}`);
       setToast(toastData);
-      console.log(`🍞 Toast created for ${notification.notification_type}:`, toastData);
-
-      // Play notification sound (optional)
+    
+      // Play notification sound
       try {
         const audio = new Audio('/notification.mp3');
         audio.play().catch(() => console.log('Could not play notification sound'));
@@ -117,14 +143,25 @@ export const NotificationProvider = ({ children }) => {
     return () => {
       console.log('🔌 Disconnecting Socket.IO');
       newSocket.disconnect();
+      delete window.showToast;
+      delete window.setIsOnChatPage;
     };
-  }, []); // Empty dependency array - only run once on mount
+  }, []);
 
   const handleCloseToast = () => {
     setToast(null);
   };
 
   const showToast = (type, title, message) => {
+    // ✅ Check BOTH the ref AND the current URL path
+    const isOnChatPage = isOnChatPageRef.current || 
+                         window.location.pathname === '/petowner-chat' || 
+                         window.location.pathname === '/vet-chat';
+    
+    if (type === 'message' && isOnChatPage) {
+      console.log('⏭️ Skipping manual toast for message (user is on chat page)');
+      return;
+    }
     setToast({ type, title, message });
   };
 

@@ -9,6 +9,7 @@ import './styles/index.css';
 import ProtectedRoute from './ProtectedRoute.jsx';
 // Import NotificationProvider
 import { NotificationProvider } from "./components/NotificationProvider";
+import { useOnlineStatus } from './hooks/useOnlineStatus';
 
 import PetOwnerDashboard from './petowner-dashboard';
 import PetOwnerMyPets from './petowner-mypets';
@@ -29,141 +30,183 @@ import VetChat from './vet-chat.jsx';
 
 import MyProfile from './myprofile.jsx';
 
+// ✅ Create a wrapper component to use the hook
+function AppWrapper() {
+  const [userId, setUserId] = React.useState(null);
+  
+  // ✅ Check for userId on mount and when it changes
+  React.useEffect(() => {
+    const storedUserId = sessionStorage.getItem('userid');
+    console.log('🔍 AppWrapper checking userId:', storedUserId);
+    setUserId(storedUserId);
+    
+    // Listen for storage changes (in case of login/logout)
+    const handleStorageChange = () => {
+      const newUserId = sessionStorage.getItem('userid');
+      console.log('🔄 UserId changed to:', newUserId);
+      setUserId(newUserId);
+    };
+    
+    window.addEventListener('storage', handleStorageChange);
+    
+    // Also check periodically in case storage changes in same tab
+    const interval = setInterval(() => {
+      const currentUserId = sessionStorage.getItem('userid');
+      if (currentUserId !== userId) {
+        console.log('🔄 UserId detected change to:', currentUserId);
+        setUserId(currentUserId);
+      }
+    }, 1000);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      clearInterval(interval);
+    };
+  }, [userId]);
+  
+  // ✅ This will manage online status globally
+  useOnlineStatus(userId);
+  
+  return (
+    <Routes>
+      <Route path="/" element={<App />} />
+      <Route path="/login" element={<Login />} />
+      <Route path="/register" element={<Register />} />
+      
+      <Route
+        path="/petowner-dashboard"
+        element={
+          <ProtectedRoute allowedType="petParent">
+            <PetOwnerDashboard />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/petowner-mypets"
+        element={
+          <ProtectedRoute allowedType="petParent">
+            <PetOwnerMyPets />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/petowner-reminders"
+        element={
+          <ProtectedRoute allowedType="petParent">
+            <PetOwnerReminders />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/petowner-myvet"
+        element={
+          <ProtectedRoute allowedType="petParent">
+            <PetOwnerMyVet />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/petowner-chat"
+        element={
+          <ProtectedRoute allowedType="petParent">
+            <PetOwnerChat />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/vetadmin-dashboard"
+        element={
+          <ProtectedRoute allowedType="vetAdmin">
+            <VetAdminDashboard />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/vetadmin-myveterinarians"
+        element={
+          <ProtectedRoute allowedType="vetAdmin">
+            <VetAdminVeterinarians />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/vetadmin-mypatients"
+        element={
+          <ProtectedRoute allowedType="vetAdmin">
+            <VetAdminPatients />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/vetadmin-schedules"
+        element={
+          <ProtectedRoute allowedType="vetAdmin">
+            <VetAdminSchedules />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/vetadmin-appointments"
+        element={
+          <ProtectedRoute allowedType="vetAdmin">
+            <VetAdminAppointments />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/myprofile"
+        element={
+          <ProtectedRoute allowedType={["petParent", "vetAdmin"]}>
+            <MyProfile />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/vet-dashboard"
+        element={
+          <ProtectedRoute allowedType="veterinarian">
+            <VetDashboard />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/vet-mypatients"
+        element={
+          <ProtectedRoute allowedType="veterinarian">
+            <VetPatients />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/vet-appointments"
+        element={
+          <ProtectedRoute allowedType="veterinarian">
+            <VetAppointments />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/vet-chat"
+        element={
+          <ProtectedRoute allowedType="veterinarian">
+            <VetChat />
+          </ProtectedRoute>
+        }
+      />
+    </Routes>
+  );
+}
+
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <BrowserRouter>
-      {/* ✅ Wrap everything with NotificationProvider */}
       <NotificationProvider>
-        <Routes>
-          <Route path="/" element={<App />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          
-          <Route
-            path="/petowner-dashboard"
-            element={
-              <ProtectedRoute allowedType="petParent">
-                <PetOwnerDashboard />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/petowner-mypets"
-            element={
-              <ProtectedRoute allowedType="petParent">
-                <PetOwnerMyPets />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/petowner-reminders"
-            element={
-              <ProtectedRoute allowedType="petParent">
-                <PetOwnerReminders />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/petowner-myvet"
-            element={
-              <ProtectedRoute allowedType="petParent">
-                <PetOwnerMyVet />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/petowner-chat"
-            element={
-              <ProtectedRoute allowedType="petParent">
-                <PetOwnerChat />
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            path="/vetadmin-dashboard"
-            element={
-              <ProtectedRoute allowedType="vetAdmin">
-                <VetAdminDashboard />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/vetadmin-myveterinarians"
-            element={
-              <ProtectedRoute allowedType="vetAdmin">
-                <VetAdminVeterinarians />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/vetadmin-mypatients"
-            element={
-              <ProtectedRoute allowedType="vetAdmin">
-                <VetAdminPatients />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/vetadmin-schedules"
-            element={
-              <ProtectedRoute allowedType="vetAdmin">
-                <VetAdminSchedules />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/vetadmin-appointments"
-            element={
-              <ProtectedRoute allowedType="vetAdmin">
-                <VetAdminAppointments />
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            path="/myprofile"
-            element={
-              <ProtectedRoute allowedType={["petParent", "vetAdmin"]}>
-                <MyProfile />
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            path="/vet-dashboard"
-            element={
-              <ProtectedRoute allowedType="veterinarian">
-                <VetDashboard />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/vet-mypatients"
-            element={
-              <ProtectedRoute allowedType="veterinarian">
-                <VetPatients />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/vet-appointments"
-            element={
-              <ProtectedRoute allowedType="veterinarian">
-                <VetAppointments />
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            path="/vet-chat"
-            element={
-              <ProtectedRoute allowedType="veterinarian">
-                <VetChat />
-              </ProtectedRoute>
-            }
-          />
-        </Routes>
+        {/* ✅ Use AppWrapper instead of Routes directly */}
+        <AppWrapper />
       </NotificationProvider>
     </BrowserRouter>
   </React.StrictMode>

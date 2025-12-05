@@ -27,7 +27,7 @@ const PetOwnerChat = () => {
   const { socket } = useNotification();
 
   const [chatId, setChatId] = useState(null);
-  const { messages, isTyping, otherUserOnline, fetchMessages, sendMessage, sendTyping, markAsRead } = useChat(
+  const { messages, isTyping, otherUserOnline, fetchMessages, sendMessage, sendTyping, markAsRead, setActiveChat } = useChat(
     chatId, 
     userid, 
     'pp'
@@ -56,43 +56,21 @@ const PetOwnerChat = () => {
   }
 };
 
-// Update online status when component mounts/unmounts
+// ✅ Add this useEffect to notify NotificationProvider we're on chat page
 React.useEffect(() => {
-  let isMounted = true; // Track if component is still mounted
-  
-  const updateOnlineStatus = async (status) => {
-    if (!userid) return;
-    
-    console.log('🔄 Updating online status to:', status, 'for userid:', userid);
-    
-    try {
-      const response = await fetch('http://localhost:5000/api/user/online-status', {  // ✅ Add const response
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ usr_id: userid, is_online: status })
-      });
-      
-      const data = await response.json();
-      console.log('✅ Status update response:', data);
-      
-    } catch (error) {
-      console.error('Error updating online status:', error);
+  console.log('🏠 Mounted on PetOwner Chat page');
+  if (window.setIsOnChatPage) {
+    window.setIsOnChatPage(true);
+  }
+
+  return () => {
+    console.log('👋 Leaving PetOwner Chat page');
+    if (window.setIsOnChatPage) {
+      window.setIsOnChatPage(false);
     }
   };
-  
-  updateOnlineStatus('yes');
-  
-  // Only set offline on actual unmount, not on re-renders
-  return () => {
-    isMounted = false;
-    // Add a small delay to distinguish between re-renders and actual unmount
-    setTimeout(() => {
-      if (!isMounted) {
-        updateOnlineStatus('no');
-      }
-    }, 100);
-  };
-}, [userid]);
+}, []);
+
 
   // Request notification permission on mount
   React.useEffect(() => {
@@ -101,29 +79,30 @@ React.useEffect(() => {
     }
   }, []);
 
-// Handle page visibility change
-React.useEffect(() => {
-  const handleVisibilityChange = () => {
-    if (userid) {
-      const status = document.hidden ? 'no' : 'yes';
-      fetch('http://localhost:5000/api/user/online-status', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ usr_id: userid, is_online: status })
-      });
-    }
-  };
-  
-  document.addEventListener('visibilitychange', handleVisibilityChange);
-  return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-}, [userid]);
 
-// Mark messages as read when viewing chat
+
+// Mark messages as read when viewing chat or when new messages arrive
 React.useEffect(() => {
-  if (chatId && selectedChat) {
-    markAsRead();
+  if (chatId && selectedChat && messages.length > 0) {
+    const hasUnreadMessages = messages.some(msg => 
+      msg.sender_role !== 'pp' && msg.is_read === 'no'
+    );
+    
+    if (hasUnreadMessages) {
+      markAsRead().then(() => {
+        // ✅ Update local state to clear unread count
+        setMyPets(prev => prev.map(pet => 
+          pet.chat_id === chatId ? { ...pet, unread_count: 0 } : pet
+        ));
+      });
+    } else if (messages.length > 0) {
+      // ✅ If no unread messages but we just opened chat, also clear count
+      setMyPets(prev => prev.map(pet => 
+        pet.chat_id === chatId ? { ...pet, unread_count: 0 } : pet
+      ));
+    }
   }
-}, [chatId, selectedChat, markAsRead]);
+}, [chatId, selectedChat, messages, markAsRead]);
 
 const shouldShowDateDivider = (currentMsg, previousMsg) => {
   if (!previousMsg) return true;
@@ -173,8 +152,13 @@ const shouldShowDateDivider = (currentMsg, previousMsg) => {
     if (chatId) {
       console.log('🔄 chatId changed, fetching messages for chat_id:', chatId);
       fetchMessages();
+      setActiveChat?.(true); // ✅ Add this line
     }
-  }, [chatId, fetchMessages]);
+    
+    return () => {
+      setActiveChat?.(false); // ✅ Add this line
+    };
+  }, [chatId, fetchMessages, setActiveChat]);
 
   React.useEffect(() => {
     scrollToBottom();
@@ -186,6 +170,15 @@ const shouldShowDateDivider = (currentMsg, previousMsg) => {
       messagesArea.scrollTop = messagesArea.scrollHeight;
     }
   };
+
+  // Add this useEffect after your existing useEffects
+  React.useEffect(() => {
+    if (selectedChat && chatId && userid) {
+      // Mark messages as read when viewing this chat
+      markAsRead();
+    }
+  }, [selectedChat, chatId, userid, markAsRead]);
+
   // In your frontend - petowner-chat.jsx
   const fetchPetParentInfo = async (userId) => {
     try {
@@ -300,11 +293,75 @@ const shouldShowDateDivider = (currentMsg, previousMsg) => {
       });
       const chat = await response.json();
       setChatId(chat.chat_id);
+      
+      // ✅ Mark messages as read after initializing chat
+      setTimeout(() => {
+        markAsRead();
+      }, 500);
+      
       return chat.chat_id;
     } catch (error) {
       console.error('Error initializing chat:', error);
     }
   };
+
+  // ✅ Keep this one and update it to handle both refresh AND notifications
+  React.useEffect(() => {
+    if (!socket) return;
+
+    const handleChatListUpdate = ({ chat_id, last_msg, last_msg_at, sender_id }) => {
+      console.log('📋 Chat list update received for chat:', chat_id);
+      
+      // Update the local state without full refresh
+      setMyPets(prev => prev.map(pet => {
+        if (pet.chat_id === chat_id) {
+          // If sender is not current user, increment unread
+          const shouldIncrement = String(sender_id) !== String(userid);
+          
+          return {
+            ...pet,
+            last_msg,
+            last_msg_at,
+            unread_count: shouldIncrement 
+              ? (pet.unread_count || 0) + 1 
+              : pet.unread_count
+          };
+        }
+        return pet;
+      }));
+    };
+
+    socket.on('chatListUpdate', handleChatListUpdate);
+
+    return () => {
+      socket.off('chatListUpdate', handleChatListUpdate);
+    };
+  }, [socket, userid]);
+
+  React.useEffect(() => {
+    if (!socket) return;
+  
+    const handleMessagesRead = ({ chatId, userId: readByUserId }) => {
+      console.log('📖 PetOwner: messagesRead received for chat', chatId);
+  
+      // Only clear unread count if the OTHER user read messages
+      if (String(readByUserId) !== String(userid)) {
+        setMyPets(prev =>
+          prev.map(pet =>
+            pet.chat_id === chatId
+              ? { ...pet, unread_count: 0 }
+              : pet
+          )
+        );
+      }
+    };
+  
+    socket.on('messagesRead', handleMessagesRead);
+  
+    return () => {
+      socket.off('messagesRead', handleMessagesRead);
+    };
+  }, [socket, userid]);
 
   const fetchAppointmentDetails = async (pet_id, showModal = false) => {
     try {
@@ -390,7 +447,7 @@ const shouldShowDateDivider = (currentMsg, previousMsg) => {
       ? new Date(pet.last_msg_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
       : new Date(pet.pet_lastUpdated || Date.now()).toLocaleDateString(),
     unread: pet.unread_count || 0,
-    online: otherUserOnline && selectedChat === `pet-${pet.pet_id}`,
+    online: pet.vet_usr_isOnline === 'yes',
     petName: pet.pet_name,
     petType: pet.pet_species,
     petData: pet
@@ -398,35 +455,42 @@ const shouldShowDateDivider = (currentMsg, previousMsg) => {
 
   const currentChat = chats.find(c => c.id === selectedChat);
 
-  // Listen for new messages and show notifications
   React.useEffect(() => {
-    if (!socket || !chatId) return;
-
-    const handleNewMessage = (message) => {
-      // Only show notification if message is from other user
-      if (String(message.sender_id) !== String(userid)) {
-        const senderName = currentChat?.name || 'User';
-        
-        // Create toast notification
-        const audio = new Audio('/notification.mp3');
-        audio.play().catch(() => console.log('Could not play sound'));
-        
-        // Show browser notification if permitted
-        if (Notification.permission === 'granted') {
-          new Notification(senderName, {
-            body: message.msg,
-            icon: '/paw-icon.png'
-          });
-        }
+    if (!socket) return;
+  
+    const handleMessageNotification = ({ senderName, message, chat_id, sender_id }) => {
+      console.log('📨 Message notification received:', { senderName, message, chat_id });
+      
+      // ✅ Don't show toast if we're already viewing this chat
+      if (selectedChat && currentChat?.petData?.chat_id === chat_id) {
+        console.log('⏭️ Already in this chat, skipping notification');
+        return;
+      }
+      
+      // ✅ Don't show toast if we're on the chat page at all
+      console.log('⏭️ On chat page, skipping toast notification');
+      
+      // Only play sound, no toast
+      const audio = new Audio('/notification.mp3');
+      audio.play().catch(() => console.log('Could not play sound'));
+      
+      // Browser notification only (if permission granted)
+      if (Notification.permission === 'granted') {
+        new Notification(senderName, {
+          body: message,
+          icon: '/paw-icon.png'
+        });
       }
     };
-
-    socket.on('newMessage', handleNewMessage);
-
+  
+    socket.on('newMessageNotification', handleMessageNotification);
+  
     return () => {
-      socket.off('newMessage', handleNewMessage);
+      socket.off('newMessageNotification', handleMessageNotification);
     };
-  }, [socket, chatId, userid, currentChat]);
+  }, [socket, selectedChat, currentChat]);
+
+
   
   const currentPet = currentChat ? {
     name: currentChat.petData.pet_name,

@@ -34,6 +34,21 @@ const VetChat = () => {
     'vt'  // or 'vt' for vet
   );
 
+  // ✅ Add this useEffect to notify NotificationProvider we're on chat page
+React.useEffect(() => {
+  console.log('🏠 Mounted on Vet Chat page');
+  if (window.setIsOnChatPage) {
+    window.setIsOnChatPage(true);
+  }
+
+  return () => {
+    console.log('👋 Leaving Vet Chat page');
+    if (window.setIsOnChatPage) {
+      window.setIsOnChatPage(false);
+    }
+  };
+}, []);
+
   // Request notification permission on mount
   React.useEffect(() => {
     if (Notification.permission === 'default') {
@@ -50,12 +65,28 @@ const VetChat = () => {
     }
   }, []);
 
-  // Mark messages as read when viewing chat
-  React.useEffect(() => {
-    if (chatId && selectedChat) {
-      markAsRead();
+// Mark messages as read when viewing chat or when new messages arrive
+React.useEffect(() => {
+  if (chatId && selectedChat && messages.length > 0) {
+    const hasUnreadMessages = messages.some(msg => 
+      msg.sender_role !== 'vt' && msg.is_read === 'no'
+    );
+    
+    if (hasUnreadMessages) {
+      markAsRead().then(() => {
+        // ✅ Update local state to clear unread count
+        setMyPatients(prev => prev.map(patient => 
+          patient.chat_id === chatId ? { ...patient, unread_count: 0 } : patient
+        ));
+      });
+    } else if (messages.length > 0) {
+      // ✅ If no unread messages but we just opened chat, also clear count
+      setMyPatients(prev => prev.map(patient => 
+        patient.chat_id === chatId ? { ...patient, unread_count: 0 } : patient
+      ));
     }
-  }, [chatId, selectedChat, markAsRead]);
+  }
+}, [chatId, selectedChat, messages, markAsRead]);
 
   const formatDateDivider = (dateString) => {
   const date = new Date(dateString);
@@ -156,61 +187,6 @@ const VetChat = () => {
     }
   }, [chatId, fetchMessages]);
 
-// Update online status when component mounts/unmounts
-React.useEffect(() => {
-  let isMounted = true; // Track if component is still mounted
-  
-  const updateOnlineStatus = async (status) => {
-    if (!userid) return;
-    
-    console.log('🔄 Updating online status to:', status, 'for userid:', userid);
-    
-    try {
-      const response = await fetch('http://localhost:5000/api/user/online-status', {  // ✅ Add const response
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ usr_id: userid, is_online: status })
-      });
-      
-      const data = await response.json();
-      console.log('✅ Status update response:', data);
-      
-    } catch (error) {
-      console.error('Error updating online status:', error);
-    }
-  };
-  
-  updateOnlineStatus('yes');
-  
-  // Only set offline on actual unmount, not on re-renders
-  return () => {
-    isMounted = false;
-    // Add a small delay to distinguish between re-renders and actual unmount
-    setTimeout(() => {
-      if (!isMounted) {
-        updateOnlineStatus('no');
-      }
-    }, 100);
-  };
-}, [userid]);
-
-// Handle page visibility change
-React.useEffect(() => {
-  const handleVisibilityChange = () => {
-    if (userid) {
-      const status = document.hidden ? 'no' : 'yes';
-      fetch('http://localhost:5000/api/user/online-status', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ usr_id: userid, is_online: status })
-      });
-    }
-  };
-  
-  document.addEventListener('visibilitychange', handleVisibilityChange);
-  return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-}, [userid]);
-
   React.useEffect(() => {
     scrollToBottom();
   }, [messages]);
@@ -221,6 +197,16 @@ React.useEffect(() => {
       messagesArea.scrollTop = messagesArea.scrollHeight;
     }
   };
+
+  // Add this useEffect after your existing useEffects
+  React.useEffect(() => {
+    if (selectedChat && chatId && userid) {
+      // Mark messages as read when viewing this chat
+      markAsRead();
+    }
+  }, [selectedChat, chatId, userid, markAsRead]);
+
+  
 
   // Fetch patients assigned to this vet
   const fetchMyPatients = async (vt_id) => {
@@ -266,6 +252,12 @@ React.useEffect(() => {
       });
       const chat = await response.json();
       setChatId(chat.chat_id);
+      
+      // ✅ Mark messages as read after initializing chat
+      setTimeout(() => {
+        markAsRead();
+      }, 500);
+      
       return chat.chat_id;
     } catch (error) {
       console.error('Error initializing chat:', error);
@@ -353,31 +345,58 @@ React.useEffect(() => {
       ? new Date(patient.last_msg_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
       : new Date(patient.pet_lastUpdated || patient.pp_createdAt).toLocaleDateString(),
     unread: patient.unread_count || 0,
-    online: otherUserOnline && selectedChat === `patient-${patient.pet_id}`,
+    online: patient.owner_usr_isOnline === 'yes',
     petData: patient
   }));
 
   const currentChat = chats.find(c => c.id === selectedChat);
-  // Listen for new messages and show notifications
+
   React.useEffect(() => {
-    if (!socket || !chatId) return;
+    if (!socket) return;
+  
+    const handleMessageNotification = ({ senderName, message, chat_id, sender_id }) => {
+      console.log('📨 Message notification received:', { senderName, message, chat_id });
+      
+      // ✅ Don't show toast if we're already viewing this chat
+      if (selectedChat && currentChat?.petData?.chat_id === chat_id) {
+        console.log('⏭️ Already in this chat, skipping notification');
+        return;
+      }
+      
+      // ✅ Don't show toast if we're on the chat page at all
+      console.log('⏭️ On chat page, skipping toast notification');
+      
+      // Only play sound, no toast
+      const audio = new Audio('/notification.mp3');
+      audio.play().catch(() => console.log('Could not play sound'));
+      
+      // Browser notification only (if permission granted)
+      if (Notification.permission === 'granted') {
+        new Notification(senderName, {
+          body: message,
+          icon: '/paw-icon.png'
+        });
+      }
+    };
+  
+    socket.on('newMessageNotification', handleMessageNotification);
+  
+    return () => {
+      socket.off('newMessageNotification', handleMessageNotification);
+    };
+  }, [socket, selectedChat, currentChat]);
+  
+
+  // Add this after your existing useEffect with socket listeners
+  React.useEffect(() => {
+    if (!socket) return;
 
     const handleNewMessage = (message) => {
-      // Only show notification if message is from other user
-      if (String(message.sender_id) !== String(userid)) {
-        const senderName = currentChat?.name || 'User';
-        
-        // Create toast notification
-        const audio = new Audio('/notification.mp3');
-        audio.play().catch(() => console.log('Could not play sound'));
-        
-        // Show browser notification if permitted
-        if (Notification.permission === 'granted') {
-          new Notification(senderName, {
-            body: message.msg,
-            icon: '/paw-icon.png'
-          });
-        }
+      console.log('📨 New message received:', message);
+      
+      // Always refresh the list to update unread counts
+      if (userid && vtId) {
+        fetchMyPatients(vtId);
       }
     };
 
@@ -386,7 +405,65 @@ React.useEffect(() => {
     return () => {
       socket.off('newMessage', handleNewMessage);
     };
-  }, [socket, chatId, userid, currentChat]);
+  }, [socket, userid, vtId]); // Remove chatId from dependencies
+
+  React.useEffect(() => {
+    if (!socket) return;
+  
+    const handleMessagesRead = ({ chatId, userId: readByUserId }) => {
+      console.log('📖 Vet: messagesRead received for chat', chatId);
+  
+      // Only clear unread count if the OTHER user read messages
+      if (String(readByUserId) !== String(userid)) {
+        setMyPatients(prev =>
+          prev.map(patient =>
+            patient.chat_id === chatId
+              ? { ...patient, unread_count: 0 }
+              : patient
+          )
+        );
+      }
+    };
+  
+    socket.on('messagesRead', handleMessagesRead);
+  
+    return () => {
+      socket.off('messagesRead', handleMessagesRead);
+    };
+  }, [socket, userid]);
+
+  // ADD this new useEffect after your existing socket listeners (around line 320):
+  React.useEffect(() => {
+    if (!socket) return;
+
+    const handleChatListUpdate = ({ chat_id, last_msg, last_msg_at, sender_id }) => {
+      console.log('📋 Chat list update received for chat:', chat_id);
+      
+      // Update the local state without full refresh
+      setMyPatients(prev => prev.map(patient => {
+        if (patient.chat_id === chat_id) {
+          // If sender is not current user, increment unread
+          const shouldIncrement = String(sender_id) !== String(userid);
+          
+          return {
+            ...patient,
+            last_msg,
+            last_msg_at,
+            unread_count: shouldIncrement 
+              ? (patient.unread_count || 0) + 1 
+              : patient.unread_count
+          };
+        }
+        return patient;
+      }));
+    };
+
+    socket.on('chatListUpdate', handleChatListUpdate);
+
+    return () => {
+      socket.off('chatListUpdate', handleChatListUpdate);
+    };
+  }, [socket, userid]);
 
   const currentPet = currentChat ? {
     name: currentChat.petData.pet_name,
@@ -471,6 +548,7 @@ React.useEffect(() => {
                         <div className="chat-avatar-container">
                           <div className="chat-avatar">{chat.avatar}</div>
                           {chat.online && <div className="online-indicator" />}
+                          {chat.unread > 0 && <div className="unread-dot" />}
                         </div>
                         <div className="chat-item-content">
                           <div className="chat-item-header">
