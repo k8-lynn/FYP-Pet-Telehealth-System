@@ -101,3 +101,14 @@
 .toast-message svg {
   color: #6366f1;
 }
+
+/* Reminder Toast */
+.toast-reminder {
+  background: linear-gradient(135deg, #e9d5ff 0%, #d8b4fe 100%);
+  color: #581c87;
+  border: 2px solid #a855f7;
+}
+
+.toast-reminder svg {
+  color: #a855f7;
+}

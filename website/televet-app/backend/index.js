@@ -3804,3 +3804,423 @@ app.post('/api/chat/upload-file', upload.single('file'), (req, res) => {
     }
   );
 });
+
+//REMINDERS BACKEND
+// -------------------------------------------------------------
+// 🟢 GET REMINDERS FOR PET PARENT
+// -------------------------------------------------------------
+app.get('/api/reminders/:pp_id', (req, res) => {
+  const { pp_id } = req.params;
+
+  const sql = `
+    SELECT 
+      r.rmd_id,
+      r.pp_id,
+      r.pet_id,
+      r.rmd_title,
+      r.rmd_desc,
+      r.rmd_date,
+      r.rmd_time,
+      r.rmd_done,
+      r.rmd_repeat,
+      r.rmd_repeat_period,
+      r.created_at,
+      r.updated_at,
+      pet.pet_name
+    FROM pet_parent_rmd_t r
+    LEFT JOIN pet_t pet ON r.pet_id = pet.pet_id
+    WHERE r.pp_id = ?
+    ORDER BY r.rmd_date ASC, r.rmd_time ASC
+  `;
+
+  db.query(sql, [pp_id], (err, result) => {
+    if (err) {
+      console.error('❌ Error fetching reminders:', err);
+      return res.status(500).json({ error: 'Failed to fetch reminders' });
+    }
+
+    console.log(`✅ Retrieved ${result.length} reminders for pp_id ${pp_id}`);
+    res.status(200).json(result);
+  });
+});
+
+// -------------------------------------------------------------
+// 🟢 CREATE NEW REMINDER
+// -------------------------------------------------------------
+app.post('/api/reminders', (req, res) => {
+  const {
+    pp_id,
+    pet_id,
+    rmd_title,
+    rmd_desc,
+    rmd_date,
+    rmd_time,
+    rmd_repeat,
+    rmd_repeat_period
+  } = req.body;
+
+  if (!pp_id || !rmd_title || !rmd_date || !rmd_time) {
+    return res.status(400).json({ error: 'Missing required fields' });
+  }
+
+  const sql = `
+    INSERT INTO pet_parent_rmd_t (
+      pp_id,
+      pet_id,
+      rmd_title,
+      rmd_desc,
+      rmd_date,
+      rmd_time,
+      rmd_repeat,
+      rmd_repeat_period
+    )
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `;
+
+  db.query(sql, [
+    pp_id,
+    pet_id || null,
+    rmd_title,
+    rmd_desc || null,
+    rmd_date,
+    rmd_time,
+    rmd_repeat || 'no',
+    rmd_repeat_period || ''
+  ], (err, result) => {
+    if (err) {
+      console.error('❌ Error creating reminder:', err);
+      return res.status(500).json({ error: 'Failed to create reminder' });
+    }
+
+    console.log('✅ Reminder created successfully, ID:', result.insertId);
+    scheduleNextReminder();
+    res.status(201).json({
+      message: 'Reminder created successfully',
+      rmd_id: result.insertId
+    });
+  });
+});
+
+// -------------------------------------------------------------
+// 🟢 UPDATE REMINDER
+// -------------------------------------------------------------
+app.put('/api/reminders/:rmd_id', (req, res) => {
+  const { rmd_id } = req.params;
+  const {
+    pet_id,
+    rmd_title,
+    rmd_desc,
+    rmd_date,
+    rmd_time,
+    rmd_repeat,
+    rmd_repeat_period
+  } = req.body;
+
+  const sql = `
+    UPDATE pet_parent_rmd_t
+    SET 
+      pet_id = ?,
+      rmd_title = ?,
+      rmd_desc = ?,
+      rmd_date = ?,
+      rmd_time = ?,
+      rmd_repeat = ?,
+      rmd_repeat_period = ?
+    WHERE rmd_id = ?
+  `;
+
+  db.query(sql, [
+    pet_id || null,
+    rmd_title,
+    rmd_desc || null,
+    rmd_date,
+    rmd_time,
+    rmd_repeat || 'no',
+    rmd_repeat_period || '',
+    rmd_id
+  ], (err, result) => {
+    if (err) {
+      console.error('❌ Error updating reminder:', err);
+      return res.status(500).json({ error: 'Failed to update reminder' });
+    }
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'Reminder not found' });
+    }
+
+    console.log('✅ Reminder updated successfully, ID:', rmd_id);
+    scheduleNextReminder();
+    res.status(200).json({ message: 'Reminder updated successfully' });
+  });
+});
+
+// -------------------------------------------------------------
+// 🟢 TOGGLE REMINDER COMPLETION
+// -------------------------------------------------------------
+app.put('/api/reminders/:rmd_id/toggle', (req, res) => {
+  const { rmd_id } = req.params;
+
+  const sql = `
+    UPDATE pet_parent_rmd_t
+    SET rmd_done = IF(rmd_done = 'yes', 'no', 'yes')
+    WHERE rmd_id = ?
+  `;
+
+  db.query(sql, [rmd_id], (err, result) => {
+    if (err) {
+      console.error('❌ Error toggling reminder:', err);
+      return res.status(500).json({ error: 'Failed to toggle reminder' });
+    }
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'Reminder not found' });
+    }
+
+    console.log('✅ Reminder toggled successfully, ID:', rmd_id);
+    res.status(200).json({ message: 'Reminder status updated successfully' });
+  });
+});
+
+// -------------------------------------------------------------
+// 🟢 DELETE REMINDER
+// -------------------------------------------------------------
+app.delete('/api/reminders/:rmd_id', (req, res) => {
+  const { rmd_id } = req.params;
+
+  const sql = 'DELETE FROM pet_parent_rmd_t WHERE rmd_id = ?';
+
+  db.query(sql, [rmd_id], (err, result) => {
+    if (err) {
+      console.error('❌ Error deleting reminder:', err);
+      return res.status(500).json({ error: 'Failed to delete reminder' });
+    }
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'Reminder not found' });
+    }
+
+    console.log('✅ Reminder deleted successfully, ID:', rmd_id);
+    scheduleNextReminder();
+    res.status(200).json({ message: 'Reminder deleted successfully' });
+  });
+});
+
+// -------------------------------------------------------------
+// 🟢 GET TODAY'S REMINDERS
+// -------------------------------------------------------------
+app.get('/api/reminders/:pp_id/today', (req, res) => {
+  const { pp_id } = req.params;
+  
+  const today = new Date();
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+
+  const sql = `
+    SELECT 
+      r.rmd_id,
+      r.rmd_title,
+      r.rmd_desc,
+      r.rmd_date,
+      r.rmd_time,
+      r.rmd_done,
+      r.rmd_repeat,
+      r.rmd_repeat_period,
+      pet.pet_name
+    FROM pet_parent_rmd_t r
+    LEFT JOIN pet_t pet ON r.pet_id = pet.pet_id
+    WHERE r.pp_id = ? AND r.rmd_date = ?
+    ORDER BY r.rmd_time ASC
+  `;
+
+  db.query(sql, [pp_id, todayStr], (err, result) => {
+    if (err) {
+      console.error('❌ Error fetching today\'s reminders:', err);
+      return res.status(500).json({ error: 'Failed to fetch reminders' });
+    }
+
+    res.status(200).json(result);
+  });
+});
+
+// -------------------------------------------------------------
+// 🟢 GET UPCOMING REMINDERS (next 7 days, excluding today)
+// -------------------------------------------------------------
+app.get('/api/reminders/:pp_id/upcoming', (req, res) => {
+  const { pp_id } = req.params;
+  
+  const today = new Date();
+  const nextWeek = new Date(today);
+  nextWeek.setDate(today.getDate() + 7);
+  
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  const nextWeekStr = `${nextWeek.getFullYear()}-${String(nextWeek.getMonth() + 1).padStart(2, '0')}-${String(nextWeek.getDate()).padStart(2, '0')}`;
+
+  const sql = `
+    SELECT 
+      r.rmd_id,
+      r.rmd_title,
+      r.rmd_desc,
+      r.rmd_date,
+      r.rmd_time,
+      r.rmd_done,
+      r.rmd_repeat,
+      r.rmd_repeat_period,
+      pet.pet_name
+    FROM pet_parent_rmd_t r
+    LEFT JOIN pet_t pet ON r.pet_id = pet.pet_id
+    WHERE r.pp_id = ? AND r.rmd_date > ? AND r.rmd_date <= ? AND r.rmd_done = 'no'
+    ORDER BY r.rmd_date ASC, r.rmd_time ASC
+    LIMIT 10
+  `;
+
+  db.query(sql, [pp_id, todayStr, nextWeekStr], (err, result) => {
+    if (err) {
+      console.error('❌ Error fetching upcoming reminders:', err);
+      return res.status(500).json({ error: 'Failed to fetch reminders' });
+    }
+
+    res.status(200).json(result);
+  });
+});
+
+// -------------------------------------------------------------
+// 🟢 GET REMINDERS WITH DATES (for calendar highlighting)
+// -------------------------------------------------------------
+app.get('/api/reminders/:pp_id/dates/:year/:month', (req, res) => {
+  const { pp_id, year, month } = req.params;
+  
+  const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
+  const lastDay = new Date(year, month, 0).getDate();
+  const endDate = `${year}-${String(month).padStart(2, '0')}-${lastDay}`;
+
+  const sql = `
+    SELECT DISTINCT DAY(rmd_date) as day
+    FROM pet_parent_rmd_t
+    WHERE pp_id = ? AND rmd_date BETWEEN ? AND ?
+    ORDER BY day ASC
+  `;
+
+  db.query(sql, [pp_id, startDate, endDate], (err, result) => {
+    if (err) {
+      console.error('❌ Error fetching reminder dates:', err);
+      return res.status(500).json({ error: 'Failed to fetch dates' });
+    }
+
+    const days = result.map(row => row.day);
+    res.status(200).json({ days });
+  });
+});
+
+// -------------------------------------------------------------
+// 🟢 REMINDER NOTIFICATION SYSTEM - iPhone-style Scheduler
+// -------------------------------------------------------------
+
+let currentReminderTimeout = null;
+
+const scheduleNextReminder = () => {
+  if (currentReminderTimeout) {
+    clearTimeout(currentReminderTimeout);
+    currentReminderTimeout = null;
+  }
+
+  const sql = `
+    SELECT 
+      r.rmd_id,
+      r.pp_id,
+      r.pet_id,
+      r.rmd_title,
+      r.rmd_desc,
+      r.rmd_date,
+      r.rmd_time,
+      r.rmd_repeat,
+      r.rmd_repeat_period,
+      pp.usr_id,
+      pet.pet_name
+    FROM pet_parent_rmd_t r
+    INNER JOIN pet_parent_t pp ON r.pp_id = pp.pp_id
+    LEFT JOIN pet_t pet ON r.pet_id = pet.pet_id
+    WHERE r.rmd_done = 'no'
+    ORDER BY r.rmd_date ASC, r.rmd_time ASC
+    LIMIT 1
+  `;
+
+  db.query(sql, [], (err, results) => {
+    if (err) {
+      console.error('❌ Error getting next reminder:', err);
+      return;
+    }
+
+    if (results.length === 0) {
+      console.log('📭 No upcoming reminders');
+      return;
+    }
+
+    const reminder = results[0];
+    const now = new Date();
+
+    // Handle reminder.rmd_date whether it's a Date object or string
+    let dueDateTime;
+    if (reminder.rmd_date instanceof Date) {
+      // It's already a Date object from MySQL
+      const [hours, minutes] = reminder.rmd_time.split(':');
+      dueDateTime = new Date(reminder.rmd_date);
+      dueDateTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+    } else {
+      // It's a string
+      const [year, month, day] = reminder.rmd_date.split('-');
+      const [hours, minutes] = reminder.rmd_time.split(':');
+      dueDateTime = new Date(year, month - 1, day, hours, minutes, 0, 0);
+    }
+
+    const msUntilDue = dueDateTime.getTime() - now.getTime();
+
+    if (msUntilDue <= 0) {
+      console.log(`🔔 Overdue reminder, firing now: ${reminder.rmd_title}`);
+      fireReminder(reminder);
+      setTimeout(scheduleNextReminder, 1000);
+      return;
+    }
+
+    console.log(`⏰ Next: "${reminder.rmd_title}" at ${dueDateTime.toLocaleString()} (in ${Math.round(msUntilDue/60000)} min)`);
+
+    currentReminderTimeout = setTimeout(() => {
+      fireReminder(reminder);
+      scheduleNextReminder();
+    }, msUntilDue);
+  });
+};
+
+const fireReminder = (reminder) => {
+  console.log(`🔔 FIRING: ${reminder.rmd_title}`);
+  
+  const petInfo = reminder.pet_name ? ` for ${reminder.pet_name}` : '';
+  const message = `Reminder: ${reminder.rmd_title}${petInfo}`;
+  
+  createNotification(
+    reminder.usr_id,
+    reminder.pet_id,
+    null,
+    'reminder',
+    message,
+    null
+  );
+
+  // ✅ Handle recurring reminders
+  if (reminder.rmd_repeat === 'yes') {
+    createNextRecurringReminder(reminder);
+  }
+  
+  // ✅ ALWAYS mark as "fired" by setting done = 'yes'
+  // User can manually uncheck it if they want, but this prevents infinite loop
+  db.query('UPDATE pet_parent_rmd_t SET rmd_done = "yes" WHERE rmd_id = ?', [reminder.rmd_id], (err) => {
+    if (err) {
+      console.error('❌ Error marking reminder as done:', err);
+    } else {
+      console.log(`✅ Marked reminder ${reminder.rmd_id} as done`);
+    }
+  });
+};
+
+setTimeout(() => {
+  console.log('🚀 Starting reminder scheduler');
+  scheduleNextReminder();
+}, 5000);

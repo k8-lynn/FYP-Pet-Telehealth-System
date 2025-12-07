@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
-import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
+//petowner-reminders.jsx
+import React, { useState, useEffect } from 'react';
+import { ChevronLeft, ChevronRight, Plus, X } from 'lucide-react';
 import './styles/petowner-reminders.css';
 import PawPattern from "./components/PawPattern";
 import PetOwnerNavbar from './components/petowner-navbar';
@@ -12,105 +13,272 @@ const RemindersPage = () => {
   const [firstName, setFirstName] = useState('');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
   const [selectedReminder, setSelectedReminder] = useState(null);
+  const [todaysReminders, setTodaysReminders] = useState([]);
+  const [upcomingReminders, setUpcomingReminders] = useState([]);
+  const [upcomingAppointments, setUpcomingAppointments] = useState([]);
+  const [daysWithReminders, setDaysWithReminders] = useState([]);
+  const [userPets, setUserPets] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [ppId, setPpId] = useState(null);
+  const [userId, setUserId] = useState(null);
+  
   const [newReminder, setNewReminder] = useState({
     title: '',
-    pet: '',
+    pet_id: '',
     date: '',
     time: '',
     description: '',
     recurring: false,
     recurringPeriod: 'day'
   });
-  const [todaysReminders, setTodaysReminders] = useState([
-    { 
-      id: 1, 
-      task: 'Give Buddy his medication', 
-      time: '9:00 AM', 
-      completed: false,
-      pet: 'Buddy',
-      date: 'Oct 14, 2025',
-      description: 'Give 1 tablet with food',
-      recurring: true,
-      recurringPeriod: 'day'
-    },
-    { 
-      id: 2, 
-      task: 'Walk Max in the park', 
-      time: '2:30 PM', 
-      completed: false,
-      pet: 'Max',
-      date: 'Oct 14, 2025',
-      description: '',
-      recurring: false,
-      recurringPeriod: ''
-    },
-    { 
-      id: 3, 
-      task: 'Vet appointment reminder call', 
-      time: '4:00 PM', 
-      completed: false,
-      pet: 'Luna',
-      date: 'Oct 14, 2025',
-      description: 'Call Dr. Smith to confirm appointment',
-      recurring: false,
-      recurringPeriod: ''
-    }
-  ]);
 
-  React.useEffect(() => {
-    const storedName = localStorage.getItem('firstName');
-    if (storedName) {
-      setFirstName(storedName);
+  // Load user data and fetch reminders
+  useEffect(() => {
+    const storedName = sessionStorage.getItem('firstName');
+    const storedUserId = sessionStorage.getItem('userid');
+
+    if (storedName) setFirstName(storedName);
+    
+    if (storedUserId) {
+      setUserId(storedUserId);
+      fetchPetParentInfo(storedUserId);
+    } else {
+      setLoading(false);
     }
   }, []);
 
-  const upcomingReminders = [
-    { 
-      id: 1, 
-      title: 'Grooming appointment for Luna', 
-      date: 'Tomorrow', 
-      time: '10:00 AM',
-      pet: 'Luna',
-      description: 'Full grooming service at Pet Spa',
-      recurring: false,
-      recurringPeriod: ''
-    },
-    { 
-      id: 2, 
-      title: 'Buy dog food', 
-      date: 'Oct 16, 2025', 
-      time: '3:00 PM',
-      pet: 'Buddy',
-      description: 'Get large bag of Blue Buffalo',
-      recurring: true,
-      recurringPeriod: 'month'
-    },
-    { 
-      id: 3, 
-      title: 'Training session with Charlie', 
-      date: 'Oct 18, 2025', 
-      time: '11:30 AM',
-      pet: 'Max',
-      description: '',
-      recurring: true,
-      recurringPeriod: 'week'
+  // Fetch pet parent info to get pp_id
+  const fetchPetParentInfo = async (usr_id) => {
+    try {
+      const response = await fetch(`http://localhost:5000/api/petparent/${usr_id}`);
+      const data = await response.json();
+
+      if (response.ok && data.pp_id) {
+        setPpId(data.pp_id);
+        await Promise.all([
+          fetchUserPets(usr_id),
+          fetchTodaysReminders(data.pp_id),
+          fetchUpcomingReminders(data.pp_id),
+          fetchReminderDates(data.pp_id, currentDate.getFullYear(), currentDate.getMonth() + 1),
+          fetchUpcomingAppointments(usr_id)
+        ]);
+      }
+      setLoading(false);
+    } catch (error) {
+      console.error('❌ Error fetching pet parent info:', error);
+      setLoading(false);
     }
-  ];
+  };
 
-  const upcomingAppointments = [
-    { id: 1, title: 'Annual checkup - Buddy', date: 'Oct 20, 2025', time: '2:00 PM' },
-    { id: 2, title: 'Vaccination - Max', date: 'Oct 25, 2025', time: '9:30 AM' },
-    { id: 3, title: 'Dental cleaning - Luna', date: 'Nov 2, 2025', time: '1:00 PM' }
-  ];
+  // Fetch user's pets for the dropdown
+  const fetchUserPets = async (usr_id) => {
+    try {
+      const response = await fetch(`http://localhost:5000/api/user-pets/${usr_id}`);
+      const data = await response.json();
+      setUserPets(data);
+    } catch (error) {
+      console.error('❌ Error fetching pets:', error);
+    }
+  };
 
-  const daysWithReminders = [5, 12, 16, 18, 20, 25];
+  // Fetch today's reminders
+  const fetchTodaysReminders = async (pp_id) => {
+    try {
+      const response = await fetch(`http://localhost:5000/api/reminders/${pp_id}/today`);
+      const data = await response.json();
+      setTodaysReminders(data);
+    } catch (error) {
+      console.error('❌ Error fetching today\'s reminders:', error);
+    }
+  };
 
-  const toggleReminder = (id, e) => {
+  // Fetch upcoming reminders
+  const fetchUpcomingReminders = async (pp_id) => {
+    try {
+      const response = await fetch(`http://localhost:5000/api/reminders/${pp_id}/upcoming`);
+      const data = await response.json();
+      setUpcomingReminders(data);
+    } catch (error) {
+      console.error('❌ Error fetching upcoming reminders:', error);
+    }
+  };
+
+  // Fetch reminder dates for calendar
+  const fetchReminderDates = async (pp_id, year, month) => {
+    try {
+      const response = await fetch(`http://localhost:5000/api/reminders/${pp_id}/dates/${year}/${month}`);
+      const data = await response.json();
+      setDaysWithReminders(data.days || []);
+    } catch (error) {
+      console.error('❌ Error fetching reminder dates:', error);
+    }
+  };
+
+  // Fetch upcoming appointments
+  const fetchUpcomingAppointments = async (usr_id) => {
+    try {
+      const response = await fetch(`http://localhost:5000/api/user-pets/${usr_id}`);
+      const petsData = await response.json();
+      
+      const appointmentsPromises = petsData.map(async (pet) => {
+        try {
+          const apptResponse = await fetch(`http://localhost:5000/api/scheduled-appointment/${pet.pet_id}`);
+          if (apptResponse.ok) {
+            const apptData = await apptResponse.json();
+            return {
+              id: apptData.appt_id,
+              title: `${apptData.appt_type} - ${pet.pet_name}`,
+              date: new Date(apptData.appt_date).toLocaleDateString('en-US', { 
+                month: 'short', 
+                day: 'numeric', 
+                year: 'numeric' 
+              }),
+              time: new Date(apptData.appt_date).toLocaleTimeString('en-US', { 
+                hour: 'numeric', 
+                minute: '2-digit', 
+                hour12: true 
+              })
+            };
+          }
+        } catch (err) {
+          return null;
+        }
+      });
+
+      const appointments = (await Promise.all(appointmentsPromises)).filter(Boolean);
+      setUpcomingAppointments(appointments);
+    } catch (error) {
+      console.error('❌ Error fetching appointments:', error);
+    }
+  };
+
+  // Update calendar when month changes
+  useEffect(() => {
+    if (ppId) {
+      fetchReminderDates(ppId, currentDate.getFullYear(), currentDate.getMonth() + 1);
+    }
+  }, [currentDate, ppId]);
+
+  // Toggle reminder completion
+  const toggleReminder = async (rmd_id, e) => {
     e.stopPropagation();
-    setTodaysReminders(todaysReminders.map(reminder =>
-      reminder.id === id ? { ...reminder, completed: !reminder.completed } : reminder
-    ));
+    
+    try {
+      const response = await fetch(`http://localhost:5000/api/reminders/${rmd_id}/toggle`, {
+        method: 'PUT'
+      });
+
+      if (response.ok) {
+        fetchTodaysReminders(ppId);
+      }
+    } catch (error) {
+      console.error('❌ Error toggling reminder:', error);
+    }
+  };
+
+  // Create new reminder
+  const handleCreateReminder = async () => {
+    if (!newReminder.title || !newReminder.date || !newReminder.time) {
+      alert('Please fill in all required fields');
+      return;
+    }
+
+    try {
+      const response = await fetch('http://localhost:5000/api/reminders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          pp_id: ppId,
+          pet_id: newReminder.pet_id || null,
+          rmd_title: newReminder.title,
+          rmd_desc: newReminder.description,
+          rmd_date: newReminder.date,
+          rmd_time: newReminder.time,
+          rmd_repeat: newReminder.recurring ? 'yes' : 'no',
+          rmd_repeat_period: newReminder.recurring ? newReminder.recurringPeriod : ''
+        })
+      });
+
+      if (response.ok) {
+        handleCloseModal();
+        await Promise.all([
+          fetchTodaysReminders(ppId),
+          fetchUpcomingReminders(ppId),
+          fetchReminderDates(ppId, currentDate.getFullYear(), currentDate.getMonth() + 1)
+        ]);
+      } else {
+        alert('Failed to create reminder');
+      }
+    } catch (error) {
+      console.error('❌ Error creating reminder:', error);
+      alert('Failed to create reminder');
+    }
+  };
+
+  // Update existing reminder
+  const handleUpdateReminder = async () => {
+    if (!selectedReminder.rmd_title || !selectedReminder.rmd_date || !selectedReminder.rmd_time) {
+      alert('Please fill in all required fields');
+      return;
+    }
+
+    try {
+      const response = await fetch(`http://localhost:5000/api/reminders/${selectedReminder.rmd_id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          pet_id: selectedReminder.pet_id || null,
+          rmd_title: selectedReminder.rmd_title,
+          rmd_desc: selectedReminder.rmd_desc,
+          rmd_date: selectedReminder.rmd_date,
+          rmd_time: selectedReminder.rmd_time,
+          rmd_repeat: selectedReminder.rmd_repeat,
+          rmd_repeat_period: selectedReminder.rmd_repeat_period || ''
+        })
+      });
+
+      if (response.ok) {
+        setShowEditModal(false);
+        setShowDetailsModal(false);
+        await Promise.all([
+          fetchTodaysReminders(ppId),
+          fetchUpcomingReminders(ppId),
+          fetchReminderDates(ppId, currentDate.getFullYear(), currentDate.getMonth() + 1)
+        ]);
+      } else {
+        alert('Failed to update reminder');
+      }
+    } catch (error) {
+      console.error('❌ Error updating reminder:', error);
+      alert('Failed to update reminder');
+    }
+  };
+
+  // Delete reminder
+  const handleDeleteReminder = async () => {
+    if (!confirm('Are you sure you want to delete this reminder?')) return;
+
+    try {
+      const response = await fetch(`http://localhost:5000/api/reminders/${selectedReminder.rmd_id}`, {
+        method: 'DELETE'
+      });
+
+      if (response.ok) {
+        handleCloseModal();
+        await Promise.all([
+          fetchTodaysReminders(ppId),
+          fetchUpcomingReminders(ppId),
+          fetchReminderDates(ppId, currentDate.getFullYear(), currentDate.getMonth() + 1)
+        ]);
+      } else {
+        alert('Failed to delete reminder');
+      }
+    } catch (error) {
+      console.error('❌ Error deleting reminder:', error);
+      alert('Failed to delete reminder');
+    }
   };
 
   const handleReminderClick = (reminder) => {
@@ -118,27 +286,14 @@ const RemindersPage = () => {
     setShowDetailsModal(true);
   };
 
-  const handleUpcomingClick = (reminder) => {
-    setSelectedReminder(reminder);
-    setShowDetailsModal(true);
-  };
-
-  const handleDeleteReminder = () => {
-    // Delete logic here
-    handleCloseModal();
-  };
-
-  const handleCreateReminder = () => {
-    setShowCreateModal(true);
-  };
-
   const handleCloseModal = () => {
     setShowCreateModal(false);
     setShowDetailsModal(false);
+    setShowEditModal(false);
     setSelectedReminder(null);
     setNewReminder({
       title: '',
-      pet: '',
+      pet_id: '',
       date: '',
       time: '',
       description: '',
@@ -189,15 +344,56 @@ const RemindersPage = () => {
            currentDate.getFullYear() === selectedDate.getFullYear();
   };
 
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    const today = new Date();
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    today.setHours(0, 0, 0, 0);
+    tomorrow.setHours(0, 0, 0, 0);
+    date.setHours(0, 0, 0, 0);
+
+    if (date.getTime() === today.getTime()) return 'Today';
+    if (date.getTime() === tomorrow.getTime()) return 'Tomorrow';
+    
+    return date.toLocaleDateString('en-US', { 
+      month: 'short', 
+      day: 'numeric', 
+      year: 'numeric' 
+    });
+  };
+
+  const formatTime = (timeString) => {
+    const [hours, minutes] = timeString.split(':');
+    const hour = parseInt(hours);
+    const ampm = hour >= 12 ? 'PM' : 'AM';
+    const displayHour = hour % 12 || 12;
+    return `${displayHour}:${minutes} ${ampm}`;
+  };
+
+  if (loading) {
+    return (
+      <div className="reminders-container">
+        <PawPattern count={35} />
+        <PetOwnerNavbar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
+        <div className="main-content">
+          <ProfileNotification firstName={firstName} />
+          <div style={{ padding: '40px', textAlign: 'center' }}>
+            <p>Loading reminders...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="reminders-container">
       <PawPattern count={35} />
       
-      {/* Sidebar Navigation Component */}
       <PetOwnerNavbar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
 
       <div className="main-content">
-        {/* Header */}
         <ProfileNotification firstName={firstName} />
 
         <div className="reminders-content">
@@ -243,7 +439,7 @@ const RemindersPage = () => {
                 })}
               </div>
 
-              <button className="add-reminder-button" onClick={handleCreateReminder}>
+              <button className="add-reminder-button" onClick={() => setShowCreateModal(true)}>
                 <Plus size={20} />
                 Add Reminder
               </button>
@@ -254,7 +450,7 @@ const RemindersPage = () => {
               <div className="section-header">
                 <h3 className="section-title">Today's Reminders</h3>
                 <span className="reminder-count">
-                  {todaysReminders.filter(r => !r.completed).length}
+                  {todaysReminders.filter(r => r.rmd_done === 'no').length}
                 </span>
               </div>
 
@@ -262,17 +458,17 @@ const RemindersPage = () => {
                 {todaysReminders.length > 0 ? (
                   todaysReminders.map(reminder => (
                     <div
-                      key={reminder.id}
-                      className={`reminder-item ${reminder.completed ? 'completed' : ''}`}
+                      key={reminder.rmd_id}
+                      className={`reminder-item ${reminder.rmd_done === 'yes' ? 'completed' : ''}`}
                       onClick={() => handleReminderClick(reminder)}
                     >
                       <div 
-                        className={`reminder-checkbox ${reminder.completed ? 'checked' : ''}`}
-                        onClick={(e) => toggleReminder(reminder.id, e)}
+                        className={`reminder-checkbox ${reminder.rmd_done === 'yes' ? 'checked' : ''}`}
+                        onClick={(e) => toggleReminder(reminder.rmd_id, e)}
                       />
                       <div className="reminder-details">
-                        <span className="reminder-task">{reminder.task}</span>
-                        <span className="reminder-time">{reminder.time}</span>
+                        <span className="reminder-task">{reminder.rmd_title}</span>
+                        <span className="reminder-time">{formatTime(reminder.rmd_time)}</span>
                       </div>
                     </div>
                   ))
@@ -295,15 +491,15 @@ const RemindersPage = () => {
                 {upcomingReminders.length > 0 ? (
                   upcomingReminders.map(reminder => (
                     <div 
-                      key={reminder.id} 
+                      key={reminder.rmd_id} 
                       className="upcoming-item"
-                      onClick={() => handleUpcomingClick(reminder)}
+                      onClick={() => handleReminderClick(reminder)}
                     >
                       <div className="upcoming-info">
-                        <div className="upcoming-title">{reminder.title}</div>
-                        <div className="upcoming-date">{reminder.date}</div>
+                        <div className="upcoming-title">{reminder.rmd_title}</div>
+                        <div className="upcoming-date">{formatDate(reminder.rmd_date)}</div>
                       </div>
-                      <div className="upcoming-time">{reminder.time}</div>
+                      <div className="upcoming-time">{formatTime(reminder.rmd_time)}</div>
                     </div>
                   ))
                 ) : (
@@ -311,15 +507,10 @@ const RemindersPage = () => {
                 )}
               </div>
             </div>
-
             {/* Upcoming Appointments Section */}
             <div className="upcoming-appointments-section">
               <div className="section-header">
                 <h3 className="section-title">Upcoming Appointments</h3>
-                <button className="book-appointment-button">
-                  <Plus size={18} />
-                  Book Appointment
-                </button>
               </div>
 
               <div className="upcoming-list">
@@ -351,7 +542,7 @@ const RemindersPage = () => {
               </div>
               <div className="modal-body">
                 <div className="form-group">
-                  <label className="form-label">Reminder Title</label>
+                  <label className="form-label">Reminder Title *</label>
                   <input
                     type="text"
                     className="form-input"
@@ -365,19 +556,21 @@ const RemindersPage = () => {
                   <label className="form-label">Assign to Pet</label>
                   <select
                     className="form-select"
-                    value={newReminder.pet}
-                    onChange={(e) => handleInputChange('pet', e.target.value)}
+                    value={newReminder.pet_id}
+                    onChange={(e) => handleInputChange('pet_id', e.target.value)}
                   >
-                    <option value="">Select a pet</option>
-                    <option value="Buddy">Buddy</option>
-                    <option value="Max">Max</option>
-                    <option value="Luna">Luna</option>
+                    <option value="">None</option>
+                    {userPets.map(pet => (
+                      <option key={pet.pet_id} value={pet.pet_id}>
+                        {pet.pet_name}
+                      </option>
+                    ))}
                   </select>
                 </div>
 
                 <div className="form-row">
                   <div className="form-group">
-                    <label className="form-label">Remind me on...</label>
+                    <label className="form-label">Remind me on... *</label>
                     <input
                       type="date"
                       className="form-input"
@@ -387,7 +580,7 @@ const RemindersPage = () => {
                   </div>
 
                   <div className="form-group">
-                    <label className="form-label">Select Time</label>
+                    <label className="form-label">Select Time *</label>
                     <input
                       type="time"
                       className="form-input"
@@ -440,7 +633,7 @@ const RemindersPage = () => {
                   <button className="modal-button-cancel" onClick={handleCloseModal}>
                     Cancel
                   </button>
-                  <button className="modal-button-save">
+                  <button className="modal-button-save" onClick={handleCreateReminder}>
                     Create Reminder
                   </button>
                 </div>
@@ -450,7 +643,7 @@ const RemindersPage = () => {
         )}
 
         {/* Reminder Details Modal */}
-        {showDetailsModal && selectedReminder && (
+        {showDetailsModal && selectedReminder && !showEditModal && (
           <div className="modal-overlay" onClick={handleCloseModal}>
             <div className="modal-container" onClick={(e) => e.stopPropagation()}>
               <div className="modal-header">
@@ -460,38 +653,38 @@ const RemindersPage = () => {
               <div className="modal-body">
                 <div className="detail-group">
                   <label className="detail-label">Reminder Title</label>
-                  <p className="detail-value">{selectedReminder.task || selectedReminder.title}</p>
+                  <p className="detail-value">{selectedReminder.rmd_title}</p>
                 </div>
 
                 <div className="detail-group">
                   <label className="detail-label">Assigned to Pet</label>
-                  <p className="detail-value">{selectedReminder.pet}</p>
+                  <p className="detail-value">{selectedReminder.pet_name || 'None'}</p>
                 </div>
 
                 <div className="form-row">
                   <div className="detail-group">
                     <label className="detail-label">Date</label>
-                    <p className="detail-value">{selectedReminder.date}</p>
+                    <p className="detail-value">{formatDate(selectedReminder.rmd_date)}</p>
                   </div>
 
                   <div className="detail-group">
                     <label className="detail-label">Time</label>
-                    <p className="detail-value">{selectedReminder.time}</p>
+                    <p className="detail-value">{formatTime(selectedReminder.rmd_time)}</p>
                   </div>
                 </div>
 
-                {selectedReminder.description && (
+                {selectedReminder.rmd_desc && (
                   <div className="detail-group">
                     <label className="detail-label">Description</label>
-                    <p className="detail-value">{selectedReminder.description}</p>
+                    <p className="detail-value">{selectedReminder.rmd_desc}</p>
                   </div>
                 )}
 
                 <div className="detail-group">
                   <label className="detail-label">Recurring</label>
                   <p className="detail-value">
-                    {selectedReminder.recurring 
-                      ? `Yes - Every ${selectedReminder.recurringPeriod}`
+                    {selectedReminder.rmd_repeat === 'yes'
+                      ? `Yes - Every ${selectedReminder.rmd_repeat_period}`
                       : 'No'}
                   </p>
                 </div>
@@ -504,7 +697,7 @@ const RemindersPage = () => {
                     <button className="modal-button-cancel" onClick={handleCloseModal}>
                       Close
                     </button>
-                    <button className="modal-button-save">
+                    <button className="modal-button-save" onClick={() => setShowEditModal(true)}>
                       Edit Reminder
                     </button>
                   </div>
@@ -513,9 +706,120 @@ const RemindersPage = () => {
             </div>
           </div>
         )}
+
+        {/* Edit Reminder Modal */}
+        {showEditModal && selectedReminder && (
+          <div className="modal-overlay" onClick={handleCloseModal}>
+            <div className="modal-container" onClick={(e) => e.stopPropagation()}>
+              <div className="modal-header">
+                <h2 className="modal-title">Edit Reminder</h2>
+                <button className="modal-close" onClick={handleCloseModal}>×</button>
+              </div>
+              <div className="modal-body">
+                <div className="form-group">
+                  <label className="form-label">Reminder Title *</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    value={selectedReminder.rmd_title}
+                    onChange={(e) => setSelectedReminder({...selectedReminder, rmd_title: e.target.value})}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Assign to Pet</label>
+                  <select
+                    className="form-select"
+                    value={selectedReminder.pet_id || ''}
+                    onChange={(e) => setSelectedReminder({...selectedReminder, pet_id: e.target.value})}
+                  >
+                    <option value="">None</option>
+                    {userPets.map(pet => (
+                      <option key={pet.pet_id} value={pet.pet_id}>
+                        {pet.pet_name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="form-row">
+                  <div className="form-group">
+                    <label className="form-label">Date *</label>
+                    <input
+                      type="date"
+                      className="form-input"
+                      value={selectedReminder.rmd_date}
+                      onChange={(e) => setSelectedReminder({...selectedReminder, rmd_date: e.target.value})}
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label">Time *</label>
+                    <input
+                      type="time"
+                      className="form-input"
+                      value={selectedReminder.rmd_time}
+                      onChange={(e) => setSelectedReminder({...selectedReminder, rmd_time: e.target.value})}
+                    />
+                  </div>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Description</label>
+                  <textarea
+                    className="form-textarea"
+                    rows="3"
+                    value={selectedReminder.rmd_desc || ''}
+                    onChange={(e) => setSelectedReminder({...selectedReminder, rmd_desc: e.target.value})}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-checkbox-label">
+                    <input
+                      type="checkbox"
+                      className="form-checkbox-input"
+                      checked={selectedReminder.rmd_repeat === 'yes'}
+                      onChange={(e) => setSelectedReminder({
+                        ...selectedReminder, 
+                        rmd_repeat: e.target.checked ? 'yes' : 'no'
+                      })}
+                    />
+                    <span className="form-checkbox-text">Recurring</span>
+                  </label>
+                </div>
+
+                {selectedReminder.rmd_repeat === 'yes' && (
+                  <div className="form-group">
+                    <label className="form-label">Remind every...</label>
+                    <select
+                      className="form-select"
+                      value={selectedReminder.rmd_repeat_period || 'day'}
+                      onChange={(e) => setSelectedReminder({...selectedReminder, rmd_repeat_period: e.target.value})}
+                    >
+                      <option value="day">Day</option>
+                      <option value="week">Week</option>
+                      <option value="month">Month</option>
+                      <option value="year">Year</option>
+                    </select>
+                  </div>
+                )}
+
+                <div className="modal-actions">
+                  <button className="modal-button-cancel" onClick={() => setShowEditModal(false)}>
+                    Cancel
+                  </button>
+                  <button className="modal-button-save" onClick={handleUpdateReminder}>
+                    Save Changes
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
-  );
-};
+    );
+    };
 
 export default RemindersPage;

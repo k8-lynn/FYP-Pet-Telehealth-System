@@ -122,6 +122,11 @@ export const NotificationProvider = ({ children }) => {
           type: 'message',
           title: 'New Message',
           message: notification.notification_message
+        },
+        'reminder': {
+          type: 'reminder',
+          title: '🔔 Reminder',
+          message: notification.notification_message
         }
       };
 
@@ -141,6 +146,16 @@ export const NotificationProvider = ({ children }) => {
       } catch (e) {
         // ignore
       }
+
+      // ✅ Show desktop notification
+      if ('Notification' in window && Notification.permission === 'granted') {
+        new Notification(toastData.title, {
+          body: toastData.message,
+          icon: '/paw-icon.png', // Add your icon path
+          tag: notification.notification_id,
+          requireInteraction: notification.notification_type === 'reminder'
+        });
+      }
     });
 
     setSocket(newSocket);
@@ -152,6 +167,13 @@ export const NotificationProvider = ({ children }) => {
       delete window.showToast;
       delete window.setIsOnChatPage;
     };
+  }, []);
+
+  // Request desktop notification permission on mount
+  useEffect(() => {
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
   }, []);
 
   const handleCloseToast = () => {
