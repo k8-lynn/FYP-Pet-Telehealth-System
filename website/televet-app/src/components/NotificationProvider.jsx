@@ -25,12 +25,17 @@ export const NotificationProvider = ({ children }) => {
     window.setIsOnChatPage = (value) => {
       console.log('🔄 Setting isOnChatPage to:', value);
       isOnChatPageRef.current = value;
+      
+      // ✅ Also notify the socket server
+      if (socket) {
+        socket.emit('setOnChatPage', { onChatPage: value });
+      }
     };
-
+  
     window.showToast = showToast;
     
     const usr_id = sessionStorage.getItem('userid');
-    const userType = sessionStorage.getItem('userType');
+    const userType = sessionStorage.getItem('userType');  
 
     // Only connect if user is logged in
     if (!usr_id) {
@@ -54,6 +59,9 @@ export const NotificationProvider = ({ children }) => {
       // Join user-specific room
       newSocket.emit('joinUser', usr_id);
       console.log('👤 Joined user room:', `user_${usr_id}`);
+      
+      // ✅ Send initial chat page status
+      newSocket.emit('setOnChatPage', { onChatPage: isOnChatPageRef.current });
     });
 
     newSocket.on('disconnect', () => {
@@ -67,24 +75,23 @@ export const NotificationProvider = ({ children }) => {
     // ✅ Socket listener is now set up AFTER the ref function
     newSocket.on('newNotification', (notification) => {
       console.log('📩 Received notification:', notification);
-      console.log('📍 Current isOnChatPage (from ref):', isOnChatPageRef.current);
-      console.log('📍 Current window.location.pathname:', window.location.pathname);
-    
-      // Add to notifications list
-      setNotifications(prev => [notification, ...prev]);
-    
-      // ✅ Check BOTH the ref AND the current URL path
+      console.log('📍 Current isOnChatPage:', isOnChatPageRef.current);
+
+      // ✅ Check if on chat page
       const isOnChatPage = isOnChatPageRef.current || 
-                           window.location.pathname === '/petowner-chat' || 
-                           window.location.pathname === '/vet-chat';
+                          window.location.pathname === '/petowner-chat' || 
+                          window.location.pathname === '/vet-chat';
       
-      // ✅ Check if on chat page AND if it's a message notification
+      // ✅ Don't add message notifications to list if on chat page
       if (notification.notification_type === 'message' && isOnChatPage) {
-        console.log('⏭️ Skipping toast for message notification (user is on chat page)');
-        return;
+        console.log('⏭️ Skipping message notification - user is on chat page');
+        return; // Don't add to notifications list, don't show toast
       }
-    
-      // Show toast based on notification type
+
+      // Add to notifications list (only non-message or when not on chat page)
+      setNotifications(prev => [notification, ...prev]);
+
+      // Toast configuration
       const toastConfig = {
         'approved': {
           type: 'success',
@@ -117,23 +124,22 @@ export const NotificationProvider = ({ children }) => {
           message: notification.notification_message
         }
       };
-    
+
       const toastData = toastConfig[notification.notification_type] || {
         type: 'info',
         title: 'New Notification',
         message: notification.notification_message
       };
-    
+
       console.log(`🍞 Creating toast for ${notification.notification_type}`);
       setToast(toastData);
-    
-      // Play notification sound
+
+      // Play sound
       try {
         const audio = new Audio('/notification.mp3');
         audio.play().catch(() => console.log('Could not play notification sound'));
-      // eslint-disable-next-line no-unused-vars
       } catch (e) {
-        // ignore sound error
+        // ignore
       }
     });
 

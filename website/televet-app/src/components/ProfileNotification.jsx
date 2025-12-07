@@ -76,9 +76,29 @@ const ProfileNotification = ({ firstName = "Pet Owner" }) => {
     setIsNotificationOpen(false);
   };
 
-  const handleNotificationClick = () => {
+  const handleNotificationClick = async () => {
+    const wasClosing = isNotificationOpen;
     setIsNotificationOpen(!isNotificationOpen);
     setIsDropdownOpen(false);
+    
+    // ✅ Mark all unread notifications as read when OPENING the panel
+    if (!wasClosing && unreadCount > 0) {
+      try {
+        const userId = sessionStorage.getItem('userid');
+        const res = await fetch(`http://localhost:5000/api/notifications/${userId}/mark-all-read`, {
+          method: 'PUT'
+        });
+  
+        if (res.ok) {
+          setNotifications(prev =>
+            prev.map(n => ({ ...n, is_read: true }))
+          );
+          setUnreadCount(0);
+        }
+      } catch (error) {
+        console.error('Error marking all notifications as read:', error);
+      }
+    }
   };
 
   const handleMyProfileClick = () => {
@@ -94,24 +114,6 @@ const ProfileNotification = ({ firstName = "Pet Owner" }) => {
     navigate("/login");
   };
 
-  const markAsRead = async (notificationId) => {
-    try {
-      const res = await fetch(`http://localhost:5000/api/notifications/${notificationId}/read`, {
-        method: 'PUT'
-      });
-
-      if (res.ok) {
-        setNotifications(prev =>
-          prev.map(n =>
-            n.notification_id === notificationId ? { ...n, is_read: true } : n
-          )
-        );
-        setUnreadCount(prev => Math.max(0, prev - 1));
-      }
-    } catch (error) {
-      console.error('Error marking notification as read:', error);
-    }
-  };
 
   const deleteNotification = async (notificationId) => {
     try {
@@ -209,7 +211,6 @@ const ProfileNotification = ({ firstName = "Pet Owner" }) => {
                   <div 
                     key={notification.notification_id} 
                     className={`notification-item ${!notification.is_read ? 'unread' : ''}`}
-                    onClick={() => !notification.is_read && markAsRead(notification.notification_id)}
                   >
                     <div className="notification-content">
                       {getNotificationIcon(notification.notification_type)}

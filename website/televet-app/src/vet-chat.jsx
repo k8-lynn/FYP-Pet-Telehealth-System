@@ -69,20 +69,21 @@ React.useEffect(() => {
 React.useEffect(() => {
   if (chatId && selectedChat && messages.length > 0) {
     const hasUnreadMessages = messages.some(msg => 
-      msg.sender_role !== 'vt' && msg.is_read === 'no'
+      msg.sender_role !== 'vt' && msg.is_read === 'no' // Change to 'vt' for vet-chat.jsx
     );
     
     if (hasUnreadMessages) {
+      console.log('📖 Marking messages as read for chat:', chatId);
       markAsRead().then(() => {
-        // ✅ Update local state to clear unread count
-        setMyPatients(prev => prev.map(patient => 
-          patient.chat_id === chatId ? { ...patient, unread_count: 0 } : patient
+        // ✅ Clear unread count locally
+        setMyPatients(prev => prev.map(pet =>  // Change to setMyPatients for vet-chat.jsx
+          pet.chat_id === chatId ? { ...pet, unread_count: 0 } : pet
         ));
       });
-    } else if (messages.length > 0) {
-      // ✅ If no unread messages but we just opened chat, also clear count
-      setMyPatients(prev => prev.map(patient => 
-        patient.chat_id === chatId ? { ...patient, unread_count: 0 } : patient
+    } else {
+      // ✅ Also clear if opening chat with no unread (prevents stale counts)
+      setMyPatients(prev => prev.map(pet =>  // Change to setMyPatients for vet-chat.jsx
+        pet.chat_id === chatId ? { ...pet, unread_count: 0 } : pet
       ));
     }
   }
@@ -351,40 +352,39 @@ React.useEffect(() => {
 
   const currentChat = chats.find(c => c.id === selectedChat);
 
-  React.useEffect(() => {
-    if (!socket) return;
-  
-    const handleMessageNotification = ({ senderName, message, chat_id, sender_id }) => {
-      console.log('📨 Message notification received:', { senderName, message, chat_id });
-      
-      // ✅ Don't show toast if we're already viewing this chat
-      if (selectedChat && currentChat?.petData?.chat_id === chat_id) {
-        console.log('⏭️ Already in this chat, skipping notification');
-        return;
-      }
-      
-      // ✅ Don't show toast if we're on the chat page at all
-      console.log('⏭️ On chat page, skipping toast notification');
-      
-      // Only play sound, no toast
-      const audio = new Audio('/notification.mp3');
-      audio.play().catch(() => console.log('Could not play sound'));
-      
-      // Browser notification only (if permission granted)
-      if (Notification.permission === 'granted') {
-        new Notification(senderName, {
-          body: message,
-          icon: '/paw-icon.png'
-        });
-      }
-    };
-  
-    socket.on('newMessageNotification', handleMessageNotification);
-  
-    return () => {
-      socket.off('newMessageNotification', handleMessageNotification);
-    };
-  }, [socket, selectedChat, currentChat]);
+  // In BOTH petowner-chat.jsx and vet-chat.jsx
+React.useEffect(() => {
+  if (!socket) return;
+
+  const handleMessageNotification = ({ senderName, message, chat_id, sender_id }) => {
+    console.log('📨 Message notification received:', { senderName, message, chat_id });
+    
+    // ✅ Don't show anything if we're viewing this specific chat
+    if (selectedChat && currentChat?.petData?.chat_id === chat_id) {
+      console.log('⏭️ Already viewing this chat, skipping all notifications');
+      return;
+    }
+    
+    // ✅ Play sound for messages on chat page
+    const audio = new Audio('/notification.mp3');
+    audio.play().catch(() => console.log('Could not play sound'));
+    
+    // ✅ Show desktop notification only if window is not focused
+    if (Notification.permission === 'granted' && !document.hasFocus()) {
+      new Notification(senderName, {
+        body: message,
+        icon: '/paw-icon.png',
+        requireInteraction: false
+      });
+    }
+  };
+
+  socket.on('newMessageNotification', handleMessageNotification);
+
+  return () => {
+    socket.off('newMessageNotification', handleMessageNotification);
+  };
+}, [socket, selectedChat, currentChat]);
   
 
   // Add this after your existing useEffect with socket listeners
@@ -407,30 +407,31 @@ React.useEffect(() => {
     };
   }, [socket, userid, vtId]); // Remove chatId from dependencies
 
-  React.useEffect(() => {
-    if (!socket) return;
-  
-    const handleMessagesRead = ({ chatId, userId: readByUserId }) => {
-      console.log('📖 Vet: messagesRead received for chat', chatId);
-  
-      // Only clear unread count if the OTHER user read messages
-      if (String(readByUserId) !== String(userid)) {
-        setMyPatients(prev =>
-          prev.map(patient =>
-            patient.chat_id === chatId
-              ? { ...patient, unread_count: 0 }
-              : patient
-          )
-        );
-      }
-    };
-  
-    socket.on('messagesRead', handleMessagesRead);
-  
-    return () => {
-      socket.off('messagesRead', handleMessagesRead);
-    };
-  }, [socket, userid]);
+  // In BOTH petowner-chat.jsx and vet-chat.jsx
+React.useEffect(() => {
+  if (!socket) return;
+
+  const handleMessagesRead = ({ chatId, userId: readByUserId }) => {
+    console.log('📖 messagesRead received for chat', chatId, 'by user', readByUserId);
+
+    // ✅ Only clear unread count if OTHER user read messages
+    if (String(readByUserId) !== String(userid)) {
+      setMyPatients(prev =>  // Change to setMyPatients for vet-chat.jsx
+        prev.map(pet =>
+          pet.chat_id === chatId
+            ? { ...pet, unread_count: 0 }
+            : pet
+        )
+      );
+    }
+  };
+
+  socket.on('messagesRead', handleMessagesRead);
+
+  return () => {
+    socket.off('messagesRead', handleMessagesRead);
+  };
+}, [socket, userid]);
 
   // ADD this new useEffect after your existing socket listeners (around line 320):
   React.useEffect(() => {

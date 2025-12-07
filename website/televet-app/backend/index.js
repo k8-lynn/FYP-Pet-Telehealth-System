@@ -23,6 +23,9 @@ const io = new Server(server, {
   }
 });
 
+// ✅ At the top with your other variables, add this map
+const usersOnChatPage = new Map(); // userId -> boolean
+
 // ✅ Socket.IO connection handling
 io.on('connection', (socket) => {
   console.log('🧩 A user connected:', socket.id);
@@ -37,6 +40,14 @@ io.on('connection', (socket) => {
     
     // Store userId with socket
     socket.userId = userId;
+  });
+
+  // ✅ NEW: Track when user is on chat page
+  socket.on('setOnChatPage', ({ onChatPage }) => {
+    if (socket.userId) {
+      usersOnChatPage.set(socket.userId, onChatPage);
+      console.log(`📍 User ${socket.userId} chat page status:`, onChatPage);
+    }
   });
   
   // ✅ Join chat room
@@ -78,6 +89,10 @@ io.on('connection', (socket) => {
   
   socket.on('disconnect', (reason) => {
     console.log('❌ User disconnected:', socket.id, 'Reason:', reason);
+    // ✅ Clean up chat page status
+    if (socket.userId) {
+      usersOnChatPage.delete(socket.userId);
+    }
   });
   
   socket.on('error', (error) => {
@@ -87,6 +102,7 @@ io.on('connection', (socket) => {
 
 // ✅ Make io accessible inside routes
 app.set('io', io);
+app.set('usersOnChatPage', usersOnChatPage);
 
 // ✅ Database connection
 const db = mysql.createConnection({
@@ -2993,6 +3009,32 @@ const createNotification = (usr_id, pet_id, appt_id, type, message, appt_date = 
   });
 };
 
+// -------------------------------------------------------------
+// 🟢 MARK ALL NOTIFICATIONS AS READ FOR A USER
+// -------------------------------------------------------------
+app.put('/api/notifications/:usr_id/mark-all-read', (req, res) => {
+  const { usr_id } = req.params;
+
+  const sql = `
+    UPDATE notification_t
+    SET is_read = TRUE
+    WHERE usr_id = ? AND is_read = FALSE
+  `;
+
+  db.query(sql, [usr_id], (err, result) => {
+    if (err) {
+      console.error('❌ Error marking all notifications as read:', err);
+      return res.status(500).json({ error: 'Failed to update notifications' });
+    }
+
+    console.log(`✅ Marked ${result.affectedRows} notifications as read for user ${usr_id}`);
+    res.status(200).json({ 
+      message: 'All notifications marked as read',
+      count: result.affectedRows 
+    });
+  });
+});
+
 //Chat backend
 // -------------------------------------------------------------
 // 🟢 GET PATIENTS ASSIGNED TO SPECIFIC VET
@@ -3361,16 +3403,16 @@ app.post('/api/chat/send-message', (req, res) => {
           
           console.log('✅ Emitted newMessage event');
           
-          // ✅ Get receiver info and send notification
+          // In index.js, in the /api/chat/send-message endpoint, replace the notification section
           db.query(
             `SELECT c.pp_id, c.vt_id, pp.usr_id as pp_usr_id, vt.usr_id as vt_usr_id,
                     pet.pet_id, pet.pet_name
-             FROM chat_t c
-             JOIN pet_parent_t pp ON c.pp_id = pp.pp_id
-             JOIN veterinarian_t vt ON c.vt_id = vt.vt_id
-             LEFT JOIN pet_t pet ON pet.pp_id = c.pp_id AND pet.pet_assignedVet = c.vt_id
-             WHERE c.chat_id = ?
-             LIMIT 1`,
+            FROM chat_t c
+            JOIN pet_parent_t pp ON c.pp_id = pp.pp_id
+            JOIN veterinarian_t vt ON c.vt_id = vt.vt_id
+            LEFT JOIN pet_t pet ON pet.pp_id = c.pp_id AND pet.pet_assignedVet = c.vt_id
+            WHERE c.chat_id = ?
+            LIMIT 1`,
             [chat_id],
             (err, chatData) => {
               if (err || chatData.length === 0) return res.json(message);
@@ -3381,28 +3423,41 @@ app.post('/api/chat/send-message', (req, res) => {
               
               const senderName = `${message.usr_firstName} ${message.usr_lastName}`;
               
-              console.log('📨 Sending notification to user:', receiverId);
+              console.log('📨 Checking notification for user:', receiverId);
               
-              // ✅ CREATE DATABASE NOTIFICATION for the message
-              const pet_id = chatData[0].pet_id || null;
-              const notificationMessage = `${senderName}: ${msg}`;
+              // ✅ CHECK if receiver is on chat page
+              const usersOnChatPage = req.app.get('usersOnChatPage');
+              const isReceiverOnChatPage = usersOnChatPage.get(receiverId.toString());
               
-              createNotification(
-                receiverId, 
-                pet_id, 
-                null, // no appointment for chat messages
-                'message', 
-                notificationMessage,
-                null // no appointment date
-              );
+              console.log(`📍 Receiver ${receiverId} on chat page:`, isReceiverOnChatPage);
               
-              // Send real-time socket notification to receiver
-              io.to(`user_${receiverId}`).emit('newMessageNotification', {
-                senderName: senderName,
-                message: msg,
-                chat_id: chat_id,
-                sender_id: sender_id
-              });
+              // ✅ Only create database notification AND emit socket if receiver is NOT on chat page
+              if (!isReceiverOnChatPage) {
+                const pet_id = chatData[0].pet_id || null;
+                const notificationMessage = `${senderName}: ${msg}`;
+                
+                // Create database notification
+                createNotification(
+                  receiverId, 
+                  pet_id, 
+                  null, 
+                  'message', 
+                  notificationMessage,
+                  null
+                );
+                
+                console.log(`✅ Created database notification for user ${receiverId}`);
+                
+                // Send socket notification (for toast and ProfileNotification)
+                io.to(`user_${receiverId}`).emit('newMessageNotification', {
+                  senderName: senderName,
+                  message: msg,
+                  chat_id: chat_id,
+                  sender_id: sender_id
+                });
+              } else {
+                console.log(`⏭️ Skipped notification - user ${receiverId} is on chat page`);
+              }
               
               res.json(message);
             }

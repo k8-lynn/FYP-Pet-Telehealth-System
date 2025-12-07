@@ -246,20 +246,24 @@ const markAsRead = useCallback(async () => {
   if (!chatId || !userId) return;
   
   try {
-    await fetch(`http://localhost:5000/api/chat/${chatId}/mark-read`, {
+    const response = await fetch(`http://localhost:5000/api/chat/${chatId}/mark-read`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ usr_id: userId })
     });
-    
-    // ✅ Emit socket event so other user's message list updates
-    if (socketRef.current) {
-      socketRef.current.emit('messagesRead', { chatId, userId });
+
+    if (response.ok) {
+      console.log('✅ Messages marked as read');
+      // ✅ Emit socket event that messages were read
+      if (socketRef.current) {
+        socketRef.current.emit('messagesRead', { chatId, userId });
+      }
+      fetchMessages(); // Refresh to update read status
     }
   } catch (error) {
-    console.error('Error marking messages as read:', error);
+    console.error('❌ Error marking messages as read:', error);
   }
-}, [chatId, userId]);
+}, [chatId, userId, fetchMessages]);
 
   // Send typing indicator
   const sendTyping = useCallback((isTyping) => {
