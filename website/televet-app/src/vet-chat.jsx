@@ -29,9 +29,12 @@ const VetChat = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchResults, setSearchResults] = useState({ patients: [], messages: [] });
+  const [showFileMenu, setShowFileMenu] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = React.useRef(null);
 
   const [chatId, setChatId] = useState(null);
-  const { messages, isTyping, otherUserOnline, fetchMessages, sendMessage, sendTyping, markAsRead } = useChat(
+  const { messages, setMessages, isTyping, otherUserOnline, fetchMessages, sendMessage, sendTyping, markAsRead, setActiveChat } = useChat(
     chatId, 
     userid, 
     'vt'  // or 'vt' for vet
@@ -546,6 +549,132 @@ React.useEffect(() => {
     }
   };
 
+  // Add after handleSearch function
+  const handleFileSelect = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validate file size (10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      alert('File size must be less than 10MB');
+      return;
+    }
+
+    // Validate file type
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 
+                          'video/mp4', 'video/mov', 'video/avi',
+                          'application/pdf', 'application/msword', 
+                          'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+    
+    if (!allowedTypes.includes(file.type)) {
+      alert('Invalid file type. Only images, videos, and documents are allowed.');
+      return;
+    }
+
+    await uploadFile(file);
+    
+    // Reset input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const uploadFile = async (file) => {
+    if (!chatId) return;
+  
+    setUploading(true);
+    
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('chat_id', chatId);
+    formData.append('sender_id', userid);
+    formData.append('sender_role', 'vt'); // or 'vt' for vet-chat.jsx
+  
+    try {
+      const response = await fetch('http://localhost:5000/api/chat/upload-file', {
+        method: 'POST',
+        body: formData
+      });
+  
+      if (!response.ok) {
+        throw new Error('Upload failed');
+      }
+  
+      const newMessage = await response.json();
+      console.log('✅ File uploaded:', newMessage);
+      
+      // ✅ DON'T add to state - socket event handles it
+      
+      setShowFileMenu(false);
+      
+    } catch (error) {
+      console.error('❌ Error uploading file:', error);
+      alert('Failed to upload file. Please try again.');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  // Add this new useEffect to listen for real-time status updates
+  // Replace the existing handleUserStatusChanged function in vet-chat.jsx:
+  React.useEffect(() => {
+    if (!socket) return;
+
+    const handleUserStatusChanged = ({ usr_id, is_online }) => {
+      console.log('🔄 User status changed:', { usr_id, is_online });
+      
+      // Update the chat list with new online status
+      setMyPatients(prev => prev.map(pet => {
+        // ✅ Check against owner_usr_id
+        if (pet.owner_usr_id && String(pet.owner_usr_id) === String(usr_id)) {
+          return {
+            ...pet,
+            owner_usr_isOnline: is_online
+          };
+        }
+        return pet;
+      }));
+    };
+
+    socket.on('userStatusChanged', handleUserStatusChanged);
+
+    return () => {
+      socket.off('userStatusChanged', handleUserStatusChanged);
+    };
+  }, [socket]);
+
+  const renderMessageContent = (msg) => {
+    if (msg.msg_type === 'img') {
+      return (
+        <div className="message-image">
+          <img 
+            src={`http://localhost:5000${msg.msg}`} 
+            alt="Shared image"
+            style={{ maxWidth: '300px', maxHeight: '400px', borderRadius: '8px', cursor: 'pointer' }}
+            onClick={() => window.open(`http://localhost:5000${msg.msg}`, '_blank')}
+          />
+        </div>
+      );
+    } else if (msg.msg_type === 'file') {
+      const fileName = msg.msg.split('/').pop();
+      return (
+        <div className="message-file">
+          <a 
+            href={`http://localhost:5000${msg.msg}`} 
+            target="_blank" 
+            rel="noopener noreferrer"
+            style={{ color: 'inherit', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '8px' }}
+          >
+            <Paperclip size={16} />
+            <span>{fileName}</span>
+          </a>
+        </div>
+      );
+    } else {
+      return <p>{msg.msg}</p>;
+    }
+  };
+
   return (
     <div className="vet-dashboard-container">
       <PawPattern count={35} />
@@ -830,9 +959,9 @@ React.useEffect(() => {
                         className={`message message-${msg.sender_role === 'vt' ? 'sent' : 'received'}`}
                       >
                         <div className="message-content">
-                          <div className="message-bubble">
-                            <p>{msg.msg}</p>
-                          </div>
+                        <div className="message-bubble">
+                          {renderMessageContent(msg)}
+                        </div>
                           <span className="message-time">
                             {new Date(msg.created_at).toLocaleTimeString('en-US', {
                               hour: 'numeric',
@@ -860,12 +989,55 @@ React.useEffect(() => {
 
             {/* Message Input */}
             <div className="message-input-container">
-              <button className="attach-button" title="Attach File">
-                <Paperclip size={18} />
-              </button>
-              <button className="attach-button" title="Take Photo">
-                <Camera size={18} />
-              </button>
+            <div style={{ position: 'relative' }}>
+            <button 
+              className="attach-button" 
+              title="Attach File"
+              onClick={() => setShowFileMenu(!showFileMenu)}
+              disabled={uploading}
+            >
+              <Paperclip size={18} />
+            </button>
+            
+            {showFileMenu && (
+              <div className="file-menu">
+                <button 
+                  className="file-menu-item"
+                  onClick={() => {
+                    fileInputRef.current?.click();
+                    setShowFileMenu(false);
+                  }}
+                >
+                  <Camera size={16} />
+                  <span>Photo/Video</span>
+                </button>
+                <button 
+                  className="file-menu-item"
+                  onClick={() => {
+                    fileInputRef.current?.click();
+                    setShowFileMenu(false);
+                  }}
+                >
+                  <Paperclip size={16} />
+                  <span>Document</span>
+                </button>
+              </div>
+            )}
+            
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*,video/*,.pdf,.doc,.docx"
+              style={{ display: 'none' }}
+              onChange={handleFileSelect}
+            />
+          </div>
+
+          {uploading && (
+            <span style={{ fontSize: '12px', color: '#666', marginLeft: '8px' }}>
+              Uploading...
+            </span>
+          )}
               <input 
                 type="text"
                 className="message-input"

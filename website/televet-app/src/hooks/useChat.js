@@ -47,29 +47,33 @@ export const useChat = (chatId, userId, userRole) => {
       // In the handleNewMessage function, change it to:
       const handleNewMessage = (message) => {
         console.log('🎉 NEW MESSAGE RECEIVED VIA SOCKET:', message);
-        console.log('🔍 Comparing:', { 
+        console.log('🔍 Message details:', { 
           messageSenderId: message.sender_id, 
           messageSenderIdType: typeof message.sender_id,
           currentUserId: userId, 
-          currentUserIdType: typeof userId 
+          currentUserIdType: typeof userId,
+          messageType: message.msg_type,
+          msgId: message.msg_id
         });
         
         setMessages(prev => {
-          // ✅ Convert both to strings for comparison
-          if (String(message.sender_id) === String(userId)) {
-            console.log('⚠️ Ignoring own message from socket (already added optimistically)');
-            return prev;
-          }
-          
-          // For receivers: check if message already exists by msg_id
+          // ✅ ALWAYS check if message already exists first (regardless of sender)
           const exists = prev.some(msg => msg.msg_id === message.msg_id);
           
           if (exists) {
-            console.log('⚠️ Message already exists, skipping duplicate');
+            console.log('⚠️ Message already exists in state, skipping duplicate');
             return prev;
           }
           
-          console.log('✅ Adding new message to state');
+          // ✅ If it's your own message and doesn't exist yet, add it
+          // (This handles the case where socket arrives before local state update completes)
+          if (String(message.sender_id) === String(userId)) {
+            console.log('✅ Adding own message from socket');
+            return [...prev, message];
+          }
+          
+          // ✅ For other user's messages: add them
+          console.log('✅ Adding new message from other user to state');
           return [...prev, message];
         });
       };
@@ -125,10 +129,13 @@ export const useChat = (chatId, userId, userRole) => {
         const otherUserId = userRole === 'pp' ? chatData.vt_usr_id : chatData.pp_usr_id;
         setOtherUserId(otherUserId);
         
-        // Fetch their online status
+        // Add this right after line where you do: setOtherUserId(otherUserId);
+        console.log('👤 Other user ID set to:', otherUserId);
+
+        // Force refresh the status
         const statusResponse = await fetch(`http://localhost:5000/api/user/online-status/${otherUserId}`);
         const statusData = await statusResponse.json();
-        
+        console.log('📊 Initial status for other user:', statusData);
         setOtherUserOnline(statusData.is_online);
       } catch (error) {
         console.error('Error fetching user status:', error);
@@ -142,10 +149,15 @@ export const useChat = (chatId, userId, userRole) => {
   useEffect(() => {
     if (!socketRef.current || !otherUserId) return;
     
+    // Replace the existing handleStatusChange function with this:
     const handleStatusChange = ({ usr_id, is_online }) => {
-      // Only update if it's the other user in this chat
+      console.log('🔄 Status change received:', { usr_id, is_online, otherUserId });
+      
+      // Convert both to strings for comparison
       if (String(usr_id) === String(otherUserId)) {
-        setOtherUserOnline(is_online === 'yes');
+        const isOnline = is_online === 'yes' || is_online === true;
+        console.log('✅ Updating other user online status to:', isOnline);
+        setOtherUserOnline(isOnline);
       }
     };
     
@@ -203,19 +215,6 @@ export const useChat = (chatId, userId, userRole) => {
   const sendMessage = useCallback(async (messageText) => {
     if (!chatId || !messageText.trim() || !userId) return;
   
-    const tempId = `temp-${Date.now()}`;
-    const tempMessage = {
-      msg_id: tempId,
-      chat_id: chatId,
-      sender_id: userId,
-      sender_role: userRole,
-      msg: messageText.trim(),
-      created_at: new Date().toISOString(),
-      is_read: 'no'
-    };
-
-    setMessages(prev => [...prev, tempMessage]);
-  
     try {
       const response = await fetch('http://localhost:5000/api/chat/send-message', {
         method: 'POST',
@@ -230,14 +229,11 @@ export const useChat = (chatId, userId, userRole) => {
       
       const newMessage = await response.json();
       
-      setMessages(prev => 
-        prev.map(msg => 
-          msg.msg_id === tempId ? newMessage : msg
-        )
-      );
+      // ✅ DON'T add to state here - let socket event handle it
+      console.log('✅ Message sent successfully:', newMessage.msg_id);
+      
     } catch (error) {
       console.error('Error sending message:', error);
-      setMessages(prev => prev.filter(msg => msg.msg_id !== tempId));
     }
   }, [chatId, userId, userRole]);
 
@@ -282,6 +278,7 @@ const markAsRead = useCallback(async () => {
   
   return {
     messages,
+    setMessages,
     isConnected,
     isTyping,
     otherUserOnline,

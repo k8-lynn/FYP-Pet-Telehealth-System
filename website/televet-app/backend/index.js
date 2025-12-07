@@ -3079,6 +3079,7 @@ app.get('/api/vet-patients/:vt_id', (req, res) => {
       pp.pp_id,
       pp.pp_assignedClinic,
       pp.createdAt as pp_createdAt,
+      pp.usr_id as owner_usr_id,
       u.usr_id,
       u.usr_firstName as owner_firstName,
       u.usr_lastName as owner_lastName,
@@ -3213,6 +3214,7 @@ app.get('/api/pets/by-parent/:pp_id', (req, res) => {
         c.chat_id,
         c.last_msg,
         c.last_msg_at,
+        vt.usr_id as vet_usr_id,
         vu.usr_isOnline as vet_usr_isOnline,
         COALESCE((SELECT COUNT(*) 
          FROM chat_msg_t cm 
@@ -3434,24 +3436,20 @@ app.post('/api/chat/send-message', (req, res) => {
               // ✅ Only create database notification AND emit socket if receiver is NOT on chat page
               if (!isReceiverOnChatPage) {
                 const pet_id = chatData[0].pet_id || null;
-                const notificationMessage = `${senderName}: ${msg}`;
+                const notificationMessage = `${senderName}: ${msg}`;  // ✅ CORRECT
                 
-                // Create database notification
                 createNotification(
-                  receiverId, 
-                  pet_id, 
-                  null, 
-                  'message', 
+                  receiverId,
+                  pet_id,
+                  null,
+                  'message',
                   notificationMessage,
                   null
                 );
                 
-                console.log(`✅ Created database notification for user ${receiverId}`);
-                
-                // Send socket notification (for toast and ProfileNotification)
                 io.to(`user_${receiverId}`).emit('newMessageNotification', {
                   senderName: senderName,
-                  message: msg,
+                  message: msg,  // ✅ CORRECT
                   chat_id: chat_id,
                   sender_id: sender_id
                 });
@@ -3631,4 +3629,178 @@ app.get('/api/chat/search-messages', (req, res) => {
     }
     res.json(results);
   });
+});
+
+// =============== FILE UPLOAD SETUP ===============
+import multer from 'multer';
+import path from 'path';
+import fs from 'fs';
+import { fileURLToPath } from 'url';
+
+// Get __dirname equivalent in ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Create uploads directory if it doesn't exist
+const uploadDir = path.join(__dirname, 'uploads', 'chat');
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
+
+// Configure multer storage
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, uploadDir);
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+// File filter
+const fileFilter = (req, file, cb) => {
+  const allowedTypes = /jpeg|jpg|png|gif|mp4|mov|avi|pdf|doc|docx/;
+  const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+  const mimetype = allowedTypes.test(file.mimetype);
+
+  if (mimetype && extname) {
+    return cb(null, true);
+  } else {
+    cb(new Error('Invalid file type. Only images, videos, and documents are allowed.'));
+  }
+};
+
+const upload = multer({
+  storage: storage,
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
+  fileFilter: fileFilter
+});
+
+// Serve uploaded files
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+// =============== FILE UPLOAD ENDPOINT ===============
+app.post('/api/chat/upload-file', upload.single('file'), (req, res) => {
+  const io = req.app.get('io');
+  
+  if (!req.file) {
+    return res.status(400).json({ error: 'No file uploaded' });
+  }
+
+  const { chat_id, sender_id, sender_role } = req.body;
+  
+  if (!chat_id || !sender_id || !sender_role) {
+    return res.status(400).json({ error: 'Missing required fields' });
+  }
+
+  const fileUrl = `/uploads/chat/${req.file.filename}`;
+  const fileName = req.file.originalname;
+  
+  // Determine message type
+  let msg_type = 'file';
+  if (req.file.mimetype.startsWith('image/')) {
+    msg_type = 'img';
+  } else if (req.file.mimetype.startsWith('video/')) {
+    msg_type = 'file';
+  }
+
+  // Insert into database
+  db.query(
+    'INSERT INTO chat_msg_t (chat_id, sender_id, sender_role, msg, msg_type) VALUES (?, ?, ?, ?, ?)',
+    [chat_id, sender_id, sender_role, fileUrl, msg_type],
+    (err, result) => {
+      if (err) {
+        console.error('Error saving file message:', err);
+        return res.status(500).json({ error: 'Failed to save message' });
+      }
+
+      // Update last message
+      const lastMsgText = msg_type === 'img' ? '📷 Photo' : `📎 ${fileName}`;
+      db.query(
+        'UPDATE chat_t SET last_msg = ?, last_msg_at = NOW() WHERE chat_id = ?',
+        [lastMsgText, chat_id],
+        (err) => {
+          if (err) console.error('Error updating chat:', err);
+        }
+      );
+
+      // Fetch the complete message WITH user info
+      db.query(
+        `SELECT cm.*, u.usr_firstName, u.usr_lastName 
+         FROM chat_msg_t cm
+         JOIN user_t u ON cm.sender_id = u.usr_id
+         WHERE cm.msg_id = ?`,
+        [result.insertId],
+        (err, newMsg) => {
+          if (err) return res.status(500).json({ error: err.message });
+
+          const message = newMsg[0];
+
+          console.log('📤 Emitting file message to chat room:', `chat_${chat_id}`);
+          
+          // ✅ CRITICAL: Emit to chat room so other user receives it in real-time
+          io.to(`chat_${chat_id}`).emit('newMessage', { ...message, chat_id });
+
+          // Broadcast chat list update
+          io.emit('chatListUpdate', {
+            chat_id,
+            last_msg: lastMsgText,
+            last_msg_at: new Date(),
+            sender_id
+          });
+
+          console.log('✅ File message emitted successfully');
+
+          // Send notifications
+          db.query(
+            `SELECT c.pp_id, c.vt_id, pp.usr_id as pp_usr_id, vt.usr_id as vt_usr_id,
+                    pet.pet_id, pet.pet_name
+            FROM chat_t c
+            JOIN pet_parent_t pp ON c.pp_id = pp.pp_id
+            JOIN veterinarian_t vt ON c.vt_id = vt.vt_id
+            LEFT JOIN pet_t pet ON pet.pp_id = c.pp_id AND pet.pet_assignedVet = c.vt_id
+            WHERE c.chat_id = ?
+            LIMIT 1`,
+            [chat_id],
+            (err, chatData) => {
+              if (err || chatData.length === 0) return res.json(message);
+
+              const receiverId = sender_role === 'pp'
+                ? chatData[0].vt_usr_id
+                : chatData[0].pp_usr_id;
+
+              const senderName = `${message.usr_firstName} ${message.usr_lastName}`;
+
+              const usersOnChatPage = req.app.get('usersOnChatPage');
+              const isReceiverOnChatPage = usersOnChatPage.get(receiverId.toString());
+
+              if (!isReceiverOnChatPage) {
+                const pet_id = chatData[0].pet_id || null;
+                const notificationMessage = `${senderName}: ${lastMsgText}`;  // ✅ CORRECT
+              
+                createNotification(
+                  receiverId,
+                  pet_id,
+                  null,
+                  'message',
+                  notificationMessage,
+                  null
+                );
+              
+                io.to(`user_${receiverId}`).emit('newMessageNotification', {
+                  senderName: senderName,
+                  message: lastMsgText,  // ✅ CORRECT
+                  chat_id: chat_id,
+                  sender_id: sender_id
+                });
+              }
+
+              res.json(message);
+            }
+          );
+        }
+      );
+    }
+  );
 });

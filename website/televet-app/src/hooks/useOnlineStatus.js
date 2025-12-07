@@ -44,16 +44,11 @@ export const useOnlineStatus = (userId) => {
 
     // Cleanup on unmount
     return () => {
-      isMounted = false;
+      console.log('🔴 Setting user offline for userId:', userId);
       window.removeEventListener('beforeunload', handleBeforeUnload);
       
-      // Only set offline on actual app close, not page navigation
-      setTimeout(() => {
-        if (!isMounted) {
-          console.log('🔴 Setting user offline for userId:', userId);
-          updateOnlineStatus('no');
-        }
-      }, 100);
+      // Set offline immediately on unmount
+      updateOnlineStatus('no');
     };
   }, [userId]); // Re-run when userId changes
 };
