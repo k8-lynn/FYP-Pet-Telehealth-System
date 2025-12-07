@@ -60,6 +60,220 @@
     border-color: #a8ceff;
 }
 
+/* Search Container */
+.search-container {
+    padding: 0.75rem 1rem;
+    border-bottom: 2px solid #e8f0f7;
+    background: #ffffff;
+  }
+  
+  .search-input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+    background: #f8fafc;
+    border: 2px solid #e8f0f7;
+    border-radius: 10px;
+    padding: 0.6rem 0.75rem;
+    transition: all 0.2s ease;
+  }
+  
+  .search-input-wrapper:focus-within {
+    background: #ffffff;
+    border-color: #a8ceff;
+    box-shadow: 0 0 0 3px rgba(168, 206, 255, 0.1);
+  }
+  
+  .search-icon {
+    color: #94a3b8;
+    margin-right: 0.5rem;
+    flex-shrink: 0;
+  }
+  
+  .search-input {
+    flex: 1;
+    border: none;
+    background: transparent;
+    outline: none;
+    font-size: 0.8rem;
+    color: #1a2e35;
+    font-weight: 600;
+  }
+  
+  .search-input::placeholder {
+    color: #94a3b8;
+    font-weight: 500;
+  }
+  
+  .search-clear {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    color: #94a3b8;
+    transition: all 0.2s ease;
+  }
+  
+  .search-clear:hover {
+    background: #f1f5f9;
+    color: #475569;
+  }
+  
+  /* Search Results */
+  .search-results {
+    max-height: 500px;
+    overflow-y: auto;
+    margin-top: 0.75rem;
+    padding: 0 0.25rem;
+  }
+  
+  .search-section {
+    margin-bottom: 1.25rem;
+  }
+  
+  .search-section:last-child {
+    margin-bottom: 0;
+  }
+  
+  .search-section-title {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: #64748b;
+    margin-bottom: 0.5rem;
+    padding: 0 0.5rem;
+    letter-spacing: 0.05em;
+  }
+  
+  .search-items {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+  
+  .search-result-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: 2px solid transparent;
+  }
+  
+  .search-result-item:hover {
+    background: #f8fbff;
+    border-color: #e8f0f7;
+    transform: translateX(2px);
+  }
+  
+  .search-result-item .chat-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #a8ceff 0%, #91befe 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 700;
+    font-size: 0.85rem;
+    flex-shrink: 0;
+  }
+  
+  .search-result-content {
+    flex: 1;
+    min-width: 0;
+  }
+  
+  .search-result-name {
+    font-weight: 700;
+    color: #1a2e35;
+    font-size: 0.8rem;
+    margin-bottom: 0.15rem;
+  }
+  
+  .search-result-detail {
+    font-size: 0.7rem;
+    color: #64748b;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  
+  .search-result-message {
+    font-size: 0.75rem;
+    color: #475569;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  
+  .search-no-results {
+    text-align: center;
+    padding: 2rem 1rem;
+    color: #94a3b8;
+    font-size: 0.8rem;
+    font-weight: 600;
+  }
+  
+  /* Scrollbar for search results */
+  .search-results::-webkit-scrollbar {
+    width: 6px;
+  }
+  
+  .search-results::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  
+  .search-results::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 3px;
+  }
+  
+  .search-results::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+  }
+  
+  /* Responsive adjustments */
+  @media (max-width: 768px) {
+    .search-container {
+      padding: 0.6rem 0.75rem;
+    }
+  
+    .search-input-wrapper {
+      padding: 0.5rem 0.6rem;
+    }
+  
+    .search-input {
+      font-size: 0.75rem;
+    }
+  
+    .search-section-title {
+      font-size: 0.65rem;
+    }
+  
+    .search-result-item {
+      padding: 0.6rem;
+    }
+  
+    .search-result-name {
+      font-size: 0.75rem;
+    }
+  
+    .search-result-detail,
+    .search-result-message {
+      font-size: 0.65rem;
+    }
+  }
+
 /* Pinned Message */
 .pinned-message {
     background: linear-gradient(135deg, #fff9e6 0%, #ffe58f 100%);

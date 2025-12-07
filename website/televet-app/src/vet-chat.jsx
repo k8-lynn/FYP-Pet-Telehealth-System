@@ -26,6 +26,9 @@ const VetChat = () => {
   const [clinicInfo, setClinicInfo] = useState({});
   const [lastVisitData, setLastVisitData] = useState(null);
   const { socket } = useNotification();
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchResults, setSearchResults] = useState({ patients: [], messages: [] });
 
   const [chatId, setChatId] = useState(null);
   const { messages, isTyping, otherUserOnline, fetchMessages, sendMessage, sendTyping, markAsRead } = useChat(
@@ -496,6 +499,53 @@ React.useEffect(() => {
       : ['No vaccination records']
   } : null;
 
+  // Add this search function
+  const handleSearch = async (query) => {
+    setSearchQuery(query);
+    
+    if (!query.trim()) {
+      setSearchResults({ patients: [], messages: [] });
+      return;
+    }
+  
+    const lowerQuery = query.toLowerCase();
+  
+    // Search through patients (from chats)
+    const patientResults = chats.filter(chat => 
+      chat.name.toLowerCase().includes(lowerQuery) ||
+      chat.petName.toLowerCase().includes(lowerQuery) ||
+      chat.petType.toLowerCase().includes(lowerQuery)
+    );
+  
+    // Search through actual messages in database
+    try {
+      const response = await fetch(
+        `http://localhost:5000/api/chat/search-messages?query=${encodeURIComponent(query)}&usr_id=${userid}&role=vt`
+      );
+      const dbMessages = await response.json();
+      
+      // Transform database results to match chat format
+      const messageResults = dbMessages.map(msg => {
+        const matchingChat = chats.find(c => c.petData.chat_id === msg.chat_id);
+        return matchingChat ? {
+          ...matchingChat,
+          matchedMessage: msg.msg,
+          messageDate: new Date(msg.created_at).toLocaleString()
+        } : null;
+      }).filter(Boolean);
+      
+      // Remove duplicates
+      const uniqueMessages = Array.from(
+        new Map(messageResults.map(item => [item.id, item])).values()
+      );
+  
+      setSearchResults({ patients: patientResults, messages: uniqueMessages });
+    } catch (error) {
+      console.error('Error searching messages:', error);
+      setSearchResults({ patients: patientResults, messages: [] });
+    }
+  };
+
   return (
     <div className="vet-dashboard-container">
       <PawPattern count={35} />
@@ -517,8 +567,11 @@ React.useEffect(() => {
             <div className="chat-list-header">
               <h2>{chatListOpen ? 'Patient Messages' : ''}</h2>
               <div className="header-actions">
-                {chatListOpen && (
-                  <button className="search-button">
+              {chatListOpen && (
+                  <button 
+                    className="search-button"
+                    onClick={() => setSearchOpen(!searchOpen)}
+                  >
                     <Search size={20} />
                   </button>
                 )}
@@ -527,6 +580,106 @@ React.useEffect(() => {
                 </button>
               </div>
             </div>
+
+            {searchOpen && chatListOpen && (
+            <div className="search-container">
+              <div className="search-input-wrapper">
+                <Search size={18} className="search-icon" />
+                <input
+                  type="text"
+                  className="search-input"
+                  placeholder="Search patients or messages..."
+                  value={searchQuery}
+                  onChange={(e) => handleSearch(e.target.value)}
+                  autoFocus
+                />
+                {searchQuery && (
+                  <button 
+                    className="search-clear"
+                    onClick={() => {
+                      setSearchQuery('');
+                      setSearchResults({ patients: [], messages: [] });
+                    }}
+                  >
+                    <X size={16} />
+                  </button>
+                )}
+              </div>
+
+              {searchQuery && (
+                <div className="search-results">
+                  {/* Patients Section */}
+                  <div className="search-section">
+                    <h4 className="search-section-title">
+                      Patients ({searchResults.patients.length})
+                    </h4>
+                    {searchResults.patients.length > 0 ? (
+                      <div className="search-items">
+                        {searchResults.patients.map(chat => (
+                          <div 
+                            key={chat.id}
+                            className="search-result-item"
+                            onClick={() => {
+                              setSelectedChat(chat.id);
+                              setSearchOpen(false);
+                              setSearchQuery('');
+                              setSearchResults({ patients: [], messages: [] });
+                            }}
+                          >
+                            <div className="chat-avatar">{chat.avatar}</div>
+                            <div className="search-result-content">
+                              <div className="search-result-name">{chat.name}</div>
+                              <div className="search-result-detail">
+                                {chat.petName} • {chat.petType}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="search-no-results">No patients found</p>
+                    )}
+                  </div>
+
+                  {/* Messages Section */}
+                  <div className="search-section">
+                    <h4 className="search-section-title">
+                      Messages ({searchResults.messages.length})
+                    </h4>
+                    {searchResults.messages.length > 0 ? (
+                      <div className="search-items">
+                        {searchResults.messages.map(chat => (
+                          <div 
+                            key={chat.id}
+                            className="search-result-item"
+                            onClick={() => {
+                              setSelectedChat(chat.id);
+                              setSearchOpen(false);
+                              setSearchQuery('');
+                              setSearchResults({ patients: [], messages: [] });
+                            }}
+                          >
+                            <div className="chat-avatar">{chat.avatar}</div>
+                            <div className="search-result-content">
+                              <div className="search-result-name">{chat.name}</div>
+                              <div className="search-result-message">
+                                {chat.matchedMessage}
+                              </div>
+                              <div className="search-result-detail" style={{ fontSize: '11px', color: '#888' }}>
+                                {chat.messageDate}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="search-no-results">No messages found</p>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
             {chatListOpen && (
               <>

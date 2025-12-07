@@ -3571,3 +3571,64 @@ app.get('/api/chat/:chat_id/details', (req, res) => {
     }
   );
 });
+
+// Search messages across all chats for a user
+app.get('/api/chat/search-messages', (req, res) => {
+  const { query, usr_id, role } = req.query; // role = 'pp' or 'vt'
+  
+  if (!query || query.trim().length === 0) {
+    return res.json([]);
+  }
+
+  const searchQuery = `%${query}%`;
+  
+  // Build SQL based on role
+  const sql = role === 'pp' 
+    ? `SELECT DISTINCT 
+         cm.chat_id,
+         cm.msg,
+         cm.created_at,
+         pet.pet_id,
+         pet.pet_name,
+         pet.pet_species,
+         vt.vt_id,
+         u.usr_firstName as vet_firstName,
+         u.usr_lastName as vet_lastName,
+         vt.vt_specialization
+       FROM chat_msg_t cm
+       JOIN chat_t c ON cm.chat_id = c.chat_id
+       JOIN pet_parent_t pp ON c.pp_id = pp.pp_id
+       JOIN veterinarian_t vt ON c.vt_id = vt.vt_id
+       JOIN user_t u ON vt.usr_id = u.usr_id
+       LEFT JOIN pet_t pet ON pet.pp_id = pp.pp_id AND pet.pet_assignedVet = vt.vt_id
+       WHERE pp.usr_id = ? AND cm.msg LIKE ?
+       ORDER BY cm.created_at DESC
+       LIMIT 20`
+    : `SELECT DISTINCT 
+         cm.chat_id,
+         cm.msg,
+         cm.created_at,
+         pet.pet_id,
+         pet.pet_name,
+         pet.pet_species,
+         pp.pp_id,
+         u.usr_firstName as owner_firstName,
+         u.usr_lastName as owner_lastName
+       FROM chat_msg_t cm
+       JOIN chat_t c ON cm.chat_id = c.chat_id
+       JOIN pet_parent_t pp ON c.pp_id = pp.pp_id
+       JOIN veterinarian_t vt ON c.vt_id = vt.vt_id
+       JOIN user_t u ON pp.usr_id = u.usr_id
+       LEFT JOIN pet_t pet ON pet.pp_id = pp.pp_id AND pet.pet_assignedVet = vt.vt_id
+       WHERE vt.usr_id = ? AND cm.msg LIKE ?
+       ORDER BY cm.created_at DESC
+       LIMIT 20`;
+
+  db.query(sql, [usr_id, searchQuery], (err, results) => {
+    if (err) {
+      console.error('Error searching messages:', err);
+      return res.status(500).json({ error: err.message });
+    }
+    res.json(results);
+  });
+});
