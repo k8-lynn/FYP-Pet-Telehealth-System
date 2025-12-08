@@ -2388,6 +2388,7 @@ app.get('/api/appointment-details/:appt_id', (req, res) => {
       a.consultation_type,
       a.appt_description,
       a.appt_date,
+      a.appt_status,
       a.created_at,
       pet.pet_name
     FROM appointment_t a
@@ -4133,12 +4134,14 @@ const scheduleNextReminder = () => {
       r.rmd_time,
       r.rmd_repeat,
       r.rmd_repeat_period,
+      r.last_fired_at,
       pp.usr_id,
       pet.pet_name
     FROM pet_parent_rmd_t r
     INNER JOIN pet_parent_t pp ON r.pp_id = pp.pp_id
     LEFT JOIN pet_t pet ON r.pet_id = pet.pet_id
     WHERE r.rmd_done = 'no'
+      AND (r.last_fired_at IS NULL OR DATE(r.last_fired_at) < CURDATE())
     ORDER BY r.rmd_date ASC, r.rmd_time ASC
     LIMIT 1
   `;
@@ -4204,20 +4207,19 @@ const fireReminder = (reminder) => {
     null
   );
 
-  // ✅ Handle recurring reminders
+  // ✅ Record when this reminder was fired
+  db.query(
+    'UPDATE pet_parent_rmd_t SET last_fired_at = NOW() WHERE rmd_id = ?', 
+    [reminder.rmd_id],
+    (err) => {
+      if (err) console.error('❌ Error updating last_fired_at:', err);
+    }
+  );
+
+  // ✅ Handle recurring reminders - create next occurrence
   if (reminder.rmd_repeat === 'yes') {
     createNextRecurringReminder(reminder);
   }
-  
-  // ✅ ALWAYS mark as "fired" by setting done = 'yes'
-  // User can manually uncheck it if they want, but this prevents infinite loop
-  db.query('UPDATE pet_parent_rmd_t SET rmd_done = "yes" WHERE rmd_id = ?', [reminder.rmd_id], (err) => {
-    if (err) {
-      console.error('❌ Error marking reminder as done:', err);
-    } else {
-      console.log(`✅ Marked reminder ${reminder.rmd_id} as done`);
-    }
-  });
 };
 
 setTimeout(() => {

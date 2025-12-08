@@ -5,6 +5,7 @@ import './styles/petowner-reminders.css';
 import PawPattern from "./components/PawPattern";
 import PetOwnerNavbar from './components/petowner-navbar';
 import ProfileNotification from "./components/ProfileNotification";
+import AppointmentDetailsModal from './components/AppointmentDetailsModal';
 
 const RemindersPage = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -23,6 +24,9 @@ const RemindersPage = () => {
   const [loading, setLoading] = useState(true);
   const [ppId, setPpId] = useState(null);
   const [userId, setUserId] = useState(null);
+  const [showAppointmentModal, setShowAppointmentModal] = useState(false);
+  const [selectedAppointmentDetails, setSelectedAppointmentDetails] = useState(null);
+  const [loadingAppointmentDetails, setLoadingAppointmentDetails] = useState(false);
   
   const [newReminder, setNewReminder] = useState({
     title: '',
@@ -151,6 +155,35 @@ const RemindersPage = () => {
       setUpcomingAppointments(appointments);
     } catch (error) {
       console.error('❌ Error fetching appointments:', error);
+    }
+  };
+
+  const fetchAppointmentDetailsById = async (appt_id) => {
+    try {
+      setLoadingAppointmentDetails(true);
+      const response = await fetch(`http://localhost:5000/api/appointment-details/${appt_id}`);
+  
+      if (response.status === 404) {
+        console.log('Appointment not found');
+        setSelectedAppointmentDetails(null);
+        setLoadingAppointmentDetails(false);
+        alert('Appointment not found');
+        return;
+      }
+  
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+  
+      const data = await response.json();
+      setSelectedAppointmentDetails(data);
+      setShowAppointmentModal(true);
+      setLoadingAppointmentDetails(false);
+    } catch (error) {
+      console.error('❌ Error fetching appointment details:', error);
+      setSelectedAppointmentDetails(null);
+      setLoadingAppointmentDetails(false);
+      alert('Failed to fetch appointment details');
     }
   };
 
@@ -372,6 +405,18 @@ const RemindersPage = () => {
     return `${displayHour}:${minutes} ${ampm}`;
   };
 
+  const formatDateForModal = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true
+    });
+  };
+
   if (loading) {
     return (
       <div className="reminders-container">
@@ -516,7 +561,12 @@ const RemindersPage = () => {
               <div className="upcoming-list">
                 {upcomingAppointments.length > 0 ? (
                   upcomingAppointments.map(appointment => (
-                    <div key={appointment.id} className="appointment-item">
+                    <div 
+                      key={appointment.id} 
+                      className="appointment-item"
+                      onClick={() => fetchAppointmentDetailsById(appointment.id)}
+                      style={{ cursor: 'pointer' }}
+                    >
                       <div className="upcoming-info">
                         <div className="upcoming-title">{appointment.title}</div>
                         <div className="upcoming-date">{appointment.date}</div>
@@ -817,6 +867,17 @@ const RemindersPage = () => {
             </div>
           </div>
         )}
+
+        {/* Appointment Details Modal */}
+        <AppointmentDetailsModal 
+          showModal={showAppointmentModal}
+          appointmentDetails={selectedAppointmentDetails}
+          onClose={() => {
+            setShowAppointmentModal(false);
+            setSelectedAppointmentDetails(null);
+          }}
+          formatDate={formatDateForModal}
+        />
       </div>
     </div>
     );

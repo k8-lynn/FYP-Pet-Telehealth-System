@@ -148,10 +148,15 @@ export const NotificationProvider = ({ children }) => {
       }
 
       // ✅ Show desktop notification
-      if ('Notification' in window && Notification.permission === 'granted') {
+      // ✅ Show desktop notification (but NOT if on reminders page)
+      const isOnRemindersPage = window.location.pathname === '/petowner-reminders';
+
+      if ('Notification' in window && 
+          Notification.permission === 'granted' && 
+          !isOnRemindersPage) {
         new Notification(toastData.title, {
           body: toastData.message,
-          icon: '/paw-icon.png', // Add your icon path
+          icon: '/paw-icon.png',
           tag: notification.notification_id,
           requireInteraction: notification.notification_type === 'reminder'
         });
