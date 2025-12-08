@@ -932,6 +932,85 @@ app.post('/api/veterinarians', (req, res) => {
   });
 });
 
+// PUT /api/veterinarians/:vt_id/toggle-duty
+app.put('/api/veterinarians/:vt_id/toggle-duty', (req, res) => {
+  const { vt_id } = req.params;
+
+  // Toggle the duty status
+  const sql = `
+    UPDATE veterinarian_t
+    SET vt_onDutyToday = CASE 
+      WHEN vt_onDutyToday = 'yes' THEN 'no'
+      ELSE 'yes'
+    END
+    WHERE vt_id = ?
+  `;
+
+  db.query(sql, [vt_id], (err, result) => {
+    if (err) {
+      console.error('❌ Error toggling duty status:', err);
+      return res.status(500).json({ error: 'Failed to toggle duty status' });
+    }
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'Veterinarian not found' });
+    }
+
+    // Fetch the updated status
+    db.query('SELECT vt_onDutyToday FROM veterinarian_t WHERE vt_id = ?', [vt_id], (err2, statusResult) => {
+      if (err2) {
+        console.error('❌ Error fetching updated status:', err2);
+        return res.status(500).json({ error: 'Failed to fetch updated status' });
+      }
+
+      const newStatus = statusResult[0].vt_onDutyToday;
+      console.log(`✅ Toggled duty status for vet ${vt_id} to ${newStatus}`);
+      res.status(200).json({ 
+        message: 'Duty status updated successfully',
+        vt_onDutyToday: newStatus 
+      });
+    });
+  });
+});
+
+// GET /api/pending-appointments/:clinic_id - Get pending appointments for assignment
+app.get('/api/pending-appointments/:clinic_id', (req, res) => {
+  const { clinic_id } = req.params;
+
+  const sql = `
+    SELECT 
+      a.appt_id,
+      a.appt_type,
+      a.consultation_type,
+      a.appt_description,
+      a.appt_date,
+      a.appt_status,
+      a.created_at,
+      pet.pet_id,
+      pet.pet_name,
+      pet.pet_species,
+      pet.pet_breed,
+      u.usr_id,
+      u.usr_firstName as owner_firstName,
+      u.usr_lastName as owner_lastName
+    FROM appointment_t a
+    INNER JOIN pet_t pet ON a.pet_id = pet.pet_id
+    INNER JOIN pet_parent_t pp ON a.pp_id = pp.pp_id
+    INNER JOIN user_t u ON pp.usr_id = u.usr_id
+    WHERE a.clinic_id = ? AND a.appt_status = 'pending'
+    ORDER BY a.appt_date ASC
+  `;
+
+  db.query(sql, [clinic_id], (err, result) => {
+    if (err) {
+      console.error('❌ Error fetching pending appointments:', err);
+      return res.status(500).json({ error: 'Failed to fetch pending appointments' });
+    }
+
+    console.log(`✅ Retrieved ${result.length} pending appointments for clinic ${clinic_id}`);
+    res.status(200).json(result);
+  });
+});
 
 // -------------------------------------------------------------
 // 🟢 UPDATE USER PROFILE (Vet Admin)
@@ -2388,9 +2467,18 @@ app.put('/api/patients/:pet_id/assign-vet', (req, res) => {
                   console.log(`✅ Owner notification sent to usr_id: ${owner_usr_id}`);
 
                   // ✅ CREATE NOTIFICATION FOR VET (we already have vet_usr_id from earlier!)
-                  const vetMessage = `You have been assigned to ${pet_name} for appointment`;
-                  createNotification(vet_usr_id, pet_id, appointmentId, 'assigned', vetMessage, appointmentDate);
-                  console.log(`✅ Vet notification sent to usr_id: ${vet_usr_id} for vt_id: ${vt_id}`);
+                  // First verify this usr_id belongs to a veterinarian, not vet admin
+                  const checkVetSQL = `SELECT vt_id FROM veterinarian_t WHERE usr_id = ?`;
+                  db.query(checkVetSQL, [vet_usr_id], (errCheck, checkResult) => {
+                    if (!errCheck && checkResult.length > 0) {
+                      // This is indeed a veterinarian, safe to send notification
+                      const vetMessage = `You have been assigned to ${pet_name} for appointment`;
+                      createNotification(vet_usr_id, pet_id, appointmentId, 'assigned', vetMessage, appointmentDate);
+                      console.log(`✅ Vet notification sent to usr_id: ${vet_usr_id} for vt_id: ${vt_id}`);
+                    } else {
+                      console.log(`⏭️ Skipped vet notification - usr_id ${vet_usr_id} is not a veterinarian`);
+                    }
+                  });
                 } else {
                   console.error('❌ Error fetching owner usr_id:', errOwner);
                 }

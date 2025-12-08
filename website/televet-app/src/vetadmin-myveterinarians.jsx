@@ -1,5 +1,6 @@
+//vetadmin-myveterinarians.jsx
 import React, { useState, useEffect } from 'react';
-import { Plus, Trash2, X, MapPin, Eye, MoreVertical, UserPlus } from 'lucide-react';
+import { Plus, Trash2, X, MapPin, Eye, MoreVertical, UserPlus, CheckCircle, Users } from 'lucide-react';
 import { Building, Phone, Mail } from 'lucide-react';
 
 import PawPattern from "./components/PawPattern";
@@ -18,6 +19,14 @@ const VetAdminMyVeterinarians = () => {
   const [clinicInfo, setClinicInfo] = useState({});
   const [userid, setUserid] = useState(null);
   const [openMenuId, setOpenMenuId] = useState(null);
+  const [showAssignModal, setShowAssignModal] = useState(false);
+  const [selectedVetForAssignment, setSelectedVetForAssignment] = useState(null);
+  const [pendingAppointments, setPendingAppointments] = useState([]);
+  const [selectedAppointment, setSelectedAppointment] = useState(null);
+  const [loadingAppointments, setLoadingAppointments] = useState(false);
+  const [showAppointmentsModal, setShowAppointmentsModal] = useState(false);
+  const [selectedVetAppointments, setSelectedVetAppointments] = useState([]);
+  const [loadingVetAppointments, setLoadingVetAppointments] = useState(false);
 
   // Load from sessionStorage
   useEffect(() => {
@@ -145,6 +154,134 @@ const VetAdminMyVeterinarians = () => {
     }
   };
 
+  // Add this function to fetch clinic_id
+  const fetchClinicId = async () => {
+    if (!vaId) return null;
+    
+    try {
+      const res = await fetch(`http://localhost:5000/api/clinic/${vaId}`);
+      const data = await res.json();
+      return res.ok ? data.clinic_id : null;
+    } catch (error) {
+      console.error('Error fetching clinic_id:', error);
+      return null;
+    }
+  };
+
+  // Add this function to handle duty toggle
+  const handleToggleDuty = async (vt_id) => {
+    try {
+      const response = await fetch(`http://localhost:5000/api/veterinarians/${vt_id}/toggle-duty`, {
+        method: 'PUT'
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        // Update local state
+        setVeterinarians(prev => 
+          prev.map(vet => 
+            vet.vt_id === vt_id 
+              ? { ...vet, vt_onDutyToday: data.vt_onDutyToday }
+              : vet
+          )
+        );
+      } else {
+        alert('Failed to update duty status');
+      }
+    } catch (error) {
+      console.error('Error toggling duty:', error);
+      alert('An error occurred');
+    }
+  };
+
+  // Add this function to handle assignment button click
+  const handleAssignClick = async (vet) => {
+    setSelectedVetForAssignment(vet);
+    setLoadingAppointments(true);
+    
+    const clinic_id = await fetchClinicId();
+    if (!clinic_id) {
+      alert('Could not fetch clinic information');
+      setLoadingAppointments(false);
+      return;
+    }
+
+    try {
+      const res = await fetch(`http://localhost:5000/api/pending-appointments/${clinic_id}`);
+      const data = await res.json();
+      
+      if (res.ok) {
+        setPendingAppointments(data);
+        setShowAssignModal(true);
+      } else {
+        alert('Failed to fetch pending appointments');
+      }
+    } catch (error) {
+      console.error('Error fetching appointments:', error);
+      alert('An error occurred');
+    } finally {
+      setLoadingAppointments(false);
+    }
+  };
+
+  // Add this function to handle assignment submission
+  const handleConfirmAssignment = async () => {
+    if (!selectedAppointment) {
+      alert('Please select an appointment');
+      return;
+    }
+
+    try {
+      const assignVetRes = await fetch(
+        `http://localhost:5000/api/patients/${selectedAppointment.pet_id}/assign-vet`,
+        {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ vt_id: selectedVetForAssignment.vt_id })
+        }
+      );
+
+      if (assignVetRes.ok) {
+        alert('Appointment assigned successfully!');
+        setShowAssignModal(false);
+        setSelectedAppointment(null);
+        setSelectedVetForAssignment(null);
+        
+        // Refresh veterinarians list
+        const refreshResponse = await fetch(`http://localhost:5000/api/veterinarians/${vaId}`);
+        const refreshData = await refreshResponse.json();
+        if (refreshResponse.ok) setVeterinarians(refreshData);
+      } else {
+        alert('Failed to assign veterinarian');
+      }
+    } catch (error) {
+      console.error('Error assigning vet:', error);
+      alert('An error occurred');
+    }
+  };
+
+  const handleViewAppointments = async (vet) => {
+    setSelectedVet(vet);
+    setShowAppointmentsModal(true);
+    setLoadingVetAppointments(true);
+  
+    try {
+      const res = await fetch(`http://localhost:5000/api/appointments/vet/${vet.vt_id}`);
+      const data = await res.json();
+      
+      if (res.ok) {
+        setSelectedVetAppointments(data);
+      } else {
+        alert('Failed to fetch appointments');
+      }
+    } catch (error) {
+      console.error('Error fetching vet appointments:', error);
+      alert('An error occurred');
+    } finally {
+      setLoadingVetAppointments(false);
+    }
+  };
+
   const handleView = (vet) => {
     setSelectedVet(vet);
     setShowViewModal(true);
@@ -195,64 +332,79 @@ const VetAdminMyVeterinarians = () => {
                 <div className="table-cell-number">#</div>
                 <div className="table-cell-name">Name</div>
                 <div className="table-cell-specialization">Specialization</div>
-                <div className="table-cell-patients">Patients Assigned</div>
+                <div className="table-cell-patients">Appointments Assigned</div>
                 <div className="table-cell-duty">On Duty Today</div>
                 <div className="table-cell-actions">Actions</div>
               </div>
 
               <div className="myveterinarians-table-body">
-                {veterinarians.map((vet, index) => (
-                  <div key={vet.vt_id} className="myveterinarians-table-row">
-                    <div className="table-cell-number">{index + 1}</div>
-                    <div className="table-cell-name">
-                      <strong>Dr. {vet.usr_firstName} {vet.usr_lastName}</strong>
-                    </div>
-                    <div className="table-cell-specialization">
-                      {vet.vt_specialization || 'General Practice'}
-                    </div>
-                    <div className="table-cell-patients">
+              {veterinarians.map((vet, index) => (
+                <div key={vet.vt_id} className="myveterinarians-table-row">
+                  <div className="table-cell-number">{index + 1}</div>
+                  <div className="table-cell-name">
+                    <strong>Dr. {vet.usr_firstName} {vet.usr_lastName}</strong>
+                  </div>
+                  <div className="table-cell-specialization">
+                    {vet.vt_specialization || 'General Practice'}
+                  </div>
+                  <div className="table-cell-patients">
+                    <button 
+                      className={`view-appointments-count-btn ${vet.vt_patientsAssigned > 0 ? 'has-appointments' : 'empty'}`}
+                      onClick={() => handleViewAppointments(vet)}
+                      disabled={!vet.vt_patientsAssigned || vet.vt_patientsAssigned === 0}
+                    >
                       {vet.vt_patientsAssigned || 0}
-                    </div>
-                    <div className="table-cell-duty">
-                      <span className={`duty-badge ${vet.vt_onDutyToday === 'yes' ? 'duty-yes' : 'duty-no'}`}>
-                        {vet.vt_onDutyToday === 'yes' ? 'Yes' : 'No'}
-                      </span>
-                    </div>
-                    <div className="table-cell-actions">
-                      <button className="assign-button">
+                    </button>
+                  </div>
+                  <div className="table-cell-duty">
+                    <button
+                      className={`duty-badge ${vet.vt_onDutyToday === 'yes' ? 'duty-yes' : 'duty-no'}`}
+                      onClick={() => handleToggleDuty(vet.vt_id)}
+                      style={{ cursor: 'pointer' }}
+                    >
+                      {vet.vt_onDutyToday === 'yes' ? 'Yes' : 'No'}
+                    </button>
+                  </div>
+                  <div className="table-cell-actions">
+                    {vet.vt_onDutyToday === 'yes' && (
+                      <button 
+                        className="assign-button"
+                        onClick={() => handleAssignClick(vet)}
+                      >
                         <UserPlus size={16} />
                         Assign to
                       </button>
-                      <div className="menu-wrapper">
-                        <button 
-                          className="menu-button"
-                          onClick={() => toggleMenu(vet.vt_id)}
-                        >
-                          <MoreVertical size={18} />
-                        </button>
-                        {openMenuId === vet.vt_id && (
-                          <div className="menu-dropdown">
-                            <button 
-                              className="menu-item"
-                              onClick={() => handleView(vet)}
-                            >
-                              <Eye size={16} />
-                              View Details
-                            </button>
-                            <button 
-                              className="menu-item delete"
-                              onClick={() => handleDelete(vet.vt_id)}
-                            >
-                              <Trash2 size={16} />
-                              Delete
-                            </button>
-                          </div>
-                        )}
-                      </div>
+                    )}
+                    <div className="menu-wrapper">
+                      <button 
+                        className="menu-button"
+                        onClick={() => toggleMenu(vet.vt_id)}
+                      >
+                        <MoreVertical size={18} />
+                      </button>
+                      {openMenuId === vet.vt_id && (
+                        <div className="menu-dropdown">
+                          <button 
+                            className="menu-item"
+                            onClick={() => handleView(vet)}
+                          >
+                            <Eye size={16} />
+                            View Details
+                          </button>
+                          <button 
+                            className="menu-item delete"
+                            onClick={() => handleDelete(vet.vt_id)}
+                          >
+                            <Trash2 size={16} />
+                            Delete
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </div>
-                ))}
-              </div>
+                </div>
+              ))}
+            </div>
             </div>
           )}
         </div>
@@ -497,6 +649,188 @@ const VetAdminMyVeterinarians = () => {
                   </div>
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Assignment Modal */}
+      {showAssignModal && selectedVetForAssignment && (
+        <div className="myveterinarians-modal-overlay" onClick={() => {
+          setShowAssignModal(false);
+          setSelectedAppointment(null);
+        }}>
+          <div className="schedule-approval-modal" onClick={(e) => e.stopPropagation()}>
+            <button className="myveterinarians-modal-close" onClick={() => {
+              setShowAssignModal(false);
+              setSelectedAppointment(null);
+            }}>
+              <X size={24} />
+            </button>
+
+            <div className="schedule-approval-header">
+              <UserPlus size={48} />
+              <h2>Assign Veterinarian to Appointment</h2>
+              <p>Dr. {selectedVetForAssignment.usr_firstName} {selectedVetForAssignment.usr_lastName}</p>
+            </div>
+
+            <div className="schedule-approval-body">
+            {loadingAppointments ? (
+                <div className="schedule-approval-empty">
+                  <p>Loading appointments...</p>
+                </div>
+              ) : pendingAppointments.length === 0 ? (
+                <div className="schedule-approval-empty">
+                  <p>No pending appointments found</p>
+                </div>
+              ) : (
+                <>
+                  <div className="schedule-vet-selection">
+                    <label className="schedule-vet-label">
+                      <Users size={20} />
+                      Select Pending Appointment
+                    </label>
+                    
+                    <div className="schedule-vets-list" style={{ maxHeight: '400px', overflowY: 'auto' }}>
+                      {pendingAppointments.map((appt) => (
+                        <div
+                          key={appt.appt_id}
+                          className={`schedule-vet-card ${selectedAppointment?.appt_id === appt.appt_id ? 'selected' : ''}`}
+                          onClick={() => setSelectedAppointment(appt)}
+                          style={{ cursor: 'pointer' }}
+                        >
+                          <div className="schedule-vet-info">
+                            <div className="schedule-vet-name">
+                              {appt.pet_name} ({appt.pet_species})
+                            </div>
+                            <div className="schedule-vet-specialization">
+                              Owner: {appt.owner_firstName} {appt.owner_lastName}
+                            </div>
+                            <div style={{ fontSize: '0.85rem', color: '#666', marginTop: '0.25rem' }}>
+                              Type: {appt.appt_type} | {appt.consultation_type === 'online' ? 'Online' : 'Physical'}
+                            </div>
+                            <div style={{ fontSize: '0.85rem', color: '#666' }}>
+                              Date: {new Date(appt.appt_date).toLocaleDateString('en-US', {
+                                month: 'short',
+                                day: 'numeric',
+                                year: 'numeric',
+                                hour: 'numeric',
+                                minute: '2-digit'
+                              })}
+                            </div>
+                            {appt.appt_description && (
+                              <div style={{ fontSize: '0.85rem', color: '#666', marginTop: '0.25rem' }}>
+                                {appt.appt_description}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="schedule-approval-actions">
+                    <button 
+                      className="schedule-approval-cancel"
+                      onClick={() => {
+                        setShowAssignModal(false);
+                        setSelectedAppointment(null);
+                      }}
+                    >
+                      Cancel
+                    </button>
+                    <button 
+                      className="schedule-approval-confirm"
+                      onClick={handleConfirmAssignment}
+                      disabled={!selectedAppointment}
+                    >
+                      <CheckCircle size={20} />
+                      Confirm Assignment
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Appointments Modal */}
+      {showAppointmentsModal && selectedVet && (
+        <div className="myveterinarians-modal-overlay" onClick={() => setShowAppointmentsModal(false)}>
+          <div className="schedule-approval-modal" onClick={(e) => e.stopPropagation()}>
+            <button className="myveterinarians-modal-close" onClick={() => setShowAppointmentsModal(false)}>
+              <X size={24} />
+            </button>
+
+            <div className="schedule-approval-header">
+              <Users size={48} />
+              <h2>Appointments Assigned</h2>
+              <p>Dr. {selectedVet.usr_firstName} {selectedVet.usr_lastName}</p>
+            </div>
+
+            <div className="schedule-approval-body">
+              {loadingVetAppointments ? (
+                <div className="schedule-approval-empty">
+                  <p>Loading appointments...</p>
+                </div>
+              ) : selectedVetAppointments.length === 0 ? (
+                <div className="schedule-approval-empty">
+                  <p>No appointments assigned yet</p>
+                </div>
+              ) : (
+                <div className="schedule-vets-list" style={{ maxHeight: '500px', overflowY: 'auto' }}>
+                  {selectedVetAppointments.map((appt) => (
+                    <div key={appt.appt_id} className="schedule-vet-card">
+                      <div className="schedule-vet-info">
+                        <div className="schedule-vet-name">
+                          {appt.pet_name} ({appt.pet_species})
+                        </div>
+                        <div className="schedule-vet-specialization">
+                          Owner: {appt.owner_firstName} {appt.owner_lastName}
+                        </div>
+                        <div style={{ fontSize: '0.85rem', color: '#666', marginTop: '0.25rem' }}>
+                          Type: {appt.appt_type} | {appt.consultation_type === 'online' ? 'Online' : 'Physical'}
+                        </div>
+                        <div style={{ fontSize: '0.85rem', color: '#666' }}>
+                          Date: {new Date(appt.appt_date).toLocaleDateString('en-US', {
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric',
+                            hour: 'numeric',
+                            minute: '2-digit'
+                          })}
+                        </div>
+                        {appt.appt_description && (
+                          <div style={{ fontSize: '0.85rem', color: '#666', marginTop: '0.25rem' }}>
+                            Description: {appt.appt_description}
+                          </div>
+                        )}
+                        <div style={{ 
+                          fontSize: '0.85rem', 
+                          fontWeight: '700',
+                          marginTop: '0.5rem',
+                          padding: '0.4rem 0.8rem',
+                          borderRadius: '6px',
+                          display: 'inline-block',
+                          background: appt.appt_status === 'scheduled' ? '#d1fae520' : 
+                                    appt.appt_status === 'completed' ? '#dbeafe20' : 
+                                    appt.appt_status === 'cancelled' ? '#fee2e220' : '#fef3c720',
+                          color: appt.appt_status === 'scheduled' ? '#10b981' : 
+                                appt.appt_status === 'completed' ? '#3b82f6' : 
+                                appt.appt_status === 'cancelled' ? '#ef4444' : '#f59e0b',
+                          border: `2px solid ${
+                            appt.appt_status === 'scheduled' ? '#10b98140' : 
+                            appt.appt_status === 'completed' ? '#3b82f640' : 
+                            appt.appt_status === 'cancelled' ? '#ef444440' : '#f59e0b40'
+                          }`
+                        }}>
+                          Status: {appt.appt_status.charAt(0).toUpperCase() + appt.appt_status.slice(1)}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>
