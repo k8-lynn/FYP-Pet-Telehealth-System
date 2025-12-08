@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, MapPin, Eye, MoreVertical } from 'lucide-react';
+import { X, MapPin, Eye, MoreVertical, Search } from 'lucide-react';
 
 import PawPattern from "./components/PawPattern";
 import VetNavbar from './components/vet-navbar';
@@ -17,6 +17,7 @@ const VetAppointments = () => {
   const [clinicInfo, setClinicInfo] = useState({});
   const [userid, setUserid] = useState(null);
   const [openMenuId, setOpenMenuId] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Load from sessionStorage
   useEffect(() => {
@@ -80,6 +81,37 @@ const VetAppointments = () => {
     setOpenMenuId(null);
   };
 
+  const handleMarkCompleted = async (appt_id) => {
+    try {
+      const response = await fetch(`http://localhost:5000/api/appointments/${appt_id}/status`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'completed' })
+      });
+  
+      if (response.ok) {
+        // Update local state
+        setAppointments(prev => 
+          prev.map(appt => 
+            appt.appt_id === appt_id 
+              ? { ...appt, appt_status: 'completed' }
+              : appt
+          )
+        );
+        setOpenMenuId(null);
+      } else {
+        console.error('Failed to update appointment status');
+      }
+    } catch (error) {
+      console.error('Error updating appointment:', error);
+    }
+  };
+
+  const handleNavigateToChat = (appointment) => {
+    // Navigate to vet-chat with pet_id
+    window.location.href = `/vet-chat?pet_id=${appointment.pet_id}`;
+  };
+
   const toggleMenu = (appt_id) => {
     setOpenMenuId(openMenuId === appt_id ? null : appt_id);
   };
@@ -128,6 +160,22 @@ const VetAppointments = () => {
     });
   };
 
+  // Filter appointments based on search
+const filteredAppointments = appointments.filter(appointment => {
+  if (!searchQuery.trim()) return true;
+  
+  const search = searchQuery.toLowerCase();
+  return (
+    appointment.pet_name?.toLowerCase().includes(search) ||
+    appointment.pet_species?.toLowerCase().includes(search) ||
+    appointment.owner_firstName?.toLowerCase().includes(search) ||
+    appointment.owner_lastName?.toLowerCase().includes(search) ||
+    appointment.appt_type?.toLowerCase().includes(search) ||
+    appointment.appt_description?.toLowerCase().includes(search) ||
+    appointment.appt_status?.toLowerCase().includes(search)
+  );
+});
+
   return (
     <div className="vetadmin-dashboard-container">
       <PawPattern count={35} />
@@ -171,14 +219,35 @@ const VetAppointments = () => {
           </div>
         </div>
 
+        {/* Search Bar */}
+        <div className="mypatients-search-section" style={{ marginTop: '1.5rem' }}>
+          <div className="mypatients-search-wrapper">
+            <Search className="search-icon" size={20} />
+            <input
+              type="text"
+              placeholder="Search appointments..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="mypatients-search-input"
+            />
+          </div>
+        </div>
+
         {/* Appointments Table */}
         <div className="mypatients-table-section appointments-table-section">
-          {appointments.length === 0 ? (
+        {filteredAppointments.length === 0 ? (
+          searchQuery ? (
+            <div className="mypatients-empty">
+              <h3>No Results Found</h3>
+              <p>No appointments match your search "{searchQuery}"</p>
+            </div>
+          ) : (
             <div className="mypatients-empty">
               <h3>No Appointments</h3>
               <p>Appointments will appear here once they are assigned to you</p>
             </div>
-          ) : (
+          )
+        ) : (
             <div className="mypatients-table">
               <div className="mypatients-table-header appointments-table-header">
                 <div className="table-cell-number">#</div>
@@ -194,10 +263,13 @@ const VetAppointments = () => {
               </div>
 
               <div className="mypatients-table-body">
-                {appointments.map((appointment, index) => (
+                {filteredAppointments.map((appointment, index) => (
                   <div key={appointment.appt_id} className="mypatients-table-row appointments-table-row">
                     <div className="table-cell-number">{index + 1}</div>
-                    <div className="table-cell-pet-name">
+                    <div 
+                      className="table-cell-pet-name"
+                      onClick={() => handleNavigateToChat(appointment)}
+                    >
                       <strong>{appointment.pet_name}</strong>
                     </div>
                     <div className="table-cell-species">
@@ -244,6 +316,24 @@ const VetAppointments = () => {
                               <Eye size={16} />
                               View Details
                             </button>
+                            {appointment.appt_status !== 'completed' && (
+                              <button 
+                                className="menu-item"
+                                onClick={() => handleMarkCompleted(appointment.appt_id)}
+                              >
+                                <svg 
+                                  width="16" 
+                                  height="16" 
+                                  viewBox="0 0 24 24" 
+                                  fill="none" 
+                                  stroke="currentColor" 
+                                  strokeWidth="2"
+                                >
+                                  <polyline points="20 6 9 17 4 12"></polyline>
+                                </svg>
+                                Mark as Completed
+                              </button>
+                            )}
                           </div>
                         )}
                       </div>

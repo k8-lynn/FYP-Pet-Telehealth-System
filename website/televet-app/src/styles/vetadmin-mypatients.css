@@ -1,3 +1,4 @@
+/* vetadmin-mypatients.css*/
 /* Page Header */
 .mypatients-page-header {
     display: flex;
@@ -651,4 +652,72 @@
   max-width: 100%;
   word-wrap: normal;
   white-space: nowrap;
+}
+
+/* ========================================
+   SHARED CLICKABLE PET NAME STYLES
+   ======================================== */
+.table-cell-pet-name {
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.table-cell-pet-name strong {
+  color: #1a2e35;
+  transition: all 0.2s ease;
+}
+
+.table-cell-pet-name:hover strong {
+  text-decoration: underline;
+  color: #0f172a;
+}
+
+/* Appointments Search Bar - Specific Styling */
+.mypatients-search-section {
+  margin-bottom: 1.5rem;
+}
+
+.mypatients-search-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  background: white;
+  border: 2px solid #e8f0f7;
+  border-radius: 16px;
+  padding: 0.875rem 1.125rem;
+  transition: all 0.3s ease;
+  max-width: 500px;
+}
+
+.mypatients-search-wrapper:focus-within {
+  border-color: #a8ceff;
+  box-shadow: 0 0 0 4px rgba(168, 206, 255, 0.15);
+  background: #f8fbff;
+}
+
+.mypatients-search-wrapper .search-icon {
+  color: #64748b;
+  margin-right: 0.75rem;
+  flex-shrink: 0;
+  transition: color 0.2s ease;
+}
+
+.mypatients-search-wrapper:focus-within .search-icon {
+  color: #a8ceff;
+}
+
+.mypatients-search-input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  outline: none;
+  font-size: 0.95rem;
+  color: #1a2e35;
+  font-weight: 600;
+  font-family: inherit;
+}
+
+.mypatients-search-input::placeholder {
+  color: #94a3b8;
+  font-weight: 500;
 }

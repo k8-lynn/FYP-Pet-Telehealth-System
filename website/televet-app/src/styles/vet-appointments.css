@@ -1,5 +1,7 @@
-/* Import base styles from mypatients */
-/* This file extends vetadmin-mypatients.css with appointments-specific table layout */
+/* ========================================
+   APPOINTMENTS-SPECIFIC TABLE LAYOUT
+   This file extends vetadmin-mypatients.css
+   ======================================== */
 
 /* Override table grid for appointments */
 .appointments-table-header {
@@ -50,7 +52,9 @@
   white-space: nowrap;
 }
 
-/* Appointment Type badge */
+/* ========================================
+   APPOINTMENT TYPE BADGES
+   ======================================== */
 .appt-type-badge {
   padding: 0.4rem 0.9rem;
   border-radius: 8px;
@@ -91,7 +95,9 @@
   border: 2px solid #ff8b8b60;
 }
 
-/* Consultation badge */
+/* ========================================
+   CONSULTATION TYPE BADGES
+   ======================================== */
 .consultation-badge {
   padding: 0.4rem 0.9rem;
   border-radius: 8px;
@@ -114,7 +120,9 @@
   border: 2px solid #6366f140;
 }
 
-/* Status badges for appointments */
+/* ========================================
+   STATUS BADGES FOR APPOINTMENTS
+   ======================================== */
 .status-scheduled {
   background: #d1fae520;
   color: #10b981;
@@ -139,7 +147,9 @@
   border: 2px solid #ef444440;
 }
 
-/* Ensure actions cell stays compact */
+/* ========================================
+   ACTIONS CELL
+   ======================================== */
 .appointments-table-row .table-cell-actions {
   display: flex;
   align-items: center;
@@ -147,7 +157,22 @@
   min-width: 80px;
 }
 
-/* Responsive adjustments */
+/* ========================================
+   STATS CARDS FOR APPOINTMENTS
+   ======================================== */
+.appointments-stats {
+  display: flex;
+  gap: 1rem;
+}
+
+.appointments-stats .stat-card {
+  flex: 1;
+  min-width: 110px;
+}
+
+/* ========================================
+   RESPONSIVE ADJUSTMENTS
+   ======================================== */
 @media (max-width: 1600px) {
   .appointments-table-header,
   .appointments-table-row {
@@ -176,15 +201,4 @@
   .mypatients-table {
     min-width: 1200px;
   }
-}
-
-/* Stats cards - keep 3 cards visible */
-.appointments-stats {
-  display: flex;
-  gap: 1rem;
-}
-
-.appointments-stats .stat-card {
-  flex: 1;
-  min-width: 110px;
 }

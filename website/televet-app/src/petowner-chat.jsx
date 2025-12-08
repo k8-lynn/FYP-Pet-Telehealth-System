@@ -31,6 +31,9 @@ const PetOwnerChat = () => {
   const [showFileMenu, setShowFileMenu] = useState(false);
   const [uploading, setUploading] = useState(false);
   const fileInputRef = React.useRef(null);
+  const messagesEndRef = React.useRef(null);
+  const messagesAreaRef = React.useRef(null);
+  const shouldAutoScroll = React.useRef(true);
 
   const [chatId, setChatId] = useState(null);
   const { messages, setMessages, isTyping, otherUserOnline, fetchMessages, sendMessage, sendTyping, markAsRead, setActiveChat } = useChat(
@@ -168,8 +171,18 @@ const shouldShowDateDivider = (currentMsg, previousMsg) => {
   }, [chatId, fetchMessages, setActiveChat]);
 
   React.useEffect(() => {
-    scrollToBottom();
+    // Only auto-scroll if user is near bottom or if it's a new message from current user
+    if (shouldAutoScroll.current) {
+      scrollToBottom();
+    }
   }, [messages]);
+  
+  // Detect if user is scrolling up
+  const handleScroll = (e) => {
+    const element = e.target;
+    const isNearBottom = element.scrollHeight - element.scrollTop - element.clientHeight < 100;
+    shouldAutoScroll.current = isNearBottom;
+  };
   
   const scrollToBottom = () => {
     const messagesArea = document.querySelector('.messages-area');
@@ -985,7 +998,7 @@ React.useEffect(() => {
             </div>
 
             {/* Messages Area */}
-            <div className="messages-area">
+            <div className="messages-area" onScroll={handleScroll}>
               {messages.length === 0 ? (
                 <div className="empty-messages-state">
                   <MessageCircle size={64} className="empty-message-icon" strokeWidth={1.5} />
@@ -1103,6 +1116,7 @@ React.useEffect(() => {
                   if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
                     if (message.trim()) {
+                      shouldAutoScroll.current = true; // Force scroll when sending
                       sendMessage(message);
                       setMessage('');
                       sendTyping(false);
@@ -1114,8 +1128,9 @@ React.useEffect(() => {
                 className="send-button"
                 onClick={async () => {
                   if (message.trim()) {
+                    shouldAutoScroll.current = true; // Force scroll when sending
                     await sendMessage(message);
-                    setMessage('');  // ✅ This already exists, should be working
+                    setMessage('');
                     sendTyping(false);
                   }
                 }}

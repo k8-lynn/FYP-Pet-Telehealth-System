@@ -32,6 +32,9 @@ const VetChat = () => {
   const [showFileMenu, setShowFileMenu] = useState(false);
   const [uploading, setUploading] = useState(false);
   const fileInputRef = React.useRef(null);
+  const messagesEndRef = React.useRef(null);
+  const messagesAreaRef = React.useRef(null);
+  const shouldAutoScroll = React.useRef(true);
 
   const [chatId, setChatId] = useState(null);
   const { messages, setMessages, isTyping, otherUserOnline, fetchMessages, sendMessage, sendTyping, markAsRead, setActiveChat } = useChat(
@@ -152,13 +155,32 @@ React.useEffect(() => {
     if (selectedChat && currentChat?.petData?.pet_id) {
       fetchAppointmentDetails(currentChat.petData.pet_id);
       fetchLastVisit(currentChat.petData.pet_id);
-      
-      // Initialize chat
-      if (vtId && currentChat.petData.pp_id) {
-        initializeChat(currentChat.petData.pp_id, vtId);
-      }
     }
-  }, [selectedChat, vtId]); // eslint-disable-line
+  }, [selectedChat]); // eslint-disable-line
+
+  // Fetch appointment details when selectedChat changes
+  React.useEffect(() => {
+    if (selectedChat && currentChat?.petData?.pet_id) {
+      fetchAppointmentDetails(currentChat.petData.pet_id);
+      fetchLastVisit(currentChat.petData.pet_id);
+    }
+  }, [selectedChat]); // eslint-disable-line
+
+  // ✅ NEW: Combined effect to initialize chat when BOTH selectedChat and vtId are ready
+  React.useEffect(() => {
+    const selectedPatient = myPatients.find(p => `patient-${p.pet_id}` === selectedChat);
+    
+    if (selectedChat && selectedPatient?.pp_id && vtId) {
+      console.log('🔄 Initializing chat for:', {
+        selectedChat,
+        pet_id: selectedPatient.pet_id,
+        pet_name: selectedPatient.pet_name,
+        pp_id: selectedPatient.pp_id,
+        vt_id: vtId
+      });
+      initializeChat(selectedPatient.pp_id, vtId);
+    }
+  }, [selectedChat, vtId, myPatients]); // ✅ Include myPatients in dependencies
 
   // Fetch vet info
   React.useEffect(() => {
@@ -195,8 +217,18 @@ React.useEffect(() => {
   }, [chatId, fetchMessages]);
 
   React.useEffect(() => {
-    scrollToBottom();
+    // Only auto-scroll if user is near bottom or if it's a new message from current user
+    if (shouldAutoScroll.current) {
+      scrollToBottom();
+    }
   }, [messages]);
+  
+  // Detect if user is scrolling up
+  const handleScroll = (e) => {
+    const element = e.target;
+    const isNearBottom = element.scrollHeight - element.scrollTop - element.clientHeight < 100;
+    shouldAutoScroll.current = isNearBottom;
+  };
   
   const scrollToBottom = () => {
     const messagesArea = document.querySelector('.messages-area');
@@ -252,13 +284,24 @@ React.useEffect(() => {
   // Initialize chat between vet and pet parent
   const initializeChat = async (pp_id, vt_id) => {
     try {
+      console.log('📞 Initializing chat with pp_id:', pp_id, 'vt_id:', vt_id);
+      
       const response = await fetch('http://localhost:5000/api/chat/get-or-create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ pp_id, vt_id })
       });
       const chat = await response.json();
-      setChatId(chat.chat_id);
+      
+      console.log('✅ Chat initialized with chat_id:', chat.chat_id, 'for pp_id:', pp_id);
+      
+      // ✅ Always update chatId when switching chats
+      setChatId(prevChatId => {
+        if (prevChatId !== chat.chat_id) {
+          console.log('🔄 Switching from chat_id', prevChatId, 'to', chat.chat_id);
+        }
+        return chat.chat_id; // Always return the new chat_id
+      });
       
       // ✅ Mark messages as read after initializing chat
       setTimeout(() => {
@@ -933,7 +976,7 @@ React.useEffect(() => {
             </div>
 
             {/* Messages Area */}
-            <div className="messages-area">
+            <div className="messages-area" onScroll={handleScroll}>
               {messages.length === 0 ? (
                 <div className="empty-messages-state">
                   <MessageCircle size={64} className="empty-message-icon" strokeWidth={1.5} />
@@ -1051,6 +1094,7 @@ React.useEffect(() => {
                   if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
                     if (message.trim()) {
+                      shouldAutoScroll.current = true; // Force scroll when sending
                       sendMessage(message);
                       setMessage('');
                       sendTyping(false);
@@ -1062,6 +1106,7 @@ React.useEffect(() => {
                 className="send-button"
                 onClick={async () => {
                   if (message.trim()) {
+                    shouldAutoScroll.current = true; // Force scroll when sending
                     await sendMessage(message);
                     setMessage('');
                     sendTyping(false);
