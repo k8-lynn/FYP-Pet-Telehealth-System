@@ -2052,6 +2052,39 @@ app.get('/api/clinic-appointments-count/:clinic_id', (req, res) => {
   });
 });
 
+// GET /api/user-appointments/:usr_id - Get all scheduled appointments for a user
+app.get('/api/user-appointments/:usr_id', (req, res) => {
+  const { usr_id } = req.params;
+
+  const sql = `
+    SELECT 
+      a.appt_id,
+      a.appt_type,
+      a.consultation_type,
+      a.appt_description,
+      a.appt_date,
+      a.appt_status,
+      a.created_at,
+      pet.pet_id,
+      pet.pet_name
+    FROM appointment_t a
+    INNER JOIN pet_t pet ON a.pet_id = pet.pet_id
+    INNER JOIN pet_parent_t pp ON a.pp_id = pp.pp_id
+    WHERE pp.usr_id = ? AND a.appt_status = 'scheduled'
+    ORDER BY a.appt_date ASC
+  `;
+
+  db.query(sql, [usr_id], (err, result) => {
+    if (err) {
+      console.error('❌ Error fetching user appointments:', err);
+      return res.status(500).json({ error: 'Failed to fetch appointments' });
+    }
+
+    console.log(`✅ Retrieved ${result.length} appointments for user ${usr_id}`);
+    res.status(200).json(result);
+  });
+});
+
 // -------------------------------------------------------------
 // 🟢 GET ALL PATIENTS FOR A SPECIFIC VET ADMIN (by clinic name)
 // -------------------------------------------------------------
@@ -4226,3 +4259,39 @@ setTimeout(() => {
   console.log('🚀 Starting reminder scheduler');
   scheduleNextReminder();
 }, 5000);
+
+// GET /api/reminders/:pp_id/by-date/:date - Get reminders for a specific date
+app.get('/api/reminders/:pp_id/by-date/:date', (req, res) => {
+  const { pp_id, date } = req.params;
+  
+  console.log('🔍 Fetching reminders for pp_id:', pp_id, 'date:', date);
+
+  const sql = `
+    SELECT 
+      r.rmd_id,
+      r.rmd_title,
+      r.rmd_desc,
+      r.rmd_date,
+      r.rmd_time,
+      r.rmd_done,
+      r.rmd_repeat,
+      r.rmd_repeat_period,
+      pet.pet_name,
+      DATE_FORMAT(r.rmd_date, '%Y-%m-%d') as formatted_date
+    FROM pet_parent_rmd_t r
+    LEFT JOIN pet_t pet ON r.pet_id = pet.pet_id
+    WHERE r.pp_id = ? AND DATE(r.rmd_date) = ?
+    ORDER BY r.rmd_time ASC
+  `;
+
+  db.query(sql, [pp_id, date], (err, result) => {
+    if (err) {
+      console.error('❌ Error fetching reminders by date:', err);
+      return res.status(500).json({ error: 'Failed to fetch reminders' });
+    }
+
+    console.log(`✅ Retrieved ${result.length} reminders for date ${date}`);
+    console.log('📋 Results:', result);
+    res.status(200).json(result);
+  });
+});
