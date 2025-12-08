@@ -86,6 +86,42 @@ io.on('connection', (socket) => {
     // Broadcast to everyone, not just the chat room
     io.emit('messagesRead', { chatId, userId });
   });
+
+  //VIDEO CALL SECTION
+  
+  socket.on('callUser', ({ userToCall, signalData, from, name, chatId }) => {
+    console.log(`📞 Call from ${name} (${from}) to ${userToCall}`);
+    // We emit to the specific user's room we created in joinUser
+    io.to(`user_${userToCall}`).emit('callUser', {
+      signal: signalData,
+      from: from,
+      name: name,
+      chatId: chatId
+    });
+  });
+
+  socket.on('answerCall', ({ signal, to }) => {
+    console.log(`✅ Call answered, sending signal to ${to}`);
+    io.to(`user_${to}`).emit('callAccepted', signal);
+  });
+
+  socket.on('endCall', ({ to }) => {
+    console.log(`📴 Call ended, notifying ${to}`);
+    io.to(`user_${to}`).emit('callEnded');
+  });
+
+  //VIDEO CALL SECTION
+  
+  socket.on('disconnect', (reason) => {
+    console.log('❌ User disconnected:', socket.id, 'Reason:', reason);
+    if (socket.userId) {
+      usersOnChatPage.delete(socket.userId);
+    }
+  });
+  
+  socket.on('error', (error) => {
+    console.error('Socket error:', error);
+  });
   
   socket.on('disconnect', (reason) => {
     console.log('❌ User disconnected:', socket.id, 'Reason:', reason);

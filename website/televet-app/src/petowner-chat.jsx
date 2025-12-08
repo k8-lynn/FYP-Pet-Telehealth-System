@@ -8,6 +8,7 @@ import AppointmentDetailsModal from './components/AppointmentDetailsModal';
 import './styles/petowner-chat.css';
 import { useChat } from './hooks/useChat';
 import { useNotification } from './components/NotificationProvider';
+import VideoCall from './components/VideoCall';
 
 const PetOwnerChat = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -34,6 +35,7 @@ const PetOwnerChat = () => {
   const messagesEndRef = React.useRef(null);
   const messagesAreaRef = React.useRef(null);
   const shouldAutoScroll = React.useRef(true);
+  const [showVideoCall, setShowVideoCall] = useState(false);
 
   const [chatId, setChatId] = useState(null);
   const { messages, setMessages, isTyping, otherUserOnline, fetchMessages, sendMessage, sendTyping, markAsRead, setActiveChat } = useChat(
@@ -957,7 +959,11 @@ React.useEffect(() => {
                 </div>
               </div>
               <div className="chat-header-actions">
-                <button className="chat-action-btn video-call" title="Video Call">
+                <button 
+                  className="chat-action-btn video-call" 
+                  title="Video Call"
+                  onClick={() => setShowVideoCall(true)}
+                >
                   <Video size={18} />
                 </button>
                 <button 
@@ -1261,6 +1267,20 @@ React.useEffect(() => {
 
         </div>
       </div>
+
+      {showVideoCall && (
+      <VideoCall
+        socket={socket}
+        chatId={chatId}
+        currentUserId={userid}
+        currentUserName={`${firstName} ${sessionStorage.getItem('lastName') || ''}`}
+        otherUserId={currentChat?.petData?.owner_usr_id || currentChat?.petData?.vet_usr_id}
+        otherUserName={currentChat?.name}
+        userRole="pp"
+        petInfo={currentPet}
+        onClose={() => setShowVideoCall(false)}
+      />
+    )}
 
     </div>
   );

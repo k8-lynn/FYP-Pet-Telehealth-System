@@ -18,7 +18,9 @@
     "mysql": "^2.18.1",
     "mysql2": "^3.15.1",
     "path": "^0.12.7",
-    "socket.io": "^4.8.1"
+    "simple-peer": "^9.11.1",
+    "socket.io": "^4.8.1",
+    "socket.io-client": "^4.8.1"
   },
   "description": ""
 }
