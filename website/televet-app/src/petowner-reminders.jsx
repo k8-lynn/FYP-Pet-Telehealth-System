@@ -53,6 +53,13 @@ const RemindersPage = () => {
     }
   }, []);
 
+  // Update reminders when selected date changes
+  useEffect(() => {
+    if (ppId) {
+      fetchRemindersForSelectedDate(ppId, selectedDate);
+    }
+  }, [selectedDate, ppId]);
+
   // Fetch pet parent info to get pp_id
   const fetchPetParentInfo = async (usr_id) => {
     try {
@@ -98,6 +105,23 @@ const RemindersPage = () => {
     }
   };
 
+  // Fetch reminders for selected date
+  const fetchRemindersForSelectedDate = async (pp_id, date) => {
+    try {
+      const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+      
+      console.log('📅 Fetching reminders for date:', dateStr);
+      
+      const response = await fetch(`http://localhost:5000/api/reminders/${pp_id}/by-date/${dateStr}`);
+      const data = await response.json();
+      
+      console.log('✅ Received reminders:', data);
+      setTodaysReminders(data);
+    } catch (error) {
+      console.error('❌ Error fetching reminders for selected date:', error);
+    }
+  };
+
   // Fetch upcoming reminders
   const fetchUpcomingReminders = async (pp_id) => {
     try {
@@ -123,36 +147,38 @@ const RemindersPage = () => {
   // Fetch upcoming appointments
   const fetchUpcomingAppointments = async (usr_id) => {
     try {
-      const response = await fetch(`http://localhost:5000/api/user-pets/${usr_id}`);
-      const petsData = await response.json();
+      const response = await fetch(`http://localhost:5000/api/user-appointments/${usr_id}`);
       
-      const appointmentsPromises = petsData.map(async (pet) => {
-        try {
-          const apptResponse = await fetch(`http://localhost:5000/api/scheduled-appointment/${pet.pet_id}`);
-          if (apptResponse.ok) {
-            const apptData = await apptResponse.json();
-            return {
-              id: apptData.appt_id,
-              title: `${apptData.appt_type} - ${pet.pet_name}`,
-              date: new Date(apptData.appt_date).toLocaleDateString('en-US', { 
-                month: 'short', 
-                day: 'numeric', 
-                year: 'numeric' 
-              }),
-              time: new Date(apptData.appt_date).toLocaleTimeString('en-US', { 
-                hour: 'numeric', 
-                minute: '2-digit', 
-                hour12: true 
-              })
-            };
-          }
-        } catch (err) {
-          return null;
-        }
-      });
+      if (!response.ok) {
+        console.error('Failed to fetch appointments');
+        return;
+      }
 
-      const appointments = (await Promise.all(appointmentsPromises)).filter(Boolean);
-      setUpcomingAppointments(appointments);
+      const appointments = await response.json();
+      
+      console.log('📅 Fetched appointments:', appointments);
+      
+      // Transform appointments data
+      const formattedAppointments = appointments.map(appt => ({
+        id: appt.appt_id,
+        title: `${appt.appt_type} - ${appt.pet_name}`,
+        date: new Date(appt.appt_date).toLocaleDateString('en-US', { 
+          month: 'short', 
+          day: 'numeric', 
+          year: 'numeric' 
+        }),
+        time: new Date(appt.appt_date).toLocaleTimeString('en-US', { 
+          hour: 'numeric', 
+          minute: '2-digit', 
+          hour12: true 
+        }),
+        rawDate: new Date(appt.appt_date) // For sorting
+      }));
+      
+      // Sort by date (earliest first)
+      formattedAppointments.sort((a, b) => a.rawDate - b.rawDate);
+      
+      setUpcomingAppointments(formattedAppointments);
     } catch (error) {
       console.error('❌ Error fetching appointments:', error);
     }
@@ -492,12 +518,18 @@ const RemindersPage = () => {
 
             {/* Today's Reminders Section */}
             <div className="todays-reminders-section">
-              <div className="section-header">
-                <h3 className="section-title">Today's Reminders</h3>
-                <span className="reminder-count">
-                  {todaysReminders.filter(r => r.rmd_done === 'no').length}
-                </span>
-              </div>
+            <div className="section-header">
+              <h3 className="section-title">
+                {isToday(selectedDate.getDate()) && 
+                selectedDate.getMonth() === new Date().getMonth() && 
+                selectedDate.getFullYear() === new Date().getFullYear()
+                  ? "Today's Reminders"
+                  : `${selectedDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })} Reminders`}
+              </h3>
+              <span className="reminder-count">
+                {todaysReminders.filter(r => r.rmd_done === 'no').length}
+              </span>
+            </div>
 
               <div className="reminders-list">
                 {todaysReminders.length > 0 ? (
