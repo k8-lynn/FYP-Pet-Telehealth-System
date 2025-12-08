@@ -1,6 +1,6 @@
 //vetadmin-myveterinarians.jsx
 import React, { useState, useEffect } from 'react';
-import { Plus, Trash2, X, MapPin, Eye, MoreVertical, UserPlus, CheckCircle, Users } from 'lucide-react';
+import { Plus, Trash2, X, MapPin, Eye, MoreVertical, UserPlus, CheckCircle, Users, Search } from 'lucide-react';
 import { Building, Phone, Mail } from 'lucide-react';
 
 import PawPattern from "./components/PawPattern";
@@ -27,6 +27,7 @@ const VetAdminMyVeterinarians = () => {
   const [showAppointmentsModal, setShowAppointmentsModal] = useState(false);
   const [selectedVetAppointments, setSelectedVetAppointments] = useState([]);
   const [loadingVetAppointments, setLoadingVetAppointments] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Load from sessionStorage
   useEffect(() => {
@@ -292,6 +293,20 @@ const VetAdminMyVeterinarians = () => {
     setOpenMenuId(openMenuId === vt_id ? null : vt_id);
   };
 
+  // Filter veterinarians based on search
+  const filteredVeterinarians = veterinarians.filter(vet => {
+    if (!searchQuery.trim()) return true;
+    
+    const search = searchQuery.toLowerCase();
+    return (
+      vet.usr_firstName?.toLowerCase().includes(search) ||
+      vet.usr_lastName?.toLowerCase().includes(search) ||
+      vet.vt_specialization?.toLowerCase().includes(search) ||
+      vet.usr_email?.toLowerCase().includes(search) ||
+      vet.vt_licenseNumber?.toLowerCase().includes(search)
+    );
+  });
+
   return (
     <div className="vetadmin-dashboard-container">
       <PawPattern count={35} />
@@ -319,13 +334,34 @@ const VetAdminMyVeterinarians = () => {
           </button>
         </div>
 
+        {/* Search Bar */}
+        <div className="mypatients-search-section" style={{ marginTop: '1.5rem' }}>
+          <div className="mypatients-search-wrapper">
+            <Search className="search-icon" size={20} />
+            <input
+              type="text"
+              placeholder="Search veterinarians by name, specialization, or license..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="mypatients-search-input"
+            />
+          </div>
+        </div>
+
         {/* Veterinarians Table */}
         <div className="myveterinarians-table-section">
-          {veterinarians.length === 0 ? (
-            <div className="myveterinarians-empty">
-              <h3>No Veterinarians Records</h3>
-              <p>Start by registering your first veterinarian</p>
-            </div>
+        {filteredVeterinarians.length === 0 ? (
+            searchQuery ? (
+              <div className="myveterinarians-empty">
+                <h3>No Results Found</h3>
+                <p>No veterinarians match your search "{searchQuery}"</p>
+              </div>
+            ) : (
+              <div className="myveterinarians-empty">
+                <h3>No Veterinarians Records</h3>
+                <p>Start by registering your first veterinarian</p>
+              </div>
+            )
           ) : (
             <div className="myveterinarians-table">
               <div className="myveterinarians-table-header">
@@ -338,7 +374,7 @@ const VetAdminMyVeterinarians = () => {
               </div>
 
               <div className="myveterinarians-table-body">
-              {veterinarians.map((vet, index) => (
+              {filteredVeterinarians.map((vet, index) => (
                 <div key={vet.vt_id} className="myveterinarians-table-row">
                   <div className="table-cell-number">{index + 1}</div>
                   <div className="table-cell-name">

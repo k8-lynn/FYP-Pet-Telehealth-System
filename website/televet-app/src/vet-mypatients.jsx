@@ -1,6 +1,6 @@
 //vet-mypatients.jsx
 import React, { useState, useEffect } from 'react';
-import { Trash2, X, MapPin, Eye, MoreVertical } from 'lucide-react';
+import { Trash2, X, MapPin, Eye, MoreVertical, Search } from 'lucide-react';
 
 import PawPattern from "./components/PawPattern";
 import VetNavbar from './components/vet-navbar';
@@ -17,6 +17,7 @@ const VetMyPatients = () => {
   const [clinicInfo, setClinicInfo] = useState({});
   const [userid, setUserid] = useState(null);
   const [openMenuId, setOpenMenuId] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Load from sessionStorage
   useEffect(() => {
@@ -113,6 +114,21 @@ const VetMyPatients = () => {
     return 'assigned';
   };
 
+  // Filter patients based on search
+  const filteredPatients = patients.filter(patient => {
+    if (!searchQuery.trim()) return true;
+    
+    const search = searchQuery.toLowerCase();
+    return (
+      patient.pet_name?.toLowerCase().includes(search) ||
+      patient.pet_species?.toLowerCase().includes(search) ||
+      patient.pet_breed?.toLowerCase().includes(search) ||
+      patient.owner_firstName?.toLowerCase().includes(search) ||
+      patient.owner_lastName?.toLowerCase().includes(search) ||
+      (patient.vet_name && patient.vet_name.toLowerCase().includes(search))
+    );
+  });
+
   return (
     <div className="vetadmin-dashboard-container">
       <PawPattern count={35} />
@@ -150,13 +166,34 @@ const VetMyPatients = () => {
           </div>
         </div>
 
+        {/* Search Bar */}
+        <div className="mypatients-search-section" style={{ marginTop: '1.5rem' }}>
+          <div className="mypatients-search-wrapper">
+            <Search className="search-icon" size={20} />
+            <input
+              type="text"
+              placeholder="Search patients by name, species, breed, or owner..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="mypatients-search-input"
+            />
+          </div>
+        </div>
+
         {/* Patients Table */}
         <div className="mypatients-table-section">
-          {patients.length === 0 ? (
-            <div className="mypatients-empty">
-              <h3>No Patient Records</h3>
-              <p>Patients will appear here once they are assigned to you</p>
-            </div>
+        {filteredPatients.length === 0 ? (
+            searchQuery ? (
+              <div className="mypatients-empty">
+                <h3>No Results Found</h3>
+                <p>No patients match your search "{searchQuery}"</p>
+              </div>
+            ) : (
+              <div className="mypatients-empty">
+                <h3>No Patient Records</h3>
+                <p>Patients will appear here once they register with your clinic</p>
+              </div>
+            )
           ) : (
             <div className="mypatients-table">
               <div className="mypatients-table-header">
@@ -172,7 +209,7 @@ const VetMyPatients = () => {
               </div>
 
               <div className="mypatients-table-body">
-                {patients.map((patient, index) => (
+                {filteredPatients.map((patient, index) => (
                   <div key={patient.pet_id} className="mypatients-table-row">
                     <div className="table-cell-number">{index + 1}</div>
                     <div className="table-cell-pet-name">
