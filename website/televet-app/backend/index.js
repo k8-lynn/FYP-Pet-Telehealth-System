@@ -90,14 +90,18 @@ io.on('connection', (socket) => {
   //VIDEO CALL SECTION
   
   socket.on('callUser', ({ userToCall, signalData, from, name, chatId }) => {
-    console.log(`📞 Call from ${name} (${from}) to ${userToCall}`);
-    // We emit to the specific user's room we created in joinUser
+    console.log(`📞 Call from ${name} (${from}) to ${userToCall} for chat ${chatId}`);
+    console.log(`📍 Emitting to room: user_${userToCall}`);
+    
+    // Emit to the specific user's room
     io.to(`user_${userToCall}`).emit('callUser', {
       signal: signalData,
       from: from,
       name: name,
       chatId: chatId
     });
+    
+    console.log(`✅ Call event emitted to user_${userToCall}`);
   });
 
   socket.on('answerCall', ({ signal, to }) => {

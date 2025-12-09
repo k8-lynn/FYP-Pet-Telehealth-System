@@ -1,5 +1,4 @@
-///components/VideoCall.jsx
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useCallback } from 'react';
 import Peer from 'simple-peer';
 import { Video, VideoOff, Mic, MicOff, PhoneOff, Monitor, X, Maximize2, Minimize2 } from 'lucide-react';
 import '../styles/VideoCall.css';
@@ -11,8 +10,9 @@ const VideoCall = ({
   currentUserName,
   otherUserId,
   otherUserName,
-  petInfo, // Pet information to display
-  onClose 
+  petInfo, 
+  onClose,
+  incomingCall // Data passed if opening from a notification
 }) => {
   const [stream, setStream] = useState(null);
   const [receivingCall, setReceivingCall] = useState(false);
@@ -22,85 +22,98 @@ const VideoCall = ({
   const [callEnded, setCallEnded] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [isVideoOff, setIsVideoOff] = useState(false);
+  const [callInitiated, setCallInitiated] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showPetInfo, setShowPetInfo] = useState(true);
-
+  
   const myVideo = useRef();
   const userVideo = useRef();
   const connectionRef = useRef();
-  
 
-  useEffect(() => {
-    // Get user media
-    if (!socket) return;
+  // ------------------------------------------------------------
+  // 1. Helper Functions (Wrapped in useCallback for dependencies)
+  // ------------------------------------------------------------
 
-    // Listen for incoming calls
-    socket.on('callUser', ({ from, signal }) => {
-      setReceivingCall(true);
-      setCaller(from);
-      setCallerSignal(signal);
-    });
-
-    socket.on('callEnded', () => {
-      handleCallEnd();
-    });
-
-    return () => {
-      if (stream) {
-        stream.getTracks().forEach(track => track.stop());
+  // Helper to get media stream (Safe Mode - doesn't throw)
+  const getMediaStream = useCallback(async () => {
+    try {
+      const currentStream = await navigator.mediaDevices.getUserMedia({ 
+        video: true, 
+        audio: true 
+      });
+      setStream(currentStream);
+      if (myVideo.current) myVideo.current.srcObject = currentStream;
+      setIsMuted(false);
+      setIsVideoOff(false);
+      return currentStream;
+    } catch (err) {
+      console.error('⚠️ Media access failed/denied:', err);
+      setIsMuted(true);
+      setIsVideoOff(true);
+      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+        alert('You joined without camera/mic permissions. You can see/hear the other person.');
       }
-      socket.off('callUser');
-      socket.off('callEnded');
-    };
-  }, [socket]); // eslint-disable-line
-
-  const callUser = async () => {
-    // Request media access when user clicks "Start Call"
-    if (!stream) {
-      try {
-        // Check if permissions were previously denied
-        const permissions = await navigator.permissions.query({ name: 'camera' });
-        
-        if (permissions.state === 'denied') {
-          alert('Camera access was denied. Please enable it in your browser settings:\n\n1. Click the lock icon in the address bar\n2. Allow camera and microphone\n3. Refresh the page');
-          return;
-        }
-  
-        const currentStream = await navigator.mediaDevices.getUserMedia({ 
-          video: true, 
-          audio: true 
-        });
-        setStream(currentStream);
-        if (myVideo.current) {
-          myVideo.current.srcObject = currentStream;
-        }
-        
-        // Now proceed with the call
-        initiateCall(currentStream);
-      } catch (err) {
-        console.error('Error accessing media devices:', err);
-        
-        if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-          alert('Camera and microphone access denied. Please:\n\n1. Click the camera icon in your browser\'s address bar\n2. Select "Always allow"\n3. Try again');
-        } else if (err.name === 'NotFoundError') {
-          alert('No camera or microphone found. Please check your devices.');
-        } else {
-          alert('Could not access camera/microphone. Please check browser permissions and try again.');
-        }
-        return;
-      }
-    } else {
-      initiateCall(stream);
+      return null;
     }
-  };
-  
-  const initiateCall = (currentStream) => {
+  }, []);
+
+  // Cleanup/Leave Call
+  const leaveCall = useCallback(() => {
+    setCallEnded(true);
+    if (socket) socket.emit('endCall', { to: otherUserId });
+    if (connectionRef.current) connectionRef.current.destroy();
+    
+    // Stop tracks
+    if (stream) {
+      stream.getTracks().forEach(track => track.stop());
+    }
+    
+    onClose();
+  }, [socket, otherUserId, stream, onClose]);
+
+  // Answer Call Logic
+  const answerCall = useCallback(async (signalOverride = null, callerOverride = null) => {
+    setCallAccepted(true);
+    const currentStream = await getMediaStream();
+
+    const peer = new Peer({
+      initiator: false,
+      trickle: false,
+      stream: currentStream || undefined,
+    });
+
+    peer.on('signal', (data) => {
+      // Use override if provided (for auto-answer), otherwise state
+      const target = callerOverride || caller;
+      socket.emit('answerCall', { signal: data, to: target });
+    });
+
+    peer.on('stream', (remoteStream) => {
+      if (userVideo.current) userVideo.current.srcObject = remoteStream;
+    });
+
+    peer.on('error', err => console.error('Peer error:', err));
+
+    // Use override if provided, otherwise state
+    const signalToUse = signalOverride || callerSignal;
+    if (signalToUse) {
+      peer.signal(signalToUse);
+    }
+    
+    connectionRef.current = peer;
+  }, [getMediaStream, socket, caller, callerSignal]);
+
+  // Call User Logic (Initiator)
+  const callUser = useCallback(async () => {
+    setCallInitiated(true);
+    const currentStream = await getMediaStream();
+    
     const peer = new Peer({
       initiator: true,
       trickle: false,
-      stream: currentStream,
+      stream: currentStream || undefined, 
     });
-  
+
     peer.on('signal', (data) => {
       socket.emit('callUser', {
         userToCall: otherUserId,
@@ -110,145 +123,136 @@ const VideoCall = ({
         chatId: chatId
       });
     });
-  
-    peer.on('stream', (currentStream) => {
-      if (userVideo.current) {
-        userVideo.current.srcObject = currentStream;
-      }
+
+    peer.on('stream', (remoteStream) => {
+      if (userVideo.current) userVideo.current.srcObject = remoteStream;
     });
-  
-    socket.on('callAccepted', (signal) => {
+
+    peer.on('error', err => console.error('Peer error:', err));
+
+    connectionRef.current = peer;
+  }, [getMediaStream, socket, otherUserId, currentUserId, currentUserName, chatId]);
+
+  // ------------------------------------------------------------
+  // 2. Effects
+  // ------------------------------------------------------------
+
+  // Handle Socket Events & Incoming Call Prop
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleIncomingCall = ({ from, signal }) => {
+      console.log('📞 Incoming call from:', from);
+      setReceivingCall(true);
+      setCaller(from);
+      setCallerSignal(signal);
+    };
+
+    const handleCallAccepted = (signal) => {
+      console.log('✅ Call accepted by other user');
       setCallAccepted(true);
-      peer.signal(signal);
-    });
-  
-    connectionRef.current = peer;
-  };
-
-  const answerCall = async () => {
-    // Request media access when user answers
-    if (!stream) {
-      try {
-        // Check if permissions were previously denied
-        const permissions = await navigator.permissions.query({ name: 'camera' });
-        
-        if (permissions.state === 'denied') {
-          alert('Camera access was denied. Please enable it in your browser settings:\n\n1. Click the lock icon in the address bar\n2. Allow camera and microphone\n3. Refresh the page');
-          return;
-        }
-  
-        const currentStream = await navigator.mediaDevices.getUserMedia({ 
-          video: true, 
-          audio: true 
-        });
-        setStream(currentStream);
-        if (myVideo.current) {
-          myVideo.current.srcObject = currentStream;
-        }
-        
-        // Now answer the call
-        proceedAnswerCall(currentStream);
-      } catch (err) {
-        console.error('Error accessing media devices:', err);
-        
-        if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-          alert('Camera and microphone access denied. Please:\n\n1. Click the camera icon in your browser\'s address bar\n2. Select "Always allow"\n3. Try again');
-        } else if (err.name === 'NotFoundError') {
-          alert('No camera or microphone found. Please check your devices.');
-        } else {
-          alert('Could not access camera/microphone. Please check browser permissions and try again.');
-        }
-        return;
+      if (connectionRef.current) {
+        connectionRef.current.signal(signal);
       }
-    } else {
-      proceedAnswerCall(stream);
-    }
-  };
-  
-  const proceedAnswerCall = (currentStream) => {
-    setCallAccepted(true);
-    const peer = new Peer({
-      initiator: false,
-      trickle: false,
-      stream: currentStream,
-    });
-  
-    peer.on('signal', (data) => {
-      socket.emit('answerCall', { signal: data, to: caller });
-    });
-  
-    peer.on('stream', (currentStream) => {
-      if (userVideo.current) {
-        userVideo.current.srcObject = currentStream;
+    };
+
+    const handleCallEnded = () => {
+      console.log('📴 Call ended by other user');
+      setCallEnded(true);
+      if (connectionRef.current) {
+        connectionRef.current.destroy();
       }
-    });
-  
-    peer.signal(callerSignal);
-    connectionRef.current = peer;
-  };
+      setTimeout(() => onClose(), 2000);
+    };
 
-  const leaveCall = () => {
-    setCallEnded(true);
-    socket.emit('endCall', { to: otherUserId });
-    handleCallEnd();
-  };
+    socket.on('callUser', handleIncomingCall);
+    socket.on('callAccepted', handleCallAccepted);
+    socket.on('callEnded', handleCallEnded);
 
-  const handleCallEnd = () => {
-    if (connectionRef.current) {
-      connectionRef.current.destroy();
+    // 🟢 HANDLE PROP: If opened via incoming call prop (Auto Answer Logic)
+    if (incomingCall && !callAccepted) {
+      console.log('📞 Component mounted with incoming call prop');
+      setReceivingCall(true);
+      setCaller(incomingCall.from);
+      setCallerSignal(incomingCall.signal);
+      
+      // Auto-answer after a brief delay to ensure state is set
+      setTimeout(() => {
+        answerCall(incomingCall.signal, incomingCall.from);
+      }, 500);
+    } 
+    // 🟢 AUTO-START: If not receiving and not initiated, assume we are calling
+    else if (!incomingCall && !receivingCall && !callInitiated) {
+      // Small delay to prevent double-firing
+      setTimeout(() => {
+        callUser();
+      }, 500);
     }
-    if (stream) {
-      stream.getTracks().forEach(track => track.stop());
-    }
-    setCallEnded(true);
-    setTimeout(() => onClose(), 1000);
-  };
+
+    return () => {
+      socket.off('callUser', handleIncomingCall);
+      socket.off('callAccepted', handleCallAccepted);
+      socket.off('callEnded', handleCallEnded);
+    };
+  }, [
+    socket, 
+    onClose, 
+    incomingCall, 
+    callUser, 
+    answerCall, 
+    callAccepted, 
+    callInitiated, 
+    receivingCall
+  ]); 
+
+  // Stream Cleanup on Unmount
+  useEffect(() => {
+    return () => {
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, [stream]);
+
+  // ------------------------------------------------------------
+  // 3. UI Controls
+  // ------------------------------------------------------------
 
   const toggleMute = () => {
-    if (stream) {
-      const audioTrack = stream.getAudioTracks()[0];
-      audioTrack.enabled = !audioTrack.enabled;
-      setIsMuted(!audioTrack.enabled);
+    if (stream && stream.getAudioTracks()[0]) {
+      stream.getAudioTracks()[0].enabled = !stream.getAudioTracks()[0].enabled;
+      setIsMuted(!stream.getAudioTracks()[0].enabled);
     }
   };
 
   const toggleVideo = () => {
-    if (stream) {
-      const videoTrack = stream.getVideoTracks()[0];
-      videoTrack.enabled = !videoTrack.enabled;
-      setIsVideoOff(!videoTrack.enabled);
+    if (stream && stream.getVideoTracks()[0]) {
+      stream.getVideoTracks()[0].enabled = !stream.getVideoTracks()[0].enabled;
+      setIsVideoOff(!stream.getVideoTracks()[0].enabled);
     }
-  };
-
-  const toggleFullscreen = () => {
-    setIsFullscreen(!isFullscreen);
   };
 
   return (
     <div className={`video-call-overlay ${isFullscreen ? 'fullscreen' : ''}`}>
       <div className="video-call-container">
-        {/* Header */}
+        {/* HEADER */}
         <div className="video-call-header">
           <div className="call-info">
-            <h3>{callAccepted ? `In call with ${otherUserName}` : 'Video Call'}</h3>
-            <p>{petInfo ? `Regarding ${petInfo.name}` : ''}</p>
+            <h3>{callAccepted ? `In call with ${otherUserName}` : receivingCall ? `Incoming call from ${otherUserName}` : `Calling ${otherUserName}...`}</h3>
+            <p>{petInfo?.name ? `Patient: ${petInfo.name}` : 'Telehealth Session'}</p>
           </div>
           <div className="header-actions">
-            <button onClick={() => setShowPetInfo(!showPetInfo)} className="icon-btn">
-              <Monitor size={20} />
-            </button>
-            <button onClick={toggleFullscreen} className="icon-btn">
+            <button onClick={() => setShowPetInfo(!showPetInfo)} className="icon-btn"><Monitor size={20} /></button>
+            <button onClick={() => setIsFullscreen(!isFullscreen)} className="icon-btn">
               {isFullscreen ? <Minimize2 size={20} /> : <Maximize2 size={20} />}
             </button>
-            <button onClick={onClose} className="icon-btn close-btn">
-              <X size={20} />
-            </button>
+            <button onClick={leaveCall} className="icon-btn close-btn"><X size={20} /></button>
           </div>
         </div>
 
-        {/* Video Grid */}
+        {/* VIDEO GRID */}
         <div className="video-grid">
-          {/* Remote Video (Other User) */}
+          {/* Remote Video */}
           <div className="video-container main-video">
             {callAccepted && !callEnded ? (
               <>
@@ -258,109 +262,57 @@ const VideoCall = ({
             ) : (
               <div className="waiting-screen">
                 <div className="avatar-large">{otherUserName?.charAt(0)}</div>
-                <h3>{receivingCall ? 'Incoming call...' : 'Calling...'}</h3>
-                <p>{otherUserName}</p>
+                <h3>{receivingCall ? 'Incoming Call...' : 'Calling...'}</h3>
+                <p>{receivingCall ? `${otherUserName} is calling you` : `Waiting for answer...`}</p>
               </div>
             )}
           </div>
 
-          {/* Local Video (Self) */}
+          {/* Local Video */}
           <div className="video-container local-video">
-            <video 
-              ref={myVideo} 
-              autoPlay 
-              playsInline 
-              muted 
-              className="video-element"
-            />
+            <video ref={myVideo} autoPlay playsInline muted className={`video-element ${isVideoOff ? 'hidden' : ''}`} />
+            {(isVideoOff || !stream) && <div className="video-placeholder"><VideoOff size={24} /></div>}
             <div className="video-label">You</div>
           </div>
 
-          {/* Pet Info Panel */}
+          {/* PET INFO */}
           {showPetInfo && petInfo && (
             <div className="video-pet-info">
-              <h4>Patient Information</h4>
+              <h4>Patient Info</h4>
               <div className="pet-info-item">
-                <span className="pet-emoji">{petInfo.image}</span>
+                <span className="pet-emoji">{petInfo.image || '🐾'}</span>
                 <div>
                   <p className="pet-name">{petInfo.name}</p>
                   <p className="pet-details">{petInfo.species} • {petInfo.breed}</p>
                 </div>
               </div>
               <div className="pet-vitals">
-                <div className="vital-item">
-                  <span className="vital-label">Age</span>
-                  <span className="vital-value">{petInfo.age}</span>
-                </div>
-                <div className="vital-item">
-                  <span className="vital-label">Weight</span>
-                  <span className="vital-value">{petInfo.weight}</span>
-                </div>
+                <div className="vital-item"><span>Age</span><span>{petInfo.age}</span></div>
+                <div className="vital-item"><span>Weight</span><span>{petInfo.weight}</span></div>
               </div>
-              {petInfo.medications && petInfo.medications.length > 0 && (
-                <div className="pet-medications">
-                  <p className="info-label">Active Medications:</p>
-                  {petInfo.medications.map((med, idx) => (
-                    <p key={idx} className="info-value">💊 {med}</p>
-                  ))}
-                </div>
-              )}
-              {petInfo.allergies && petInfo.allergies.length > 0 && (
-                <div className="pet-allergies">
-                  <p className="info-label">Allergies:</p>
-                  {petInfo.allergies.map((allergy, idx) => (
-                    <span key={idx} className="allergy-tag">⚠️ {allergy}</span>
-                  ))}
-                </div>
-              )}
             </div>
           )}
         </div>
 
-        {/* Call Controls */}
+        {/* CONTROLS */}
         <div className="video-call-controls">
           {receivingCall && !callAccepted ? (
             <div className="incoming-call-actions">
-              <button onClick={answerCall} className="accept-btn">
-                <Video size={24} />
-                Accept
-              </button>
-              <button onClick={leaveCall} className="decline-btn">
-                <PhoneOff size={24} />
-                Decline
-              </button>
+              <button onClick={() => answerCall()} className="accept-btn"><Video size={24} /> Accept</button>
+              <button onClick={leaveCall} className="decline-btn"><PhoneOff size={24} /> Decline</button>
             </div>
-          ) : callAccepted && !callEnded ? (
+          ) : (
             <div className="active-call-controls">
-              <button 
-                onClick={toggleMute} 
-                className={`control-btn ${isMuted ? 'active' : ''}`}
-              >
+              <button onClick={toggleMute} className={`control-btn ${isMuted ? 'active' : ''}`} title="Mute/Unmute">
                 {isMuted ? <MicOff size={24} /> : <Mic size={24} />}
               </button>
-              <button 
-                onClick={toggleVideo} 
-                className={`control-btn ${isVideoOff ? 'active' : ''}`}
-              >
+              <button onClick={toggleVideo} className={`control-btn ${isVideoOff ? 'active' : ''}`} title="Cam On/Off">
                 {isVideoOff ? <VideoOff size={24} /> : <Video size={24} />}
               </button>
-              <button onClick={leaveCall} className="end-call-btn">
-                <PhoneOff size={24} />
-              </button>
+              <button onClick={leaveCall} className="end-call-btn"><PhoneOff size={24} /></button>
             </div>
-          ) : !receivingCall ? (
-            <button onClick={callUser} className="start-call-btn">
-              <Video size={24} />
-              Start Call
-            </button>
-          ) : null}
+          )}
         </div>
-
-        {callEnded && (
-          <div className="call-ended-overlay">
-            <h3>Call Ended</h3>
-          </div>
-        )}
       </div>
     </div>
   );
