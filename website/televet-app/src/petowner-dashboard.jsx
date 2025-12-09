@@ -68,6 +68,7 @@ const PetOwnerDashboard = () => {
       fetchPetParentInfo(storedUserId);
       fetchAssignedClinic(storedUserId);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   
   // Add new useEffect to refresh reminders when date changes
@@ -563,6 +564,7 @@ const PetOwnerDashboard = () => {
         <AppointmentDetailsModal 
           showModal={showAppointmentModal}
           appointmentDetails={selectedAppointmentDetails}
+          loading={loadingAppointmentDetails}
           onClose={() => {
             setShowAppointmentModal(false);
             setSelectedAppointmentDetails(null);

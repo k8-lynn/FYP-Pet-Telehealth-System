@@ -23,10 +23,8 @@ const RemindersPage = () => {
   const [userPets, setUserPets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [ppId, setPpId] = useState(null);
-  const [userId, setUserId] = useState(null);
   const [showAppointmentModal, setShowAppointmentModal] = useState(false);
   const [selectedAppointmentDetails, setSelectedAppointmentDetails] = useState(null);
-  const [loadingAppointmentDetails, setLoadingAppointmentDetails] = useState(false);
   
   const [newReminder, setNewReminder] = useState({
     title: '',
@@ -46,11 +44,11 @@ const RemindersPage = () => {
     if (storedName) setFirstName(storedName);
     
     if (storedUserId) {
-      setUserId(storedUserId);
       fetchPetParentInfo(storedUserId);
     } else {
       setLoading(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Update reminders when selected date changes
@@ -186,13 +184,11 @@ const RemindersPage = () => {
 
   const fetchAppointmentDetailsById = async (appt_id) => {
     try {
-      setLoadingAppointmentDetails(true);
       const response = await fetch(`http://localhost:5000/api/appointment-details/${appt_id}`);
   
       if (response.status === 404) {
         console.log('Appointment not found');
         setSelectedAppointmentDetails(null);
-        setLoadingAppointmentDetails(false);
         alert('Appointment not found');
         return;
       }
@@ -204,11 +200,9 @@ const RemindersPage = () => {
       const data = await response.json();
       setSelectedAppointmentDetails(data);
       setShowAppointmentModal(true);
-      setLoadingAppointmentDetails(false);
     } catch (error) {
       console.error('❌ Error fetching appointment details:', error);
       setSelectedAppointmentDetails(null);
-      setLoadingAppointmentDetails(false);
       alert('Failed to fetch appointment details');
     }
   };

@@ -1,3 +1,5 @@
+/* eslint-disable react-refresh/only-export-components */
+/* eslint-disable no-unused-vars */
 // NotificationProvider.jsx (current one)
 import React, { createContext, useState, useEffect, useContext, useRef } from 'react';
 import { io } from 'socket.io-client';
@@ -172,6 +174,7 @@ export const NotificationProvider = ({ children }) => {
       delete window.showToast;
       delete window.setIsOnChatPage;
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Request desktop notification permission on mount

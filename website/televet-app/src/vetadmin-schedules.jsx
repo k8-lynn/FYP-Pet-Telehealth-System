@@ -13,7 +13,7 @@ const VetAdminSchedules = () => {
   const [clinicHours, setClinicHours] = useState(null);
   const [clinicStatus, setClinicStatus] = useState('open');
   const [showHoursModal, setShowHoursModal] = useState(false);
-  const [va_id, setVaId] = useState(null);
+  const [, setVaId] = useState(null);
   const [clinic_id, setClinicId] = useState(null);
   const [clinicInfo, setClinicInfo] = useState({});
   const socketRef = useRef(null);
@@ -52,6 +52,7 @@ const VetAdminSchedules = () => {
     if (userId) {
       fetchVetAdminData(userId);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Socket.IO connection for real-time updates
@@ -98,6 +99,7 @@ const VetAdminSchedules = () => {
       socket.disconnect();
       socketRef.current = null;
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clinic_id]);
 
   const fetchVetAdminData = async (userId) => {

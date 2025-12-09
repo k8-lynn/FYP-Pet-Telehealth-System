@@ -32,13 +32,11 @@ const PetOwnerChat = () => {
   const [showFileMenu, setShowFileMenu] = useState(false);
   const [uploading, setUploading] = useState(false);
   const fileInputRef = React.useRef(null);
-  const messagesEndRef = React.useRef(null);
-  const messagesAreaRef = React.useRef(null);
   const shouldAutoScroll = React.useRef(true);
   const [showVideoCall, setShowVideoCall] = useState(false);
 
   const [chatId, setChatId] = useState(null);
-  const { messages, setMessages, isTyping, otherUserOnline, fetchMessages, sendMessage, sendTyping, markAsRead, setActiveChat } = useChat(
+  const { messages, isTyping, otherUserOnline, fetchMessages, sendMessage, sendTyping, markAsRead, setActiveChat } = useChat(
     chatId, 
     userid, 
     'pp'
@@ -396,7 +394,7 @@ React.useEffect(() => {
 
     // ✅ Only clear unread count if OTHER user read messages
     if (String(readByUserId) !== String(userid)) {
-      setMyPatients(prev =>  // Change to setMyPatients for vet-chat.jsx
+      setMyPets(prev =>  // Change to setMyPatients for vet-chat.jsx
         prev.map(pet =>
           pet.chat_id === chatId
             ? { ...pet, unread_count: 0 }
@@ -509,7 +507,7 @@ React.useEffect(() => {
 React.useEffect(() => {
   if (!socket) return;
 
-  const handleMessageNotification = ({ senderName, message, chat_id, sender_id }) => {
+  const handleMessageNotification = ({ senderName, message, chat_id }) => {
     console.log('📨 Message notification received:', { senderName, message, chat_id });
     
     // ✅ Don't show anything if we're viewing this specific chat

@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 //vetadmin-appointments.jsx
 import React, { useState, useEffect, useRef } from "react";
 import { Calendar, Clock, Edit3, ChevronLeft, ChevronRight, Users, TrendingUp, X, Save, MapPin, Plus, CheckCircle } from 'lucide-react';
@@ -21,13 +22,10 @@ const VetAdminAppointments = () => {
   const [clinic_id, setClinicId] = useState(null);
   const [clinicInfo, setClinicInfo] = useState({});
   const [showSlotModal, setShowSlotModal] = useState(false);
-  const [selectedSlot, setSelectedSlot] = useState(null);
   const [newSlotTime, setNewSlotTime] = useState('');
   const [isEditMode, setIsEditMode] = useState(false);
   const [slotToDelete, setSlotToDelete] = useState(null);
   const [slotsLoading, setSlotsLoading] = useState(false);
-  const [slotsGenerated, setSlotsGenerated] = useState(false);
-  const [showApprovalModal, setShowApprovalModal] = useState(false);
   const [selectedPendingSlot, setSelectedPendingSlot] = useState(null);
   const [veterinarians, setVeterinarians] = useState([]);
   const [selectedVeterinarian, setSelectedVeterinarian] = useState(null);
@@ -44,7 +42,7 @@ const VetAdminAppointments = () => {
   const [monthSlotCounts, setMonthSlotCounts] = useState({});
   const [consultationType, setConsultationType] = useState('physical'); // Add this state
 
-  const [hoursForm, setHoursForm] = useState({
+  const [setHoursForm] = useState({
     monday: { opening: '09:00 AM', closing: '05:00 PM', status: 'Available' },
     tuesday: { opening: '09:00 AM', closing: '05:00 PM', status: 'Available' },
     wednesday: { opening: '09:00 AM', closing: '05:00 PM', status: 'Available' },
@@ -107,7 +105,7 @@ const VetAdminAppointments = () => {
       const month = currentDate.getMonth();
       fetchClinicSlotsRange(clinic_id, new Date(year, month, 1), new Date(year, month + 1, 0), 'physical');
       fetchClinicSlotsRange(clinic_id, new Date(year, month, 1), new Date(year, month + 1, 0), 'online');
-    }
+    } 
   }, [clinic_id, currentDate, viewMode]);
 
   useEffect(() => {
@@ -707,7 +705,6 @@ const handleApproveSlot = async (slot) => {
           [dateKey]: updatedSlots
         }
       }));
-      setShowApprovalModal(false);
       setSelectedPendingSlot(null);
       setSelectedVeterinarian(null);
       alert('Appointment approved and assigned successfully!');
@@ -1324,7 +1321,7 @@ const handleApproveSlot = async (slot) => {
                             </div>
                           </div>
                           <div className="schedule-vet-badge">
-                            {vet.vt_patientsAssigned} patients
+                            {vet.vt_patientsAssigned} Appointments
                           </div>
                         </div>
                       ))}

@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 //bookAppointment.jsx
 import React, { useState, useEffect, useRef } from 'react';
 import { Calendar, Clock, CheckCircle, ChevronLeft, ChevronRight, X, Monitor, Building2, AlertTriangle, Droplet, Wind, Activity, HeartPulse, CircleAlert, AlertCircle } from 'lucide-react';import "../styles/bookAppointment.css";

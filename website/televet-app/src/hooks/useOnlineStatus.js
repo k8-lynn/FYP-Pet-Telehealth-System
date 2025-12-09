@@ -10,7 +10,6 @@ export const useOnlineStatus = (userId) => {
 
     console.log('🟢 useOnlineStatus: Setting user online for userId:', userId);
 
-    let isMounted = true;
 
     const updateOnlineStatus = async (status) => {
       try {

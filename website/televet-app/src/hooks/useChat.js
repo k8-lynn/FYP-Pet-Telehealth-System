@@ -11,7 +11,7 @@ export const useChat = (chatId, userId, userRole) => {
   const socketRef = useRef(null);
   const [otherUserOnline, setOtherUserOnline] = useState(false);
   const [otherUserId, setOtherUserId] = useState(null);
-  const [isInChatView, setIsInChatView] = useState(false);
+  const [, setIsInChatView] = useState(false);
 
   // ✅ Initialize socket connection ONCE
   useEffect(() => {

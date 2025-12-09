@@ -1,12 +1,9 @@
 import React, { useState } from 'react';
 import "./styles/register.css";
-import tile1 from './images/tile1.png';
-import human_n_dog from './images/human_dog.png';
 
 const Register = () => {
   const [step, setStep] = useState(1);
   const [consentChecked, setConsentChecked] = useState(false);
-  const [locationEnabled, setLocationEnabled] = useState(false);
   const [formData, setFormData] = useState({
     // Common fields
     firstName: '',
@@ -70,7 +67,6 @@ const Register = () => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         async (position) => {
-          setLocationEnabled(true);
           const lat = position.coords.latitude;
           const lng = position.coords.longitude;
   
@@ -93,7 +89,7 @@ const Register = () => {
             setFormData((prev) => ({ ...prev, vetLocation: `${lat}, ${lng}` }));
           }
         },
-        (error) => {
+        () => {
           alert("Please enable location in your browser settings.");
         }
       );

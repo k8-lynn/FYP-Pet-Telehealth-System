@@ -31,6 +31,7 @@ import VetChat from './vet-chat.jsx';
 import MyProfile from './myprofile.jsx';
 
 // ✅ Create a wrapper component to use the hook
+// eslint-disable-next-line react-refresh/only-export-components
 function AppWrapper() {
   const [userId, setUserId] = React.useState(null);
   

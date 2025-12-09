@@ -11,7 +11,6 @@ const VideoCall = ({
   currentUserName,
   otherUserId,
   otherUserName,
-  userRole, // 'pp' or 'vt'
   petInfo, // Pet information to display
   onClose 
 }) => {
@@ -33,9 +32,10 @@ const VideoCall = ({
 
   useEffect(() => {
     // Get user media
+    if (!socket) return;
 
     // Listen for incoming calls
-    socket.on('callUser', ({ from, name, signal }) => {
+    socket.on('callUser', ({ from, signal }) => {
       setReceivingCall(true);
       setCaller(from);
       setCallerSignal(signal);

@@ -33,13 +33,11 @@ const VetChat = () => {
   const [showFileMenu, setShowFileMenu] = useState(false);
   const [uploading, setUploading] = useState(false);
   const fileInputRef = React.useRef(null);
-  const messagesEndRef = React.useRef(null);
-  const messagesAreaRef = React.useRef(null);
   const shouldAutoScroll = React.useRef(true);
   const [showVideoCall, setShowVideoCall] = useState(false);
 
   const [chatId, setChatId] = useState(null);
-  const { messages, setMessages, isTyping, otherUserOnline, fetchMessages, sendMessage, sendTyping, markAsRead, setActiveChat } = useChat(
+  const { messages, isTyping, otherUserOnline, fetchMessages, sendMessage, sendTyping, markAsRead } = useChat(
     chatId, 
     userid, 
     'vt'  // or 'vt' for vet
@@ -182,6 +180,7 @@ React.useEffect(() => {
       });
       initializeChat(selectedPatient.pp_id, vtId);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedChat, vtId, myPatients]); // ✅ Include myPatients in dependencies
 
   // Fetch vet info
@@ -284,7 +283,7 @@ React.useEffect(() => {
   };
 
   // Initialize chat between vet and pet parent
-  const initializeChat = async (pp_id, vt_id) => {
+  const initializeChat = React.useCallback(async (pp_id, vt_id) => {
     try {
       console.log('📞 Initializing chat with pp_id:', pp_id, 'vt_id:', vt_id);
       
@@ -297,15 +296,14 @@ React.useEffect(() => {
       
       console.log('✅ Chat initialized with chat_id:', chat.chat_id, 'for pp_id:', pp_id);
       
-      // ✅ Always update chatId when switching chats
       setChatId(prevChatId => {
         if (prevChatId !== chat.chat_id) {
           console.log('🔄 Switching from chat_id', prevChatId, 'to', chat.chat_id);
         }
-        return chat.chat_id; // Always return the new chat_id
+        return chat.chat_id;
       });
       
-      // ✅ Mark messages as read after initializing chat
+      // Mark messages as read after initializing chat
       setTimeout(() => {
         markAsRead();
       }, 500);
@@ -314,7 +312,7 @@ React.useEffect(() => {
     } catch (error) {
       console.error('Error initializing chat:', error);
     }
-  };
+  }, [markAsRead]);
 
   const fetchAppointmentDetails = async (pet_id, showModal = false) => {
     try {
@@ -407,7 +405,7 @@ React.useEffect(() => {
 React.useEffect(() => {
   if (!socket) return;
 
-  const handleMessageNotification = ({ senderName, message, chat_id, sender_id }) => {
+  const handleMessageNotification = ({ senderName, message, chat_id }) => {
     console.log('📨 Message notification received:', { senderName, message, chat_id });
     
     // ✅ Don't show anything if we're viewing this specific chat
