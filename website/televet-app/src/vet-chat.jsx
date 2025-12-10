@@ -271,7 +271,15 @@ React.useEffect(() => {
       setMyPatients(data);
       
       // Set first patient as selected by default if exists
-      if (data.length > 0) {
+      // Check if there's a pet_id in URL first
+      const urlParams = new URLSearchParams(window.location.search);
+      const petIdFromUrl = urlParams.get('pet_id');
+
+      if (petIdFromUrl) {
+        // URL parameter will be handled by separate useEffect
+        console.log('🔗 URL has pet_id parameter, waiting to select:', petIdFromUrl);
+      } else if (data.length > 0) {
+        // Only auto-select first patient if no URL parameter
         setSelectedChat(`patient-${data[0].pet_id}`);
         console.log('✅ Selected first patient:', data[0].pet_name);
       } else {
@@ -688,6 +696,25 @@ React.useEffect(() => {
       socket.off('userStatusChanged', handleUserStatusChanged);
     };
   }, [socket]);
+
+  // Handle pet_id from URL parameter
+  React.useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const petIdFromUrl = urlParams.get('pet_id');
+    
+    if (petIdFromUrl && myPatients.length > 0) {
+      const targetPatient = myPatients.find(p => String(p.pet_id) === String(petIdFromUrl));
+      
+      if (targetPatient) {
+        const chatId = `patient-${targetPatient.pet_id}`;
+        console.log('🎯 Setting chat from URL pet_id:', petIdFromUrl, '→', chatId);
+        setSelectedChat(chatId);
+        
+        // Clear the URL parameter after selecting
+        window.history.replaceState({}, '', '/vet-chat');
+      }
+    }
+  }, [myPatients]); // Run when myPatients is loaded
 
   const renderMessageContent = (msg) => {
     if (msg.msg_type === 'img') {

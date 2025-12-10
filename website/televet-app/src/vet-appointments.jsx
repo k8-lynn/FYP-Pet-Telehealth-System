@@ -207,12 +207,6 @@ const filteredAppointments = appointments.filter(appointment => {
             </div>
             <div className="stat-card">
               <span className="stat-number">
-                {appointments.filter(a => a.appt_status === 'pending').length}
-              </span>
-              <span className="stat-label">Pending</span>
-            </div>
-            <div className="stat-card">
-              <span className="stat-number">
                 {appointments.filter(a => a.appt_status === 'completed').length}
               </span>
               <span className="stat-label">Completed</span>
