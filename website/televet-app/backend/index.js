@@ -35,11 +35,14 @@ io.on('connection', (socket) => {
   
   // ✅ Handle user joining their room
   socket.on('joinUser', (userId) => {
-    socket.join(`user_${userId}`);
-    console.log(`✅ User ${userId} joined room: user_${userId}`);
+    const userIdStr = String(userId); // ✅ Force string
+    const roomName = `user_${userIdStr}`;
+    socket.join(roomName);
+    console.log(`✅ User ${userIdStr} joined room: ${roomName}`);
+    console.log(`📊 Socket ${socket.id} is now in rooms:`, Array.from(socket.rooms));
     
     // Store userId with socket
-    socket.userId = userId;
+    socket.userId = userIdStr; // ✅ Store as string
   });
 
   // ✅ NEW: Track when user is on chat page
@@ -82,36 +85,60 @@ io.on('connection', (socket) => {
 
   // Add this with your other socket.on handlers
   socket.on('messagesRead', ({ chatId, userId }) => {
-    console.log('📖 Messages read in chat:', chatId, 'by user:', userId);
     // Broadcast to everyone, not just the chat room
     io.emit('messagesRead', { chatId, userId });
   });
 
   //VIDEO CALL SECTION
   
-  socket.on('callUser', ({ userToCall, signalData, from, name, chatId }) => {
-    console.log(`📞 Call from ${name} (${from}) to ${userToCall} for chat ${chatId}`);
-    console.log(`📍 Emitting to room: user_${userToCall}`);
+  socket.on('callUser', ({ userToCall, signalData, from, name, chatId, petInfo }) => { // ✅ ADD petInfo parameter
+    console.log(`📞 ========= CALL EVENT =========`);
+    console.log(`📞 Call from ${name} (${from})`);
+    console.log(`📞 To user: ${userToCall}`);
+    console.log(`📞 Pet info:`, petInfo); // ✅ LOG petInfo
+    console.log('📞 VideoCall component - petInfo received:', petInfo);
+    console.log('📞 VideoCall component - petInfo.name:', petInfo?.name);
     
-    // Emit to the specific user's room
-    io.to(`user_${userToCall}`).emit('callUser', {
+    // ✅ CRITICAL: Convert to strings
+    const targetUserId = String(userToCall);
+    const callerUserId = String(from);
+    const targetRoom = `user_${targetUserId}`;
+    
+    const roomExists = io.sockets.adapter.rooms.get(targetRoom);
+    console.log(`📞 Target room "${targetRoom}" exists:`, !!roomExists);
+    console.log(`📞 Target room size:`, roomExists?.size || 0);
+    console.log(`📞 ===============================`);
+    
+    // ✅ Emit to the specific user's room WITH petInfo
+    io.to(targetRoom).emit('callUser', {
       signal: signalData,
-      from: from,
+      from: callerUserId,
       name: name,
-      chatId: chatId
+      chatId: chatId,
+      petInfo: petInfo  // ✅ ADD THIS LINE - forward petInfo to receiver
     });
     
-    console.log(`✅ Call event emitted to user_${userToCall}`);
+    console.log(`✅ Call event emitted to ${targetRoom} with petInfo:`, petInfo);
   });
 
   socket.on('answerCall', ({ signal, to }) => {
     console.log(`✅ Call answered, sending signal to ${to}`);
-    io.to(`user_${to}`).emit('callAccepted', signal);
+    const targetRoom = `user_${String(to)}`;
+    io.to(targetRoom).emit('callAccepted', { signal }); // ✅ Wrap in object
   });
 
-  socket.on('endCall', ({ to }) => {
-    console.log(`📴 Call ended, notifying ${to}`);
-    io.to(`user_${to}`).emit('callEnded');
+  socket.on('endCall', ({ to, reason }) => {
+    console.log(`📴 Call ended with reason: ${reason}, notifying ${to}`);
+    const targetRoom = `user_${String(to)}`;
+    const senderRoom = socket.userId ? `user_${socket.userId}` : null;
+    
+    // ✅ Notify the other party
+    io.to(targetRoom).emit('callEnded', { reason });
+    
+    // ✅ Also notify sender if they're in a different room
+    if (senderRoom && senderRoom !== targetRoom) {
+      io.to(senderRoom).emit('callEnded', { reason });
+    }
   });
 
   //VIDEO CALL SECTION

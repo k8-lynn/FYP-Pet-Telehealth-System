@@ -347,3 +347,16 @@
       display: none;
     }
   }
+
+  .control-btn.active {
+    background-color: #ef4444 !important;
+    color: white !important;
+  }
+  
+  .control-btn.active:hover {
+    background-color: #dc2626 !important;
+  }
+  
+  .video-element.hidden {
+    display: none !important;
+  }

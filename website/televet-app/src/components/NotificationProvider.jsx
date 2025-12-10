@@ -1,6 +1,6 @@
 /* eslint-disable react-refresh/only-export-components */
 /* eslint-disable no-unused-vars */
-// NotificationProvider.jsx (current one)
+// NotificationProvider.jsx
 import React, { createContext, useState, useEffect, useContext, useRef } from 'react';
 import { io } from 'socket.io-client';
 import ToastContainer from './ToastContainer';
@@ -20,6 +20,7 @@ export const NotificationProvider = ({ children }) => {
   const [toast, setToast] = useState(null);
   const [socket, setSocket] = useState(null);
   const [notifications, setNotifications] = useState([]);
+  const [incomingCall, setIncomingCall] = useState(null); // ✅ MOVED INSIDE COMPONENT
   const isOnChatPageRef = useRef(false);
 
   useEffect(() => {
@@ -72,6 +73,12 @@ export const NotificationProvider = ({ children }) => {
 
     newSocket.on('connect_error', (error) => {
       console.error('❌ Socket connection error:', error);
+    });
+
+    // ✅ INCOMING CALL LISTENER - MOVED INSIDE useEffect
+    newSocket.on('callUser', ({ from, signal, name, chatId, petInfo }) => { // ✅ ADD petInfo
+      console.log('📞 INCOMING CALL RECEIVED with petInfo:', petInfo);
+      setIncomingCall({ from, signal, name, chatId, petInfo }); // ✅ INCLUDE petInfo
     });
 
     // ✅ Socket listener is now set up AFTER the ref function
@@ -149,7 +156,6 @@ export const NotificationProvider = ({ children }) => {
         // ignore
       }
 
-      // ✅ Show desktop notification
       // ✅ Show desktop notification (but NOT if on reminders page)
       const isOnRemindersPage = window.location.pathname === '/petowner-reminders';
 
@@ -166,6 +172,9 @@ export const NotificationProvider = ({ children }) => {
     });
 
     setSocket(newSocket);
+    
+    // ✅ Store socket globally for GlobalIncomingCall to access
+    window.socket = newSocket;
 
     // Cleanup on unmount
     return () => {
@@ -173,6 +182,7 @@ export const NotificationProvider = ({ children }) => {
       newSocket.disconnect();
       delete window.showToast;
       delete window.setIsOnChatPage;
+      delete window.socket;
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -206,7 +216,9 @@ export const NotificationProvider = ({ children }) => {
       setToast: showToast, 
       socket, 
       notifications,
-      setNotifications 
+      setNotifications,
+      incomingCall,      // ✅ Now properly defined
+      setIncomingCall    // ✅ Now properly defined
     }}>
       {children}
       <ToastContainer toast={toast} onClose={handleCloseToast} />

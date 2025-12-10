@@ -35,7 +35,7 @@ const PetOwnerChat = () => {
   const fileInputRef = React.useRef(null);
   const shouldAutoScroll = React.useRef(true);
   const [showVideoCall, setShowVideoCall] = useState(false);
-  const [incomingCall, setIncomingCall] = useState(null);
+
 
   const [chatId, setChatId] = useState(null);
   const { messages, isTyping, otherUserOnline, fetchMessages, sendMessage, sendTyping, markAsRead, setActiveChat } = useChat(
@@ -66,6 +66,10 @@ const PetOwnerChat = () => {
     });
   }
 };
+
+
+
+
 
 // ✅ Add this useEffect to notify NotificationProvider we're on chat page
 React.useEffect(() => {
@@ -505,30 +509,7 @@ React.useEffect(() => {
 
   const currentChat = chats.find(c => c.id === selectedChat);
 
-  const handleAcceptCall = () => {
-  // Stop ringtone
-  if (window.callRingtone) {
-    window.callRingtone.pause();
-    window.callRingtone = null;
-  }
   
-  setShowVideoCall(true);
-  // The VideoCall component will handle the actual call acceptance
-};
-
-const handleDeclineCall = () => {
-  // Stop ringtone
-  if (window.callRingtone) {
-    window.callRingtone.pause();
-    window.callRingtone = null;
-  }
-  
-  if (socket && incomingCall) {
-    socket.emit('endCall', { to: incomingCall.from });
-  }
-  setIncomingCall(null);
-};
-
   // In BOTH petowner-chat.jsx and vet-chat.jsx
 React.useEffect(() => {
   if (!socket) return;
@@ -563,28 +544,7 @@ React.useEffect(() => {
   };
 }, [socket, selectedChat, currentChat]);
 
-React.useEffect(() => {
-  if (!socket) return;
 
-  const handleIncomingCall = ({ from, signal, name, chatId }) => {
-    console.log('📞 Incoming call from:', name);
-    setIncomingCall({ from, signal, name, chatId });
-    
-    // Play ringtone
-    const audio = new Audio('/ringtone.mp3');
-    audio.loop = true;
-    audio.play().catch(() => console.log('Could not play ringtone'));
-    
-    // Store audio reference to stop later
-    window.callRingtone = audio;
-  };
-
-  socket.on('callUser', handleIncomingCall);
-
-  return () => {
-    socket.off('callUser', handleIncomingCall);
-  };
-}, [socket]);
 
 // Add this new useEffect to listen for real-time status updates
 // Replace the existing handleUserStatusChanged function in petowner-chat.jsx:
@@ -1321,27 +1281,23 @@ React.useEffect(() => {
       <VideoCall
         socket={socket}
         chatId={chatId}
-        currentUserId={userid}
+        currentUserId={String(userid)}
         currentUserName={`${firstName} ${sessionStorage.getItem('lastName') || ''}`}
-        otherUserId={currentChat?.petData?.owner_usr_id || currentChat?.petData?.vet_usr_id}
+        otherUserId={String(currentChat?.petData?.vet_usr_id)}  // or owner_usr_id for vet
         otherUserName={currentChat?.name}
-        userRole="pp"
+        userRole="pp"  // or "vt" for vet
         petInfo={currentPet}
-        incomingCall={incomingCall}
+        // ❌ REMOVE THIS LINE:
+        // incomingCall={incomingCall}
         onClose={() => {
           setShowVideoCall(false);
-          setIncomingCall(null);
+          // ❌ REMOVE THIS LINE:
+          // setIncomingCall(null);
         }}
       />
     )}
 
-    {incomingCall && !showVideoCall && (
-    <IncomingCallNotification
-      callerName={incomingCall.name}
-      onAccept={handleAcceptCall}
-      onDecline={handleDeclineCall}
-    />
-  )}
+  
 
     </div>
   );

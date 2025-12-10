@@ -7,8 +7,9 @@ import Register from './register';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import './styles/index.css';
 import ProtectedRoute from './ProtectedRoute.jsx';
-// Import NotificationProvider
 import { NotificationProvider } from "./components/NotificationProvider";
+import GlobalIncomingCall from './components/GlobalIncomingCall';
+import VideoCall from './components/VideoCall';
 import { useOnlineStatus } from './hooks/useOnlineStatus';
 
 import PetOwnerDashboard from './petowner-dashboard';
@@ -30,12 +31,12 @@ import VetChat from './vet-chat.jsx';
 
 import MyProfile from './myprofile.jsx';
 
-// ✅ Create a wrapper component to use the hook
 // eslint-disable-next-line react-refresh/only-export-components
 function AppWrapper() {
   const [userId, setUserId] = React.useState(null);
+  const [showVideoCall, setShowVideoCall] = React.useState(false);
+  const [videoCallData, setVideoCallData] = React.useState(null);
   
-  // ✅ Check for userId on mount and when it changes
   React.useEffect(() => {
     const storedUserId = sessionStorage.getItem('userid');
     console.log('🔍 AppWrapper checking userId:', storedUserId);
@@ -67,138 +68,166 @@ function AppWrapper() {
   
   // ✅ This will manage online status globally
   useOnlineStatus(userId);
+
+  const handleAcceptCall = (callData) => {
+    setVideoCallData(callData);
+  };
   
   return (
-    <Routes>
-      <Route path="/" element={<App />} />
-      <Route path="/login" element={<Login />} />
-      <Route path="/register" element={<Register />} />
+    <>
+      <Routes>
+        <Route path="/" element={<App />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+        
+        <Route
+          path="/petowner-dashboard"
+          element={
+            <ProtectedRoute allowedType="petParent">
+              <PetOwnerDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/petowner-mypets"
+          element={
+            <ProtectedRoute allowedType="petParent">
+              <PetOwnerMyPets />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/petowner-reminders"
+          element={
+            <ProtectedRoute allowedType="petParent">
+              <PetOwnerReminders />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/petowner-myvet"
+          element={
+            <ProtectedRoute allowedType="petParent">
+              <PetOwnerMyVet />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/petowner-chat"
+          element={
+            <ProtectedRoute allowedType="petParent">
+              <PetOwnerChat />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/vetadmin-dashboard"
+          element={
+            <ProtectedRoute allowedType="vetAdmin">
+              <VetAdminDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/vetadmin-myveterinarians"
+          element={
+            <ProtectedRoute allowedType="vetAdmin">
+              <VetAdminVeterinarians />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/vetadmin-mypatients"
+          element={
+            <ProtectedRoute allowedType="vetAdmin">
+              <VetAdminPatients />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/vetadmin-schedules"
+          element={
+            <ProtectedRoute allowedType="vetAdmin">
+              <VetAdminSchedules />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/vetadmin-appointments"
+          element={
+            <ProtectedRoute allowedType="vetAdmin">
+              <VetAdminAppointments />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/myprofile"
+          element={
+            <ProtectedRoute allowedType={["petParent", "vetAdmin"]}>
+              <MyProfile />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/vet-dashboard"
+          element={
+            <ProtectedRoute allowedType="veterinarian">
+              <VetDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/vet-mypatients"
+          element={
+            <ProtectedRoute allowedType="veterinarian">
+              <VetPatients />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/vet-appointments"
+          element={
+            <ProtectedRoute allowedType="veterinarian">
+              <VetAppointments />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/vet-chat"
+          element={
+            <ProtectedRoute allowedType="veterinarian">
+              <VetChat />
+            </ProtectedRoute>
+          }
+        />
+      </Routes>
       
-      <Route
-        path="/petowner-dashboard"
-        element={
-          <ProtectedRoute allowedType="petParent">
-            <PetOwnerDashboard />
-          </ProtectedRoute>
-        }
+      {/* ✅ Global incoming call notification */}
+      <GlobalIncomingCall 
+        onAccept={handleAcceptCall}
+        onSetShowVideoCall={setShowVideoCall}
       />
-      <Route
-        path="/petowner-mypets"
-        element={
-          <ProtectedRoute allowedType="petParent">
-            <PetOwnerMyPets />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/petowner-reminders"
-        element={
-          <ProtectedRoute allowedType="petParent">
-            <PetOwnerReminders />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/petowner-myvet"
-        element={
-          <ProtectedRoute allowedType="petParent">
-            <PetOwnerMyVet />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/petowner-chat"
-        element={
-          <ProtectedRoute allowedType="petParent">
-            <PetOwnerChat />
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/vetadmin-dashboard"
-        element={
-          <ProtectedRoute allowedType="vetAdmin">
-            <VetAdminDashboard />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/vetadmin-myveterinarians"
-        element={
-          <ProtectedRoute allowedType="vetAdmin">
-            <VetAdminVeterinarians />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/vetadmin-mypatients"
-        element={
-          <ProtectedRoute allowedType="vetAdmin">
-            <VetAdminPatients />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/vetadmin-schedules"
-        element={
-          <ProtectedRoute allowedType="vetAdmin">
-            <VetAdminSchedules />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/vetadmin-appointments"
-        element={
-          <ProtectedRoute allowedType="vetAdmin">
-            <VetAdminAppointments />
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/myprofile"
-        element={
-          <ProtectedRoute allowedType={["petParent", "vetAdmin"]}>
-            <MyProfile />
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/vet-dashboard"
-        element={
-          <ProtectedRoute allowedType="veterinarian">
-            <VetDashboard />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/vet-mypatients"
-        element={
-          <ProtectedRoute allowedType="veterinarian">
-            <VetPatients />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/vet-appointments"
-        element={
-          <ProtectedRoute allowedType="veterinarian">
-            <VetAppointments />
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/vet-chat"
-        element={
-          <ProtectedRoute allowedType="veterinarian">
-            <VetChat />
-          </ProtectedRoute>
-        }
-      />
-    </Routes>
+      
+      {/* ✅ Global video call handler */}
+      {showVideoCall && videoCallData && (
+        <VideoCall
+          socket={window.socket}
+          currentUserId={userId}
+          currentUserName={`${sessionStorage.getItem('firstName') || ''} ${sessionStorage.getItem('lastName') || ''}`}
+          otherUserId={videoCallData.from}
+          otherUserName={videoCallData.name}
+          incomingCall={videoCallData}
+          onClose={() => {
+            setShowVideoCall(false);
+            setVideoCallData(null);
+          }}
+        />
+      )}
+    </>
   );
 }
 
