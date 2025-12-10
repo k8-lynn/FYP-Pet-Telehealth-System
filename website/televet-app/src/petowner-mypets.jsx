@@ -37,107 +37,19 @@ const PetOwnerMyPets = () => {
   });
 
   // Mock data for examinations & treatment
-const [mockExaminations] = useState([
-  {
-    appt_id: 1,
-    appt_type: 'Check-up',
-    consultation_type: 'physical',
-    appt_description: 'Annual wellness examination',
-    appt_date: '2024-11-15T10:00:00',
-    appt_status: 'completed',
-    created_at: '2024-11-10T09:00:00',
-    updated_at: '2024-11-15T11:30:00',
-    vet_name: 'Dr. Sarah Johnson',
-    clinic_name: 'Happy Paws Veterinary Clinic',
-    soap: {
-      subjective: 'Owner reports pet has been eating well, active, no vomiting or diarrhea. Occasional scratching noted.',
-      objective: 'Temperature: 38.5°C, Heart Rate: 110 bpm, Respiratory Rate: 28 breaths/min, Weight: 12.5 kg. Coat appears healthy, no external parasites observed. Ears clean, teeth show mild tartar buildup.',
-      assessment: 'Overall healthy pet. Mild dental tartar. No immediate concerns.',
-      plan: 'Recommend dental cleaning in 3-6 months. Continue current diet. Recheck in 1 year for annual exam.'
-    },
-    treatments: [
-      { type: 'Vaccination', dose: '1ml', frequency: 'Annual', duration: 'Single dose', notes: 'Rabies booster administered' },
-      { type: 'Deworming', dose: '250mg', frequency: 'Single dose', duration: '1 day', notes: 'Broad spectrum dewormer' }
-    ],
-    prescriptions: [
-      { 
-        medication: 'Dental treats', 
-        dose: '1 treat', 
-        frequency: 'Daily', 
-        duration: 'Ongoing',
-        instructions: 'Give after evening meal',
-        start_date: '2024-11-15',
-        end_date: null
-      }
-    ]
-  },
-  {
-    appt_id: 2,
-    appt_type: 'Vaccination',
-    consultation_type: 'physical',
-    appt_description: 'Booster vaccinations',
-    appt_date: '2024-08-20T14:30:00',
-    appt_status: 'completed',
-    created_at: '2024-08-15T10:00:00',
-    updated_at: '2024-08-20T15:00:00',
-    vet_name: 'Dr. Michael Chen',
-    clinic_name: 'Happy Paws Veterinary Clinic',
-    soap: {
-      subjective: 'Routine vaccination visit. No complaints from owner.',
-      objective: 'Vitals normal. Weight: 12.3 kg. No abnormalities detected.',
-      assessment: 'Healthy, ready for vaccinations.',
-      plan: 'Administered DHPP and Bordetella vaccines. Monitor for any reactions. Next vaccines due in 1 year.'
-    },
-    treatments: [
-      { type: 'Vaccination', dose: '1ml', frequency: 'Annual', duration: 'Single dose', notes: 'DHPP combo vaccine' },
-      { type: 'Vaccination', dose: '1ml', frequency: 'Annual', duration: 'Single dose', notes: 'Bordetella vaccine' }
-    ],
-    prescriptions: []
-  }
-]);
-
-// Mock data for medical history
-const [mockMedicalHistory] = useState({
-  documents: [
-    { id: 1, title: 'Blood Test Results', type: 'lab', date: '2024-11-15', url: '#' },
-    { id: 2, title: 'X-Ray - Right Hip', type: 'xray', date: '2024-06-10', url: '#' },
-    { id: 3, title: 'Annual Health Report', type: 'report', date: '2024-11-15', url: '#' }
-  ],
-  vaccinations: [
-    { vaccine: 'Rabies', vac_date: '2024-11-15', next_date: '2025-11-15', vet: 'Dr. Sarah Johnson', notes: 'No adverse reactions' },
-    { vaccine: 'DHPP', vac_date: '2024-08-20', next_date: '2025-08-20', vet: 'Dr. Michael Chen', notes: 'Annual booster' },
-    { vaccine: 'Bordetella', vac_date: '2024-08-20', next_date: '2025-08-20', vet: 'Dr. Michael Chen', notes: 'Kennel cough prevention' }
-  ],
-  conditions: [
-    { condition: 'Mild Dental Tartar', diag_date: '2024-11-15', status: 'active', notes: 'Monitor and schedule cleaning' }
-  ],
-  currentMedications: [
-    { 
-      medication: 'Dental treats', 
-      dose: '1 treat', 
-      frequency: 'Daily', 
-      duration: 'Ongoing',
-      instructions: 'Give after evening meal',
-      start_date: '2024-11-15',
-      end_date: null
-    }
-  ],
-  weightLog: [
-    { weight: 12.5, date: '2024-11-15', notes: 'Annual checkup' },
-    { weight: 12.3, date: '2024-08-20', notes: 'Vaccination visit' },
-    { weight: 12.0, date: '2024-05-10', notes: 'Routine checkup' },
-    { weight: 11.8, date: '2024-02-15', notes: 'Post-spay checkup' }
-  ],
-  surgeries: [
-    { 
-      name: 'Spay Surgery', 
-      date: '2024-02-01', 
-      vet: 'Dr. Sarah Johnson', 
-      notes: 'Routine ovariohysterectomy',
-      complications: 'None'
-    }
-  ]
-});
+  const [examinations, setExaminations] = useState([]);
+  const [medicalHistory, setMedicalHistory] = useState({
+    documents: [],
+    vaccinations: [],
+    conditions: [],
+    currentMedications: [],
+    weightLog: [],
+    surgeries: []
+  });
+  const [treatments, setTreatments] = useState({});
+  const [prescriptions, setPrescriptions] = useState({});
+  const [showModal, setShowModal] = useState(null);
+  const [modalData, setModalData] = useState({});
 
 const [expandedExam, setExpandedExam] = useState(null);
 
@@ -203,6 +115,10 @@ const toggleSection = (section) => {
     setSelectedPet(pet);
     setShowCard(false);
     setShowAddPet(false);
+    
+    // Fetch data for this pet
+    fetchExaminations(pet.id);
+    fetchMedicalHistory(pet.id);
   };
 
   const toggleCard = () => {
@@ -284,6 +200,113 @@ const toggleSection = (section) => {
       // Removed alert for failure too (you can log or handle silently)
     }
   };
+  const fetchExaminations = async (petId) => {
+    try {
+      const response = await axios.get(`http://localhost:5000/api/pet-examinations/${petId}`);
+      setExaminations(response.data);
+      
+      // Fetch treatments and prescriptions for each examination
+      for (const exam of response.data) {
+        fetchTreatments(exam.exam_id);
+        fetchPrescriptions(exam.exam_id);
+      }
+    } catch (error) {
+      console.error('Error fetching examinations:', error);
+    }
+  };
+  
+  const fetchTreatments = async (examId) => {
+    try {
+      const response = await axios.get(`http://localhost:5000/api/pet-treatments/${examId}`);
+      setTreatments(prev => ({ ...prev, [examId]: response.data }));
+    } catch (error) {
+      console.error('Error fetching treatments:', error);
+    }
+  };
+  
+  const fetchPrescriptions = async (examId) => {
+    try {
+      const response = await axios.get(`http://localhost:5000/api/pet-prescriptions/${examId}`);
+      setPrescriptions(prev => ({ ...prev, [examId]: response.data }));
+    } catch (error) {
+      console.error('Error fetching prescriptions:', error);
+    }
+  };
+  
+  const fetchMedicalHistory = async (petId) => {
+    try {
+      const [docs, vacs, conds, meds, weights, surgs] = await Promise.all([
+        axios.get(`http://localhost:5000/api/pet-documents/${petId}`),
+        axios.get(`http://localhost:5000/api/pet-vaccinations/${petId}`),
+        axios.get(`http://localhost:5000/api/pet-conditions/${petId}`),
+        axios.get(`http://localhost:5000/api/pet-current-medications/${petId}`),
+        axios.get(`http://localhost:5000/api/pet-weight-log/${petId}`),
+        axios.get(`http://localhost:5000/api/pet-surgeries/${petId}`)
+      ]);
+  
+      setMedicalHistory({
+        documents: docs.data,
+        vaccinations: vacs.data,
+        conditions: conds.data,
+        currentMedications: meds.data,
+        weightLog: weights.data,
+        surgeries: surgs.data
+      });
+    } catch (error) {
+      console.error('Error fetching medical history:', error);
+    }
+  };
+
+
+const handleAddItem = (type) => {
+  setShowModal(type);
+  setModalData({});
+};
+
+const handleModalSubmit = async (type) => {
+  try {
+    let endpoint = '';
+    let payload = { pet_id: selectedPet.id, ...modalData };
+
+    switch(type) {
+      case 'vaccination':
+        endpoint = '/api/pet-vaccinations';
+        break;
+      case 'condition':
+        endpoint = '/api/pet-conditions';
+        break;
+      case 'medication':
+        endpoint = '/api/pet-medications';
+        break;
+      case 'weight':
+        endpoint = '/api/pet-weight-log';
+        break;
+      case 'surgery':
+        endpoint = '/api/pet-surgeries';
+        break;
+      case 'document':
+        endpoint = '/api/pet-documents';
+        break;
+      default:
+        return;
+    }
+
+    await axios.post(`http://localhost:5000${endpoint}`, payload);
+    
+    setMessage({ type: 'success', text: 'Added successfully!' });
+    setShowModal(null);
+    setModalData({});
+    
+    // Refresh data
+    fetchMedicalHistory(selectedPet.id);
+    
+    setTimeout(() => setMessage(null), 1000);
+  } catch (error) {
+    console.error('Error adding item:', error);
+    setMessage({ type: 'error', text: 'Failed to add item' });
+  }
+};
+
 const handleDeletePet = (petId) => {
   // Instead of immediate deletion, show confirmation modal
   setConfirmDelete(petId);
@@ -657,139 +680,147 @@ const [isEditing, setIsEditing] = useState(false);
             <div className="details-container">
               {/* Medical History */}
               <div className="section-box section-left">
-                {activeTab === 'examinations' ? (
-                  <div className="section-content">
-                    <h3>Examinations & Treatment History</h3>
-                    
-                    {mockExaminations.length === 0 ? (
-                      <p className="no-data">No examinations or treatments recorded yet.</p>
-                    ) : (
-                      <div className="examinations-list">
-                        {mockExaminations.map((exam) => (
-                          <div key={exam.appt_id} className="examination-card">
-                            <div className="exam-header" onClick={() => setExpandedExam(expandedExam === exam.appt_id ? null : exam.appt_id)}>
-                              <div className="exam-header-left">
-                                <span className={`exam-type exam-${exam.appt_type.toLowerCase().replace(/\s+/g, '-')}`}>
-                                  {exam.appt_type}
-                                </span>
-                                <span className="exam-date">
-                                  {new Date(exam.appt_date).toLocaleDateString('en-GB', {
-                                    day: '2-digit',
-                                    month: 'short',
-                                    year: 'numeric'
-                                  })}
-                                </span>
-                                <span className={`exam-status ${exam.appt_status}`}>
-                                  {exam.appt_status}
-                                </span>
-                              </div>
-                              <ChevronDown 
-                                size={20} 
-                                className={`expand-icon ${expandedExam === exam.appt_id ? 'expanded' : ''}`}
-                              />
-                            </div>
+              {activeTab === 'examinations' ? (
+              <div className="section-content">
+                <h3>Examinations & Treatment History</h3>
+                
+                {examinations.length === 0 ? (
+                  <p className="no-data">No examinations or treatments recorded yet.</p>
+                ) : (
+                  <div className="examinations-list">
+                    {examinations.map((exam) => (
+                      <div key={exam.exam_id} className="examination-card">
+                        <div className="exam-header" onClick={() => setExpandedExam(expandedExam === exam.exam_id ? null : exam.exam_id)}>
+                          <div className="exam-header-left">
+                            <span className={`exam-type exam-${exam.appt_type.toLowerCase().replace(/\s+/g, '-')}`}>
+                              {exam.appt_type}
+                            </span>
+                            <span className="exam-date">
+                              {new Date(exam.exam_dt).toLocaleDateString('en-GB', {
+                                day: '2-digit',
+                                month: 'short',
+                                year: 'numeric'
+                              })}
+                            </span>
+                            <span className={`exam-status ${exam.appt_status}`}>
+                              {exam.appt_status}
+                            </span>
+                          </div>
+                          <ChevronDown 
+                            size={20} 
+                            className={`expand-icon ${expandedExam === exam.exam_id ? 'expanded' : ''}`}
+                          />
+                        </div>
 
-                            <div className="exam-summary">
-                              <p><strong>Vet:</strong> {exam.vet_name}</p>
-                              <p><strong>Clinic:</strong> {exam.clinic_name}</p>
-                              <p><strong>Type:</strong> {exam.consultation_type}</p>
-                              {exam.appt_description && <p><strong>Description:</strong> {exam.appt_description}</p>}
-                            </div>
+                        <div className="exam-summary">
+                          <p><strong>Vet:</strong> {exam.vet_name || 'Not assigned'}</p>
+                          <p><strong>Clinic:</strong> {exam.clinic_name}</p>
+                          <p><strong>Type:</strong> {exam.consultation_type}</p>
+                          {exam.appt_description && <p><strong>Description:</strong> {exam.appt_description}</p>}
+                        </div>
 
-                            {expandedExam === exam.appt_id && (
-                              <div className="exam-details">
-                                {/* SOAP Notes */}
-                                {exam.soap && (
-                                  <div className="soap-section">
-                                    <h4>SOAP Notes</h4>
-                                    <div className="soap-item">
-                                      <strong>Subjective (Owner Report):</strong>
-                                      <p>{exam.soap.subjective}</p>
-                                    </div>
-                                    <div className="soap-item">
-                                      <strong>Objective (Exam Findings):</strong>
-                                      <p>{exam.soap.objective}</p>
-                                    </div>
-                                    <div className="soap-item">
-                                      <strong>Assessment (Diagnosis):</strong>
-                                      <p>{exam.soap.assessment}</p>
-                                    </div>
-                                    <div className="soap-item">
-                                      <strong>Plan (Treatment):</strong>
-                                      <p>{exam.soap.plan}</p>
-                                    </div>
+                        {expandedExam === exam.exam_id && (
+                          <div className="exam-details">
+                            {/* SOAP Notes */}
+                            {(exam.subj || exam.obj || exam.assess || exam.plan) && (
+                              <div className="soap-section">
+                                <h4>SOAP Notes</h4>
+                                {exam.subj && (
+                                  <div className="soap-item">
+                                    <strong>Subjective (Owner Report):</strong>
+                                    <p>{exam.subj}</p>
                                   </div>
                                 )}
-
-                                {/* Treatments */}
-                                {exam.treatments && exam.treatments.length > 0 && (
-                                  <div className="treatments-section">
-                                    <h4>Treatments Administered</h4>
-                                    <table className="data-table">
-                                      <thead>
-                                        <tr>
-                                          <th>Type</th>
-                                          <th>Dose</th>
-                                          <th>Frequency</th>
-                                          <th>Duration</th>
-                                          <th>Notes</th>
-                                        </tr>
-                                      </thead>
-                                      <tbody>
-                                        {exam.treatments.map((treatment, idx) => (
-                                          <tr key={idx}>
-                                            <td>{treatment.type}</td>
-                                            <td>{treatment.dose}</td>
-                                            <td>{treatment.frequency}</td>
-                                            <td>{treatment.duration}</td>
-                                            <td>{treatment.notes}</td>
-                                          </tr>
-                                        ))}
-                                      </tbody>
-                                    </table>
+                                {exam.obj && (
+                                  <div className="soap-item">
+                                    <strong>Objective (Exam Findings):</strong>
+                                    <p>{exam.obj}</p>
                                   </div>
                                 )}
-
-                                {/* Prescriptions */}
-                                {exam.prescriptions && exam.prescriptions.length > 0 && (
-                                  <div className="prescriptions-section">
-                                    <h4>Prescriptions</h4>
-                                    <table className="data-table">
-                                      <thead>
-                                        <tr>
-                                          <th>Medication</th>
-                                          <th>Dose</th>
-                                          <th>Frequency</th>
-                                          <th>Duration</th>
-                                          <th>Instructions</th>
-                                          <th>Period</th>
-                                        </tr>
-                                      </thead>
-                                      <tbody>
-                                        {exam.prescriptions.map((rx, idx) => (
-                                          <tr key={idx}>
-                                            <td>{rx.medication}</td>
-                                            <td>{rx.dose}</td>
-                                            <td>{rx.frequency}</td>
-                                            <td>{rx.duration}</td>
-                                            <td>{rx.instructions}</td>
-                                            <td>
-                                              {rx.start_date} {rx.end_date ? `to ${rx.end_date}` : '(Ongoing)'}
-                                            </td>
-                                          </tr>
-                                        ))}
-                                      </tbody>
-                                    </table>
+                                {exam.assess && (
+                                  <div className="soap-item">
+                                    <strong>Assessment (Diagnosis):</strong>
+                                    <p>{exam.assess}</p>
+                                  </div>
+                                )}
+                                {exam.plan && (
+                                  <div className="soap-item">
+                                    <strong>Plan (Treatment):</strong>
+                                    <p>{exam.plan}</p>
                                   </div>
                                 )}
                               </div>
                             )}
+
+                            {/* Treatments */}
+                            {treatments[exam.exam_id] && treatments[exam.exam_id].length > 0 && (
+                              <div className="treatments-section">
+                                <h4>Treatments Administered</h4>
+                                <table className="data-table">
+                                  <thead>
+                                    <tr>
+                                      <th>Type</th>
+                                      <th>Dose</th>
+                                      <th>Frequency</th>
+                                      <th>Duration</th>
+                                      <th>Notes</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {treatments[exam.exam_id].map((treatment, idx) => (
+                                      <tr key={idx}>
+                                        <td>{treatment.type}</td>
+                                        <td>{treatment.dose}</td>
+                                        <td>{treatment.freq}</td>
+                                        <td>{treatment.dur}</td>
+                                        <td>{treatment.notes}</td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            )}
+
+                            {/* Prescriptions */}
+                            {prescriptions[exam.exam_id] && prescriptions[exam.exam_id].length > 0 && (
+                              <div className="prescriptions-section">
+                                <h4>Prescriptions</h4>
+                                <table className="data-table">
+                                  <thead>
+                                    <tr>
+                                      <th>Medication</th>
+                                      <th>Dose</th>
+                                      <th>Frequency</th>
+                                      <th>Duration</th>
+                                      <th>Instructions</th>
+                                      <th>Period</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {prescriptions[exam.exam_id].map((rx, idx) => (
+                                      <tr key={idx}>
+                                        <td>{rx.med}</td>
+                                        <td>{rx.dose}</td>
+                                        <td>{rx.freq}</td>
+                                        <td>{rx.dur}</td>
+                                        <td>{rx.instr}</td>
+                                        <td>
+                                          {rx.start_dt} {rx.end_dt ? `to ${rx.end_dt}` : '(Ongoing)'}
+                                        </td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            )}
                           </div>
-                        ))}
+                        )}
                       </div>
-                    )}
+                    ))}
                   </div>
-                ) : (
+                )}
+              </div>
+            ) : (
                   <div className="section-content medical-history">
                     <h3>Medical History</h3>
 
@@ -808,15 +839,15 @@ const [isEditing, setIsEditing] = useState(false);
                       {expandedSections.documents && (
                         <>
                           <div className="section-actions">
-                            <button className="btn-add-section">
+                            <button className="btn-add-section" onClick={() => handleAddItem('vaccination')}>
                               <Plus size={16} /> Upload Document
                             </button>
                           </div>
-                          {mockMedicalHistory.documents.length === 0 ? (
+                          {medicalHistory.documents.length === 0 ? (
                             <p className="no-data">No documents uploaded.</p>
                           ) : (
                             <div className="documents-grid">
-                              {mockMedicalHistory.documents.map((doc) => (
+                              {medicalHistory.documents.map((doc) => (
                                 <div key={doc.id} className="document-card">
                                   <div className="doc-icon">
                                     {doc.type === 'xray' ? <Activity size={24} color="#4f46e5" /> : 
@@ -851,7 +882,7 @@ const [isEditing, setIsEditing] = useState(false);
                       {expandedSections.vaccinations && (
                         <>
                           <div className="section-actions">
-                            <button className="btn-add-section">
+                            <button className="btn-add-section" onClick={() => handleAddItem('vaccination')}>
                               <Plus size={16} /> Add Vaccination
                             </button>
                           </div>
@@ -866,7 +897,7 @@ const [isEditing, setIsEditing] = useState(false);
                               </tr>
                             </thead>
                             <tbody>
-                              {mockMedicalHistory.vaccinations.map((vac, idx) => (
+                              {medicalHistory.vaccinations.map((vac, idx) => (
                                 <tr key={idx} className={new Date(vac.next_date) < new Date() ? 'overdue' : ''}>
                                   <td>{vac.vaccine}</td>
                                   <td>{new Date(vac.vac_date).toLocaleDateString('en-GB')}</td>
@@ -901,11 +932,11 @@ const [isEditing, setIsEditing] = useState(false);
                       {expandedSections.conditions && (
                         <>
                           <div className="section-actions">
-                            <button className="btn-add-section">
+                            <button className="btn-add-section" onClick={() => handleAddItem('vaccination')}>
                               <Plus size={16} /> Add Condition
                             </button>
                           </div>
-                          {mockMedicalHistory.conditions.length === 0 ? (
+                          {medicalHistory.conditions.length === 0 ? (
                             <p className="no-data">No chronic conditions recorded.</p>
                           ) : (
                             <table className="data-table">
@@ -918,7 +949,7 @@ const [isEditing, setIsEditing] = useState(false);
                                 </tr>
                               </thead>
                               <tbody>
-                                {mockMedicalHistory.conditions.map((cond, idx) => (
+                                {medicalHistory.conditions.map((cond, idx) => (
                                   <tr key={idx}>
                                     <td>{cond.condition}</td>
                                     <td>{new Date(cond.diag_date).toLocaleDateString('en-GB')}</td>
@@ -948,11 +979,11 @@ const [isEditing, setIsEditing] = useState(false);
                       {expandedSections.medications && (
                         <>
                           <div className="section-actions">
-                            <button className="btn-add-section">
+                            <button className="btn-add-section" onClick={() => handleAddItem('vaccination')}>
                               <Plus size={16} /> Add Medication
                             </button>
                           </div>
-                          {mockMedicalHistory.currentMedications.length === 0 ? (
+                          {medicalHistory.currentMedications.length === 0 ? (
                             <p className="no-data">No current medications.</p>
                           ) : (
                             <table className="data-table">
@@ -966,7 +997,7 @@ const [isEditing, setIsEditing] = useState(false);
                                 </tr>
                               </thead>
                               <tbody>
-                                {mockMedicalHistory.currentMedications.map((med, idx) => (
+                                {medicalHistory.currentMedications.map((med, idx) => (
                                   <tr key={idx}>
                                     <td>{med.medication}</td>
                                     <td>{med.dose}</td>
@@ -997,12 +1028,12 @@ const [isEditing, setIsEditing] = useState(false);
                       {expandedSections.weight && (
                         <>
                           <div className="section-actions">
-                            <button className="btn-add-section">
+                            <button className="btn-add-section" onClick={() => handleAddItem('vaccination')}>
                               <Plus size={16} /> Add Weight Entry
                             </button>
                           </div>
                           <div className="weight-chart">
-                            {mockMedicalHistory.weightLog.map((log, idx) => (
+                            {medicalHistory.weightLog.map((log, idx) => (
                               <div key={idx} className="weight-entry">
                                 <span className="weight-value">{log.weight} kg</span>
                                 <span className="weight-date">{new Date(log.date).toLocaleDateString('en-GB')}</span>
@@ -1029,11 +1060,11 @@ const [isEditing, setIsEditing] = useState(false);
                       {expandedSections.surgeries && (
                         <>
                           <div className="section-actions">
-                            <button className="btn-add-section">
+                            <button className="btn-add-section" onClick={() => handleAddItem('vaccination')}>
                               <Plus size={16} /> Add Surgery
                             </button>
                           </div>
-                          {mockMedicalHistory.surgeries.length === 0 ? (
+                          {medicalHistory.surgeries.length === 0 ? (
                             <p className="no-data">No surgeries recorded.</p>
                           ) : (
                             <table className="data-table">
@@ -1047,7 +1078,7 @@ const [isEditing, setIsEditing] = useState(false);
                                 </tr>
                               </thead>
                               <tbody>
-                                {mockMedicalHistory.surgeries.map((surg, idx) => (
+                                {medicalHistory.surgeries.map((surg, idx) => (
                                   <tr key={idx}>
                                     <td>{surg.name}</td>
                                     <td>{new Date(surg.date).toLocaleDateString('en-GB')}</td>

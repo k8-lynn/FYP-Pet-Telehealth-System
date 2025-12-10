@@ -4450,3 +4450,367 @@ app.get('/api/reminders/:pp_id/by-date/:date', (req, res) => {
     res.status(200).json(result);
   });
 });
+
+// -------------------------------------------------------------
+// 🟢 GET EXAMINATIONS & TREATMENT FOR A PET
+// -------------------------------------------------------------
+app.get('/api/pet-examinations/:pet_id', (req, res) => {
+  const { pet_id } = req.params;
+
+  const sql = `
+    SELECT 
+      pe.id as exam_id,
+      pe.exam_dt,
+      pe.subj,
+      pe.obj,
+      pe.assess,
+      pe.plan,
+      pe.vitals,
+      pe.follow_up_dt,
+      pe.follow_up_notes,
+      a.appt_id,
+      a.appt_type,
+      a.consultation_type,
+      a.appt_description,
+      a.appt_date,
+      a.appt_status,
+      CONCAT(u.usr_firstName, ' ', u.usr_lastName) as vet_name,
+      c.clinic_name
+    FROM pet_exam_t pe
+    INNER JOIN appointment_t a ON pe.appt_id = a.appt_id
+    LEFT JOIN veterinarian_t vt ON pe.vt_id = vt.vt_id
+    LEFT JOIN user_t u ON vt.usr_id = u.usr_id
+    LEFT JOIN clinic_t c ON a.clinic_id = c.clinic_id
+    WHERE pe.pet_id = ?
+    ORDER BY pe.exam_dt DESC
+  `;
+
+  db.query(sql, [pet_id], (err, exams) => {
+    if (err) {
+      console.error('❌ Error fetching examinations:', err);
+      return res.status(500).json({ error: 'Failed to fetch examinations' });
+    }
+
+    // Parse vitals JSON
+    const formattedExams = exams.map(exam => ({
+      ...exam,
+      vitals: exam.vitals ? (typeof exam.vitals === 'string' ? JSON.parse(exam.vitals) : exam.vitals) : null
+    }));
+
+    console.log(`✅ Retrieved ${formattedExams.length} examinations for pet ${pet_id}`);
+    res.status(200).json(formattedExams);
+  });
+});
+
+// -------------------------------------------------------------
+// 🟢 GET TREATMENTS FOR AN EXAMINATION
+// -------------------------------------------------------------
+app.get('/api/pet-treatments/:exam_id', (req, res) => {
+  const { exam_id } = req.params;
+
+  const sql = `
+    SELECT id, type, dose, freq, dur, notes, done_at
+    FROM pet_treatment_t
+    WHERE exam_id = ?
+    ORDER BY done_at DESC
+  `;
+
+  db.query(sql, [exam_id], (err, result) => {
+    if (err) {
+      console.error('❌ Error fetching treatments:', err);
+      return res.status(500).json({ error: 'Failed to fetch treatments' });
+    }
+    res.status(200).json(result);
+  });
+});
+
+// -------------------------------------------------------------
+// 🟢 GET PRESCRIPTIONS FOR AN EXAMINATION
+// -------------------------------------------------------------
+app.get('/api/pet-prescriptions/:exam_id', (req, res) => {
+  const { exam_id } = req.params;
+
+  const sql = `
+    SELECT id, med, dose, freq, dur, instr, start_dt, end_dt, created_at
+    FROM pet_prescription_t
+    WHERE exam_id = ?
+    ORDER BY start_dt DESC
+  `;
+
+  db.query(sql, [exam_id], (err, result) => {
+    if (err) {
+      console.error('❌ Error fetching prescriptions:', err);
+      return res.status(500).json({ error: 'Failed to fetch prescriptions' });
+    }
+    res.status(200).json(result);
+  });
+});
+
+// -------------------------------------------------------------
+// 🟢 GET MEDICAL DOCUMENTS FOR A PET
+// -------------------------------------------------------------
+app.get('/api/pet-documents/:pet_id', (req, res) => {
+  const { pet_id } = req.params;
+
+  const sql = `
+    SELECT id, title, dtype, url, up_dt, exam_id
+    FROM pet_documents_t
+    WHERE pet_id = ?
+    ORDER BY up_dt DESC
+  `;
+
+  db.query(sql, [pet_id], (err, result) => {
+    if (err) {
+      console.error('❌ Error fetching documents:', err);
+      return res.status(500).json({ error: 'Failed to fetch documents' });
+    }
+    res.status(200).json(result);
+  });
+});
+
+// -------------------------------------------------------------
+// 🟢 ADD MEDICAL DOCUMENT
+// -------------------------------------------------------------
+app.post('/api/pet-documents', (req, res) => {
+  const { pet_id, exam_id, title, dtype, url } = req.body;
+
+  const sql = `
+    INSERT INTO pet_documents_t (pet_id, exam_id, title, dtype, url)
+    VALUES (?, ?, ?, ?, ?)
+  `;
+
+  db.query(sql, [pet_id, exam_id || null, title, dtype, url], (err, result) => {
+    if (err) {
+      console.error('❌ Error adding document:', err);
+      return res.status(500).json({ error: 'Failed to add document' });
+    }
+    res.status(201).json({ message: 'Document added successfully', id: result.insertId });
+  });
+});
+
+// -------------------------------------------------------------
+// 🟢 GET VACCINATIONS FOR A PET
+// -------------------------------------------------------------
+app.get('/api/pet-vaccinations/:pet_id', (req, res) => {
+  const { pet_id } = req.params;
+
+  const sql = `
+    SELECT 
+      pv.id, 
+      pv.vaccine, 
+      pv.vac_dt, 
+      pv.next_dt, 
+      pv.notes,
+      CONCAT(u.usr_firstName, ' ', u.usr_lastName) as vet_name
+    FROM pet_vaccination_t pv
+    LEFT JOIN veterinarian_t vt ON pv.vt_id = vt.vt_id
+    LEFT JOIN user_t u ON vt.usr_id = u.usr_id
+    WHERE pv.pet_id = ?
+    ORDER BY pv.vac_dt DESC
+  `;
+
+  db.query(sql, [pet_id], (err, result) => {
+    if (err) {
+      console.error('❌ Error fetching vaccinations:', err);
+      return res.status(500).json({ error: 'Failed to fetch vaccinations' });
+    }
+    res.status(200).json(result);
+  });
+});
+
+// -------------------------------------------------------------
+// 🟢 ADD VACCINATION
+// -------------------------------------------------------------
+app.post('/api/pet-vaccinations', (req, res) => {
+  const { pet_id, vaccine, vac_dt, next_dt, vt_id, notes } = req.body;
+
+  const sql = `
+    INSERT INTO pet_vaccination_t (pet_id, vaccine, vac_dt, next_dt, vt_id, notes)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `;
+
+  db.query(sql, [pet_id, vaccine, vac_dt, next_dt, vt_id || null, notes], (err, result) => {
+    if (err) {
+      console.error('❌ Error adding vaccination:', err);
+      return res.status(500).json({ error: 'Failed to add vaccination' });
+    }
+    res.status(201).json({ message: 'Vaccination added successfully', id: result.insertId });
+  });
+});
+
+// -------------------------------------------------------------
+// 🟢 GET CONDITIONS FOR A PET
+// -------------------------------------------------------------
+app.get('/api/pet-conditions/:pet_id', (req, res) => {
+  const { pet_id } = req.params;
+
+  const sql = `
+    SELECT id, cond, diag_dt, status, notes
+    FROM pet_conditions_t
+    WHERE pet_id = ?
+    ORDER BY diag_dt DESC
+  `;
+
+  db.query(sql, [pet_id], (err, result) => {
+    if (err) {
+      console.error('❌ Error fetching conditions:', err);
+      return res.status(500).json({ error: 'Failed to fetch conditions' });
+    }
+    res.status(200).json(result);
+  });
+});
+
+// -------------------------------------------------------------
+// 🟢 ADD CONDITION
+// -------------------------------------------------------------
+app.post('/api/pet-conditions', (req, res) => {
+  const { pet_id, cond, diag_dt, status, notes } = req.body;
+
+  const sql = `
+    INSERT INTO pet_conditions_t (pet_id, cond, diag_dt, status, notes)
+    VALUES (?, ?, ?, ?, ?)
+  `;
+
+  db.query(sql, [pet_id, cond, diag_dt, status || 'active', notes], (err, result) => {
+    if (err) {
+      console.error('❌ Error adding condition:', err);
+      return res.status(500).json({ error: 'Failed to add condition' });
+    }
+    res.status(201).json({ message: 'Condition added successfully', id: result.insertId });
+  });
+});
+
+// -------------------------------------------------------------
+// 🟢 GET CURRENT MEDICATIONS FOR A PET
+// -------------------------------------------------------------
+app.get('/api/pet-current-medications/:pet_id', (req, res) => {
+  const { pet_id } = req.params;
+
+  const sql = `
+    SELECT id, med, dose, freq, dur, instr, start_dt, end_dt
+    FROM pet_prescription_t
+    WHERE pet_id = ? 
+    AND (end_dt IS NULL OR end_dt >= CURDATE())
+    ORDER BY start_dt DESC
+  `;
+
+  db.query(sql, [pet_id], (err, result) => {
+    if (err) {
+      console.error('❌ Error fetching current medications:', err);
+      return res.status(500).json({ error: 'Failed to fetch medications' });
+    }
+    res.status(200).json(result);
+  });
+});
+
+// -------------------------------------------------------------
+// 🟢 ADD MEDICATION (separate from prescription)
+// -------------------------------------------------------------
+app.post('/api/pet-medications', (req, res) => {
+  const { pet_id, exam_id, med, dose, freq, dur, instr, start_dt, end_dt } = req.body;
+
+  const sql = `
+    INSERT INTO pet_prescription_t (exam_id, pet_id, med, dose, freq, dur, instr, start_dt, end_dt)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `;
+
+  db.query(sql, [exam_id || null, pet_id, med, dose, freq, dur, instr, start_dt, end_dt || null], (err, result) => {
+    if (err) {
+      console.error('❌ Error adding medication:', err);
+      return res.status(500).json({ error: 'Failed to add medication' });
+    }
+    res.status(201).json({ message: 'Medication added successfully', id: result.insertId });
+  });
+});
+
+// -------------------------------------------------------------
+// 🟢 GET WEIGHT LOG FOR A PET
+// -------------------------------------------------------------
+app.get('/api/pet-weight-log/:pet_id', (req, res) => {
+  const { pet_id } = req.params;
+
+  const sql = `
+    SELECT id, weight, rec_dt, notes
+    FROM pet_weight_log_t
+    WHERE pet_id = ?
+    ORDER BY rec_dt DESC
+  `;
+
+  db.query(sql, [pet_id], (err, result) => {
+    if (err) {
+      console.error('❌ Error fetching weight log:', err);
+      return res.status(500).json({ error: 'Failed to fetch weight log' });
+    }
+    res.status(200).json(result);
+  });
+});
+
+// -------------------------------------------------------------
+// 🟢 ADD WEIGHT ENTRY
+// -------------------------------------------------------------
+app.post('/api/pet-weight-log', (req, res) => {
+  const { pet_id, weight, rec_dt, notes } = req.body;
+
+  const sql = `
+    INSERT INTO pet_weight_log_t (pet_id, weight, rec_dt, notes)
+    VALUES (?, ?, ?, ?)
+  `;
+
+  db.query(sql, [pet_id, weight, rec_dt, notes], (err, result) => {
+    if (err) {
+      console.error('❌ Error adding weight entry:', err);
+      return res.status(500).json({ error: 'Failed to add weight entry' });
+    }
+    res.status(201).json({ message: 'Weight entry added successfully', id: result.insertId });
+  });
+});
+
+// -------------------------------------------------------------
+// 🟢 GET SURGERIES FOR A PET
+// -------------------------------------------------------------
+app.get('/api/pet-surgeries/:pet_id', (req, res) => {
+  const { pet_id } = req.params;
+
+  const sql = `
+    SELECT 
+      ps.id, 
+      ps.name, 
+      ps.surg_dt, 
+      ps.notes, 
+      ps.complications,
+      CONCAT(u.usr_firstName, ' ', u.usr_lastName) as vet_name
+    FROM pet_surgery_t ps
+    LEFT JOIN veterinarian_t vt ON ps.vt_id = vt.vt_id
+    LEFT JOIN user_t u ON vt.usr_id = u.usr_id
+    WHERE ps.pet_id = ?
+    ORDER BY ps.surg_dt DESC
+  `;
+
+  db.query(sql, [pet_id], (err, result) => {
+    if (err) {
+      console.error('❌ Error fetching surgeries:', err);
+      return res.status(500).json({ error: 'Failed to fetch surgeries' });
+    }
+    res.status(200).json(result);
+  });
+});
+
+// -------------------------------------------------------------
+// 🟢 ADD SURGERY
+// -------------------------------------------------------------
+app.post('/api/pet-surgeries', (req, res) => {
+  const { pet_id, name, surg_dt, vt_id, notes, complications } = req.body;
+
+  const sql = `
+    INSERT INTO pet_surgery_t (pet_id, name, surg_dt, vt_id, notes, complications)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `;
+
+  db.query(sql, [pet_id, name, surg_dt, vt_id || null, notes, complications], (err, result) => {
+    if (err) {
+      console.error('❌ Error adding surgery:', err);
+      return res.status(500).json({ error: 'Failed to add surgery' });
+    }
+    res.status(201).json({ message: 'Surgery added successfully', id: result.insertId });
+  });
+});
