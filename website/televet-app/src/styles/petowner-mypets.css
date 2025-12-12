@@ -1616,6 +1616,55 @@
   font-weight: 600;
 }
 
+/* Symptom List Styles */
+.symptom-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  width: 100%;
+  margin-top: 0.5rem;
+}
+
+.symptom-entry {
+  padding: 1rem 1.25rem;
+  background: #f8fbff;
+  border-radius: 12px;
+  border: 2px solid #e8f0f7;
+  transition: all 0.2s ease;
+}
+
+.symptom-entry:hover {
+  border-color: #a8ceff;
+  background: #f0f9ff;
+}
+
+.symptom-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.symptom-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #1a2e35;
+}
+
+.symptom-date {
+  font-size: 0.85rem;
+  color: #64748b;
+  font-weight: 600;
+}
+
+.symptom-description {
+  font-size: 0.9rem;
+  color: #334155;
+  line-height: 1.6;
+  margin: 0;
+  font-weight: 500;
+}
+
 /* Responsive for tracking cards */
 @media (max-width: 992px) {
   .card-actions {

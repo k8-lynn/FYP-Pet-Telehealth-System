@@ -51,108 +51,77 @@ const PetOwnerMyPets = () => {
     behavioralNotes: ''
   });
 
-  // Mock data for examinations & treatment
-const [mockExaminations] = useState([
-  {
-    appt_id: 1,
-    appt_type: 'Check-up',
-    consultation_type: 'physical',
-    appt_description: 'Annual wellness examination',
-    appt_date: '2024-11-15T10:00:00',
-    appt_status: 'completed',
-    created_at: '2024-11-10T09:00:00',
-    updated_at: '2024-11-15T11:30:00',
-    vet_name: 'Dr. Sarah Johnson',
-    clinic_name: 'Happy Paws Veterinary Clinic',
-    soap: {
-      subjective: 'Owner reports pet has been eating well, active, no vomiting or diarrhea. Occasional scratching noted.',
-      objective: 'Temperature: 38.5°C, Heart Rate: 110 bpm, Respiratory Rate: 28 breaths/min, Weight: 12.5 kg. Coat appears healthy, no external parasites observed. Ears clean, teeth show mild tartar buildup.',
-      assessment: 'Overall healthy pet. Mild dental tartar. No immediate concerns.',
-      plan: 'Recommend dental cleaning in 3-6 months. Continue current diet. Recheck in 1 year for annual exam.'
-    },
-    treatments: [
-      { type: 'Vaccination', dose: '1ml', frequency: 'Annual', duration: 'Single dose', notes: 'Rabies booster administered' },
-      { type: 'Deworming', dose: '250mg', frequency: 'Single dose', duration: '1 day', notes: 'Broad spectrum dewormer' }
-    ],
-    prescriptions: [
-      { 
-        medication: 'Dental treats', 
-        dose: '1 treat', 
-        frequency: 'Daily', 
-        duration: 'Ongoing',
-        instructions: 'Give after evening meal',
-        start_date: '2024-11-15',
-        end_date: null
-      }
-    ]
-  },
-  {
-    appt_id: 2,
-    appt_type: 'Vaccination',
-    consultation_type: 'physical',
-    appt_description: 'Booster vaccinations',
-    appt_date: '2024-08-20T14:30:00',
-    appt_status: 'completed',
-    created_at: '2024-08-15T10:00:00',
-    updated_at: '2024-08-20T15:00:00',
-    vet_name: 'Dr. Michael Chen',
-    clinic_name: 'Happy Paws Veterinary Clinic',
-    soap: {
-      subjective: 'Routine vaccination visit. No complaints from owner.',
-      objective: 'Vitals normal. Weight: 12.3 kg. No abnormalities detected.',
-      assessment: 'Healthy, ready for vaccinations.',
-      plan: 'Administered DHPP and Bordetella vaccines. Monitor for any reactions. Next vaccines due in 1 year.'
-    },
-    treatments: [
-      { type: 'Vaccination', dose: '1ml', frequency: 'Annual', duration: 'Single dose', notes: 'DHPP combo vaccine' },
-      { type: 'Vaccination', dose: '1ml', frequency: 'Annual', duration: 'Single dose', notes: 'Bordetella vaccine' }
-    ],
-    prescriptions: []
-  }
-]);
-
-// Mock data for medical history
-const [mockMedicalHistory] = useState({
-  documents: [
-    { id: 1, title: 'Blood Test Results', type: 'lab', date: '2024-11-15', url: '#' },
-    { id: 2, title: 'X-Ray - Right Hip', type: 'xray', date: '2024-06-10', url: '#' },
-    { id: 3, title: 'Annual Health Report', type: 'report', date: '2024-11-15', url: '#' }
-  ],
-  vaccinations: [
-    { vaccine: 'Rabies', vac_date: '2024-11-15', next_date: '2025-11-15', vet: 'Dr. Sarah Johnson', notes: 'No adverse reactions' },
-    { vaccine: 'DHPP', vac_date: '2024-08-20', next_date: '2025-08-20', vet: 'Dr. Michael Chen', notes: 'Annual booster' },
-    { vaccine: 'Bordetella', vac_date: '2024-08-20', next_date: '2025-08-20', vet: 'Dr. Michael Chen', notes: 'Kennel cough prevention' }
-  ],
-  conditions: [
-    { condition: 'Mild Dental Tartar', diag_date: '2024-11-15', status: 'active', notes: 'Monitor and schedule cleaning' }
-  ],
-  currentMedications: [
-    { 
-      medication: 'Dental treats', 
-      dose: '1 treat', 
-      frequency: 'Daily', 
-      duration: 'Ongoing',
-      instructions: 'Give after evening meal',
-      start_date: '2024-11-15',
-      end_date: null
-    }
-  ],
-  weightLog: [
-    { weight: 12.5, date: '2024-11-15', notes: 'Annual checkup' },
-    { weight: 12.3, date: '2024-08-20', notes: 'Vaccination visit' },
-    { weight: 12.0, date: '2024-05-10', notes: 'Routine checkup' },
-    { weight: 11.8, date: '2024-02-15', notes: 'Post-spay checkup' }
-  ],
-  surgeries: [
-    { 
-      name: 'Spay Surgery', 
-      date: '2024-02-01', 
-      vet: 'Dr. Sarah Johnson', 
-      notes: 'Routine ovariohysterectomy',
-      complications: 'None'
-    }
-  ]
+const [soapNotes, setSoapNotes] = useState([]);
+const [newSoapNote, setNewSoapNote] = useState({
+  date: '',
+  subjective: '',
+  objective: '',
+  assessment: '',
+  plan: ''
 });
+
+
+const [examinations, setExaminations] = useState([]);
+const [medicalHistory, setMedicalHistory] = useState({
+  documents: [],
+  vaccinations: [],
+  conditions: [],
+  currentMedications: [],
+  surgeries: []
+});
+
+const fetchHealthRecords = async (petId) => {
+  try {
+    // Fetch examinations
+    const examRes = await axios.get(`http://localhost:5000/api/pets/${petId}/examinations`);
+    setExaminations(examRes.data);
+
+    // Fetch medical history
+    const historyRes = await axios.get(`http://localhost:5000/api/pets/${petId}/medical-history`);
+    setMedicalHistory(historyRes.data);
+  } catch (error) {
+    console.error('Error fetching health records:', error);
+  }
+};
+
+// ADD this state for real tracking data
+const [trackingData, setTrackingData] = useState({
+  weightLog: [],
+  activityLog: [],
+  symptomLog: [],
+  behaviorLog: []
+});
+
+// ADD this function to fetch tracking data
+const fetchTrackingData = async (petId) => {
+  try {
+    const [weightRes, activityRes, symptomRes, behaviorRes] = await Promise.all([
+      axios.get(`http://localhost:5000/api/pets/${petId}/weight-log`),
+      axios.get(`http://localhost:5000/api/pets/${petId}/activity-log`),
+      axios.get(`http://localhost:5000/api/pets/${petId}/symptom-log`),
+      axios.get(`http://localhost:5000/api/pets/${petId}/behavior-log`)
+    ]);
+
+    setTrackingData({
+      weightLog: weightRes.data,
+      activityLog: activityRes.data,
+      symptomLog: symptomRes.data,
+      behaviorLog: behaviorRes.data
+    });
+  } catch (error) {
+    console.error('Error fetching tracking data:', error);
+  }
+};
+
+const fetchSoapNotes = async (petId) => {
+  try {
+    const response = await axios.get(`http://localhost:5000/api/pets/${petId}/soap-notes`);
+    setSoapNotes(response.data);
+  } catch (error) {
+    console.error('Error fetching SOAP notes:', error);
+  }
+};
+
 
 const [expandedExam, setExpandedExam] = useState(null);
 
@@ -218,6 +187,9 @@ const toggleSection = (section) => {
     setSelectedPet(pet);
     setShowCard(false);
     setShowAddPet(false);
+    fetchTrackingData(pet.id);
+    fetchHealthRecords(pet.id);
+    fetchSoapNotes(pet.id);
   };
 
   const toggleCard = () => {
@@ -443,7 +415,7 @@ const handleTrackingInputChange = (field, value) => {
 };
 
 const handleSubmitTrackingEntry = async () => {
-  // Basic validation
+  // Validation
   if (trackingModalType === 'weight' && (!newTrackingEntry.weight || !newTrackingEntry.date)) {
     setMessage({ type: 'error', text: 'Please fill in all required fields' });
     return;
@@ -462,21 +434,100 @@ const handleSubmitTrackingEntry = async () => {
   }
 
   try {
-    // TODO: Replace with actual API call when backend is ready
-    console.log('Submitting tracking entry:', trackingModalType, newTrackingEntry);
+    let endpoint = '';
+    let payload = {};
+
+    switch (trackingModalType) {
+      case 'weight':
+        endpoint = `http://localhost:5000/api/pets/${selectedPet.id}/weight-log`;
+        payload = {
+          weight: newTrackingEntry.weight,
+          rec_date: newTrackingEntry.date,
+          notes: newTrackingEntry.notes
+        };
+        break;
+      case 'activity':
+        endpoint = `http://localhost:5000/api/pets/${selectedPet.id}/activity-log`;
+        payload = {
+          activityType: newTrackingEntry.activityType,
+          duration: newTrackingEntry.duration,
+          activ_date: newTrackingEntry.date,
+          notes: newTrackingEntry.notes
+        };
+        break;
+      case 'symptoms':
+        endpoint = `http://localhost:5000/api/pets/${selectedPet.id}/symptom-log`;
+        payload = {
+          symptomTitle: newTrackingEntry.symptomTitle,
+          symptomDescription: newTrackingEntry.symptomDescription,
+          symp_date: newTrackingEntry.date
+        };
+        break;
+      case 'behavior':
+        endpoint = `http://localhost:5000/api/pets/${selectedPet.id}/behavior-log`;
+        payload = {
+          behaviorType: newTrackingEntry.behaviorType,
+          behaviorNote: newTrackingEntry.behaviorNote,
+          behav_date: newTrackingEntry.date
+        };
+        break;
+    }
+
+    await axios.post(endpoint, payload);
     
-    // Simulate success
     setMessage({ type: 'success', text: 'Entry added successfully!' });
     handleCloseTrackingModal();
     
-    // Auto-hide message
-    setTimeout(() => setMessage(null), 1500);
+    // Refresh tracking data
+    fetchTrackingData(selectedPet.id);
     
-    // TODO: Refresh data after successful submission
-    // await fetchTrackingData(selectedPet.id);
+    setTimeout(() => setMessage(null), 1500);
   } catch (error) {
     console.error('Error adding tracking entry:', error);
     setMessage({ type: 'error', text: 'Failed to add entry. Please try again.' });
+  }
+};
+
+const handleSoapInputChange = (field, value) => {
+  setNewSoapNote(prev => ({
+    ...prev,
+    [field]: value
+  }));
+};
+
+const handleSubmitSoapNote = async () => {
+  if (!newSoapNote.date || !newSoapNote.subjective) {
+    setMessage({ type: 'error', text: 'Please fill in at least the date and subjective fields' });
+    return;
+  }
+
+  try {
+    await axios.post(`http://localhost:5000/api/pets/${selectedPet.id}/soap-notes`, {
+      soap_date: newSoapNote.date,
+      subj: newSoapNote.subjective,
+      obj: newSoapNote.objective,
+      assess: newSoapNote.assessment,
+      plan: newSoapNote.plan
+    });
+
+    setMessage({ type: 'success', text: 'SOAP note saved successfully!' });
+    
+    // Reset form
+    setNewSoapNote({
+      date: '',
+      subjective: '',
+      objective: '',
+      assessment: '',
+      plan: ''
+    });
+    
+    // Refresh SOAP notes
+    fetchSoapNotes(selectedPet.id);
+    
+    setTimeout(() => setMessage(null), 1500);
+  } catch (error) {
+    console.error('Error saving SOAP note:', error);
+    setMessage({ type: 'error', text: 'Failed to save SOAP note. Please try again.' });
   }
 };
 
@@ -758,37 +809,37 @@ const [isEditing, setIsEditing] = useState(false);
                         <div className="dashboard-card" onClick={() => setActiveHealthView('examinations')}>
                           <Activity size={32} />
                           <h4>Examinations & Treatment</h4>
-                          <p>{mockExaminations.length} records</p>
+                          <p>{examinations.length} records</p>
                         </div>
 
                         <div className="dashboard-card" onClick={() => setActiveHealthView('documents')}>
                           <FileText size={32} />
                           <h4>Documents & Attachments</h4>
-                          <p>{mockMedicalHistory.documents.length} files</p>
+                          <p>{medicalHistory.documents.length} files</p>
                         </div>
 
                         <div className="dashboard-card" onClick={() => setActiveHealthView('vaccinations')}>
                           <Syringe size={32} />
                           <h4>Vaccination History</h4>
-                          <p>{mockMedicalHistory.vaccinations.length} vaccines</p>
+                          <p>{medicalHistory.vaccinations.length} vaccines</p>
                         </div>
 
                         <div className="dashboard-card" onClick={() => setActiveHealthView('conditions')}>
                           <AlertCircle size={32} />
                           <h4>Chronic Conditions</h4>
-                          <p>{mockMedicalHistory.conditions.length} conditions</p>
+                          <p>{medicalHistory.conditions.length} conditions</p>
                         </div>
 
                         <div className="dashboard-card" onClick={() => setActiveHealthView('medications')}>
                           <Pill size={32} />
                           <h4>Current Medications</h4>
-                          <p>{mockMedicalHistory.currentMedications.length} medications</p>
+                          <p>{medicalHistory.currentMedications.length} medications</p>
                         </div>
 
                         <div className="dashboard-card" onClick={() => setActiveHealthView('surgeries')}>
                           <Scissors size={32} />
                           <h4>Surgical History</h4>
-                          <p>{mockMedicalHistory.surgeries.length} surgeries</p>
+                          <p>{medicalHistory.surgeries.length} surgeries</p>
                         </div>
 
                         <div className="dashboard-card" onClick={() => setActiveHealthView('soap')}>
@@ -809,11 +860,11 @@ const [isEditing, setIsEditing] = useState(false);
                       {activeHealthView === 'examinations' && (
                         <>
                           <h3>Examinations & Treatment History</h3>
-                          {mockExaminations.length === 0 ? (
+                          {examinations.length === 0 ? (
                             <p className="no-data">No examinations or treatments recorded yet.</p>
                           ) : (
                             <div className="examinations-list">
-                              {mockExaminations.map((exam) => (
+                              {examinations.map((exam) => (
                                 <div key={exam.appt_id} className="examination-card">
                                   {/* Keep existing examination card structure */}
                                   <div className="exam-header" onClick={() => setExpandedExam(expandedExam === exam.appt_id ? null : exam.appt_id)}>
@@ -921,11 +972,11 @@ const [isEditing, setIsEditing] = useState(false);
                       {activeHealthView === 'documents' && (
                         <>
                           <h3>Documents & Attachments</h3>
-                          {mockMedicalHistory.documents.length === 0 ? (
+                          {medicalHistory.documents.length === 0 ? (
                             <p className="no-data">No documents uploaded.</p>
                           ) : (
                             <div className="documents-grid">
-                              {mockMedicalHistory.documents.map((doc) => (
+                              {medicalHistory.documents.map((doc) => (
                                 <div key={doc.id} className="document-card">
                                   <div className="doc-icon">
                                     {doc.type === 'xray' ? <Activity size={24} color="#4f46e5" /> : 
@@ -959,7 +1010,7 @@ const [isEditing, setIsEditing] = useState(false);
                               </tr>
                             </thead>
                             <tbody>
-                              {mockMedicalHistory.vaccinations.map((vac, idx) => (
+                              {medicalHistory.vaccinations.map((vac, idx) => (
                                 <tr key={idx} className={new Date(vac.next_date) < new Date() ? 'overdue' : ''}>
                                   <td>{vac.vaccine}</td>
                                   <td>{new Date(vac.vac_date).toLocaleDateString('en-GB')}</td>
@@ -982,7 +1033,7 @@ const [isEditing, setIsEditing] = useState(false);
                       {activeHealthView === 'conditions' && (
                         <>
                           <h3>Chronic Conditions & Diagnoses</h3>
-                          {mockMedicalHistory.conditions.length === 0 ? (
+                          {medicalHistory.conditions.length === 0 ? (
                             <p className="no-data">No chronic conditions recorded.</p>
                           ) : (
                             <table className="data-table">
@@ -995,7 +1046,7 @@ const [isEditing, setIsEditing] = useState(false);
                                 </tr>
                               </thead>
                               <tbody>
-                                {mockMedicalHistory.conditions.map((cond, idx) => (
+                                {medicalHistory.conditions.map((cond, idx) => (
                                   <tr key={idx}>
                                     <td>{cond.condition}</td>
                                     <td>{new Date(cond.diag_date).toLocaleDateString('en-GB')}</td>
@@ -1013,7 +1064,7 @@ const [isEditing, setIsEditing] = useState(false);
                       {activeHealthView === 'medications' && (
                         <>
                           <h3>Current Medications</h3>
-                          {mockMedicalHistory.currentMedications.length === 0 ? (
+                          {medicalHistory.currentMedications.length === 0 ? (
                             <p className="no-data">No current medications.</p>
                           ) : (
                             <table className="data-table">
@@ -1027,7 +1078,7 @@ const [isEditing, setIsEditing] = useState(false);
                                 </tr>
                               </thead>
                               <tbody>
-                                {mockMedicalHistory.currentMedications.map((med, idx) => (
+                                {medicalHistory.currentMedications.map((med, idx) => (
                                   <tr key={idx}>
                                     <td>{med.medication}</td>
                                     <td>{med.dose}</td>
@@ -1046,7 +1097,7 @@ const [isEditing, setIsEditing] = useState(false);
                       {activeHealthView === 'surgeries' && (
                         <>
                           <h3>Surgical History</h3>
-                          {mockMedicalHistory.surgeries.length === 0 ? (
+                          {medicalHistory.surgeries.length === 0 ? (
                             <p className="no-data">No surgeries recorded.</p>
                           ) : (
                             <table className="data-table">
@@ -1060,7 +1111,7 @@ const [isEditing, setIsEditing] = useState(false);
                                 </tr>
                               </thead>
                               <tbody>
-                                {mockMedicalHistory.surgeries.map((surg, idx) => (
+                                {medicalHistory.surgeries.map((surg, idx) => (
                                   <tr key={idx}>
                                     <td>{surg.name}</td>
                                     <td>{new Date(surg.date).toLocaleDateString('en-GB')}</td>
@@ -1082,30 +1133,67 @@ const [isEditing, setIsEditing] = useState(false);
                           <p className="soap-description">Keep track of your pet's daily observations and health notes.</p>
                           <div className="soap-form">
                             <div className="form-group">
-                              <label>Date:</label>
-                              <input type="date" />
+                              <label>Date: *</label>
+                              <input 
+                                type="date" 
+                                value={newSoapNote.date}
+                                onChange={(e) => handleSoapInputChange('date', e.target.value)}
+                              />
                             </div>
                             <div className="form-group">
-                              <label>Subjective (What you noticed):</label>
-                              <textarea placeholder="E.g., Pet seems more tired than usual, drinking more water..." rows="3"></textarea>
+                              <label>Subjective (What you noticed): *</label>
+                              <textarea 
+                                placeholder="E.g., Pet seems more tired than usual, drinking more water..." 
+                                rows="3"
+                                value={newSoapNote.subjective}
+                                onChange={(e) => handleSoapInputChange('subjective', e.target.value)}
+                              ></textarea>
                             </div>
                             <div className="form-group">
                               <label>Objective (Measurements):</label>
-                              <textarea placeholder="E.g., Temperature: 38.5°C, Ate 150g of food..." rows="3"></textarea>
+                              <textarea 
+                                placeholder="E.g., Temperature: 38.5°C, Ate 150g of food..." 
+                                rows="3"
+                                value={newSoapNote.objective}
+                                onChange={(e) => handleSoapInputChange('objective', e.target.value)}
+                              ></textarea>
                             </div>
                             <div className="form-group">
                               <label>Assessment (Your thoughts):</label>
-                              <textarea placeholder="E.g., Might be related to hot weather..." rows="3"></textarea>
+                              <textarea 
+                                placeholder="E.g., Might be related to hot weather..." 
+                                rows="3"
+                                value={newSoapNote.assessment}
+                                onChange={(e) => handleSoapInputChange('assessment', e.target.value)}
+                              ></textarea>
                             </div>
                             <div className="form-group">
                               <label>Plan (What you'll do):</label>
-                              <textarea placeholder="E.g., Monitor for 2 more days, then call vet if continues..." rows="3"></textarea>
+                              <textarea 
+                                placeholder="E.g., Monitor for 2 more days, then call vet if continues..." 
+                                rows="3"
+                                value={newSoapNote.plan}
+                                onChange={(e) => handleSoapInputChange('plan', e.target.value)}
+                              ></textarea>
                             </div>
-                            <button className="btn-submit">Save Note</button>
+                            <button className="btn-submit" onClick={handleSubmitSoapNote}>Save Note</button>
                           </div>
-                          {/* Display saved notes here */}
+                          
                           <div className="saved-soap-notes">
-                            <p className="no-data">No personal notes yet. Start adding observations above!</p>
+                            <h4 style={{ marginTop: '2rem', marginBottom: '1rem' }}>Saved Notes</h4>
+                            {soapNotes.length === 0 ? (
+                              <p className="no-data">No personal notes yet. Start adding observations above!</p>
+                            ) : (
+                              soapNotes.map((note) => (
+                                <div key={note.soap_id} className="soap-item">
+                                  <strong>Date: {new Date(note.soap_date).toLocaleDateString('en-GB')}</strong>
+                                  {note.subj && <p><strong>Subjective:</strong> {note.subj}</p>}
+                                  {note.obj && <p><strong>Objective:</strong> {note.obj}</p>}
+                                  {note.assess && <p><strong>Assessment:</strong> {note.assess}</p>}
+                                  {note.plan && <p><strong>Plan:</strong> {note.plan}</p>}
+                                </div>
+                              ))
+                            )}
                           </div>
                         </>
                       )}
@@ -1129,13 +1217,14 @@ const [isEditing, setIsEditing] = useState(false);
                           </div>
                         </div>
                         <div className="weight-chart">
-                          {mockMedicalHistory.weightLog.slice(0, 3).map((log, idx) => (
+                          {trackingData.weightLog.slice(0, 3).map((log, idx) => (
                             <div key={idx} className="weight-entry">
                               <span className="weight-value">{log.weight} kg</span>
-                              <span className="weight-date">{new Date(log.date).toLocaleDateString('en-GB')}</span>
+                              <span className="weight-date">{new Date(log.rec_date).toLocaleDateString('en-GB')}</span>
                               {log.notes && <span className="weight-notes">{log.notes}</span>}
                             </div>
                           ))}
+                          {trackingData.weightLog.length === 0 && <p className="no-data">No weight entries yet</p>}
                         </div>
                         <div className="card-actions">
                           <button className="btn-view-all" onClick={() => setActiveTrackingView('weight')}>
@@ -1156,21 +1245,14 @@ const [isEditing, setIsEditing] = useState(false);
                           </div>
                         </div>
                         <div className="activity-list">
-                          <div className="activity-entry">
-                            <span className="activity-type">Walk</span>
-                            <span className="activity-duration">45 mins</span>
-                            <span className="activity-date">11 Dec 2024</span>
-                          </div>
-                          <div className="activity-entry">
-                            <span className="activity-type">Playtime</span>
-                            <span className="activity-duration">30 mins</span>
-                            <span className="activity-date">10 Dec 2024</span>
-                          </div>
-                          <div className="activity-entry">
-                            <span className="activity-type">Walk</span>
-                            <span className="activity-duration">40 mins</span>
-                            <span className="activity-date">09 Dec 2024</span>
-                          </div>
+                          {trackingData.activityLog.slice(0, 3).map((activity, idx) => (
+                            <div key={idx} className="activity-entry">
+                              <span className="activity-type">{activity.activ_type}</span>
+                              <span className="activity-duration">{activity.duration_min} mins</span>
+                              <span className="activity-date">{new Date(activity.activ_date).toLocaleDateString('en-GB')}</span>
+                            </div>
+                          ))}
+                          {trackingData.activityLog.length === 0 && <p className="no-data">No activities logged yet</p>}
                         </div>
                         <div className="card-actions">
                           <button className="btn-view-all" onClick={() => setActiveTrackingView('activity')}>
@@ -1190,7 +1272,17 @@ const [isEditing, setIsEditing] = useState(false);
                             <h4>Symptom Diary</h4>
                           </div>
                         </div>
-                        <p className="no-data">No symptoms recorded recently</p>
+                        
+                        <div className="activity-list">
+                          {trackingData.symptomLog.slice(0, 3).map((symptom, idx) => (
+                            <div key={idx} className="activity-entry">
+                              <span className="activity-type">{symptom.symp_title}</span>
+                              <span className="activity-date">{new Date(symptom.symp_date).toLocaleDateString('en-GB')}</span>
+                            </div>
+                          ))}
+                          {trackingData.symptomLog.length === 0 && <p className="no-data">No symptoms recorded recently</p>}
+                        </div>
+                        
                         <div className="card-actions">
                           <button className="btn-view-all" onClick={() => setActiveTrackingView('symptoms')}>
                             View All
@@ -1201,6 +1293,7 @@ const [isEditing, setIsEditing] = useState(false);
                         </div>
                       </div>
 
+
                       {/* Behavioral Notes Card */}
                       <div className="dashboard-card large-card">
                         <div className="card-header-row">
@@ -1210,21 +1303,14 @@ const [isEditing, setIsEditing] = useState(false);
                           </div>
                         </div>
                         <div className="behavior-list">
-                          <div className="behavior-entry">
-                            <span className="behavior-type">Anxiety</span>
-                            <span className="behavior-note">Nervous during thunderstorm</span>
-                            <span className="behavior-date">08 Dec 2024</span>
-                          </div>
-                          <div className="behavior-entry">
-                            <span className="behavior-type">Positive</span>
-                            <span className="behavior-note">Played well with other dogs</span>
-                            <span className="behavior-date">05 Dec 2024</span>
-                          </div>
-                          <div className="behavior-entry">
-                            <span className="behavior-type">Normal</span>
-                            <span className="behavior-note">Calm and relaxed all day</span>
-                            <span className="behavior-date">03 Dec 2024</span>
-                          </div>
+                          {trackingData.behaviorLog.slice(0, 3).map((behavior, idx) => (
+                            <div key={idx} className="behavior-entry">
+                              <span className="behavior-type">{behavior.behav_type}</span>
+                              <span className="behavior-note">{behavior.behav_note}</span>
+                              <span className="behavior-date">{new Date(behavior.behav_date).toLocaleDateString('en-GB')}</span>
+                            </div>
+                          ))}
+                          {trackingData.behaviorLog.length === 0 && <p className="no-data">No behavioral notes yet</p>}
                         </div>
                         <div className="card-actions">
                           <button className="btn-view-all" onClick={() => setActiveTrackingView('behavior')}>
@@ -1253,13 +1339,14 @@ const [isEditing, setIsEditing] = useState(false);
                             </button>
                           </div>
                           <div className="weight-chart">
-                            {mockMedicalHistory.weightLog.map((log, idx) => (
+                            {trackingData.weightLog.map((log, idx) => (
                               <div key={idx} className="weight-entry">
                                 <span className="weight-value">{log.weight} kg</span>
-                                <span className="weight-date">{new Date(log.date).toLocaleDateString('en-GB')}</span>
+                                <span className="weight-date">{new Date(log.rec_date).toLocaleDateString('en-GB')}</span>
                                 {log.notes && <span className="weight-notes">{log.notes}</span>}
                               </div>
                             ))}
+                            {trackingData.weightLog.length === 0 && <p className="no-data">No weight entries yet</p>}
                           </div>
                         </>
                       )}
@@ -1274,40 +1361,19 @@ const [isEditing, setIsEditing] = useState(false);
                             </button>
                           </div>
                           <div className="activity-list">
-                            {/* Add more mock data to show full history */}
-                            <div className="activity-entry">
-                              <span className="activity-type">Walk</span>
-                              <span className="activity-duration">45 mins</span>
-                              <span className="activity-date">11 Dec 2024</span>
-                            </div>
-                            <div className="activity-entry">
-                              <span className="activity-type">Playtime</span>
-                              <span className="activity-duration">30 mins</span>
-                              <span className="activity-date">10 Dec 2024</span>
-                            </div>
-                            <div className="activity-entry">
-                              <span className="activity-type">Walk</span>
-                              <span className="activity-duration">40 mins</span>
-                              <span className="activity-date">09 Dec 2024</span>
-                            </div>
-                            <div className="activity-entry">
-                              <span className="activity-type">Run</span>
-                              <span className="activity-duration">25 mins</span>
-                              <span className="activity-date">08 Dec 2024</span>
-                            </div>
-                            <div className="activity-entry">
-                              <span className="activity-type">Playtime</span>
-                              <span className="activity-duration">35 mins</span>
-                              <span className="activity-date">07 Dec 2024</span>
-                            </div>
-                            <div className="activity-entry">
-                              <span className="activity-type">Walk</span>
-                              <span className="activity-duration">50 mins</span>
-                              <span className="activity-date">06 Dec 2024</span>
-                            </div>
+                            {trackingData.activityLog.map((activity, idx) => (
+                              <div key={idx} className="activity-entry">
+                                <span className="activity-type">{activity.activ_type}</span>
+                                <span className="activity-duration">{activity.duration_min} mins</span>
+                                <span className="activity-date">{new Date(activity.activ_date).toLocaleDateString('en-GB')}</span>
+                                {activity.notes && <span className="activity-notes">{activity.notes}</span>}
+                              </div>
+                            ))}
+                            {trackingData.activityLog.length === 0 && <p className="no-data">No activities logged yet. Click "Add Activity" to start tracking.</p>}
                           </div>
                         </>
                       )}
+
 
                       {/* Symptom Diary Full View */}
                       {activeTrackingView === 'symptoms' && (
@@ -1318,9 +1384,21 @@ const [isEditing, setIsEditing] = useState(false);
                               <Plus size={16} /> Add Entry
                             </button>
                           </div>
-                          <p className="no-data">No symptoms recorded yet. Click "Add Entry" to start tracking.</p>
+                          <div className="symptom-list">
+                            {trackingData.symptomLog.map((symptom, idx) => (
+                              <div key={idx} className="symptom-entry">
+                                <div className="symptom-header">
+                                  <span className="symptom-title">{symptom.symp_title}</span>
+                                  <span className="symptom-date">{new Date(symptom.symp_date).toLocaleDateString('en-GB')}</span>
+                                </div>
+                                <p className="symptom-description">{symptom.symp_desc}</p>
+                              </div>
+                            ))}
+                            {trackingData.symptomLog.length === 0 && <p className="no-data">No symptoms recorded yet. Click "Add Entry" to start tracking.</p>}
+                          </div>
                         </>
                       )}
+
 
                       {/* Behavioral Notes Full View */}
                       {activeTrackingView === 'behavior' && (
@@ -1332,37 +1410,14 @@ const [isEditing, setIsEditing] = useState(false);
                             </button>
                           </div>
                           <div className="behavior-list">
-                            {/* Add more mock data to show full history */}
-                            <div className="behavior-entry">
-                              <span className="behavior-type">Anxiety</span>
-                              <span className="behavior-note">Nervous during thunderstorm</span>
-                              <span className="behavior-date">08 Dec 2024</span>
-                            </div>
-                            <div className="behavior-entry">
-                              <span className="behavior-type">Positive</span>
-                              <span className="behavior-note">Played well with other dogs</span>
-                              <span className="behavior-date">05 Dec 2024</span>
-                            </div>
-                            <div className="behavior-entry">
-                              <span className="behavior-type">Normal</span>
-                              <span className="behavior-note">Calm and relaxed all day</span>
-                              <span className="behavior-date">03 Dec 2024</span>
-                            </div>
-                            <div className="behavior-entry">
-                              <span className="behavior-type">Alert</span>
-                              <span className="behavior-note">Extra energetic after walk</span>
-                              <span className="behavior-date">02 Dec 2024</span>
-                            </div>
-                            <div className="behavior-entry">
-                              <span className="behavior-type">Normal</span>
-                              <span className="behavior-note">Sleeping well through the night</span>
-                              <span className="behavior-date">01 Dec 2024</span>
-                            </div>
-                            <div className="behavior-entry">
-                              <span className="behavior-type">Positive</span>
-                              <span className="behavior-note">Responded well to training</span>
-                              <span className="behavior-date">30 Nov 2024</span>
-                            </div>
+                            {trackingData.behaviorLog.map((behavior, idx) => (
+                              <div key={idx} className="behavior-entry">
+                                <span className="behavior-type">{behavior.behav_type}</span>
+                                <span className="behavior-note">{behavior.behav_note}</span>
+                                <span className="behavior-date">{new Date(behavior.behav_date).toLocaleDateString('en-GB')}</span>
+                              </div>
+                            ))}
+                            {trackingData.behaviorLog.length === 0 && <p className="no-data">No behavioral notes yet. Click "Add Note" to start tracking.</p>}
                           </div>
                         </>
                       )}

@@ -421,7 +421,9 @@ const PetOwnerDashboard = () => {
                           onClick={() => fetchAppointmentDetailsById(appt.appt_id)}
                         >
                           <div className="appointment-title">
-                            {appt.appt_type} - {appt.pet_name}
+                            {appt.appt_type} - {appt.pet_name} <span className={`consultation-badge ${appt.consultation_type === 'online' ? 'online' : 'physical'}`}>
+                              {appt.consultation_type === 'online' ? 'Online' : 'Physical'}
+                            </span>
                           </div>
                           <div className="appointment-time">
                             {appt.appt_datetime.toLocaleTimeString('en-US', { 

@@ -436,6 +436,9 @@
   color: #1a2e35;
   font-weight: 700;
   margin-bottom: 0.4rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .upcoming-date {
@@ -719,4 +722,26 @@
   background: #f8fbff;
   border-radius: 12px;
   border: 2px solid #e8f0f7;
+}
+
+/* Consultation Type Badge */
+.consultation-badge {
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0.25rem 0.6rem;
+  border-radius: 6px;
+  margin-left: 0.5rem;
+  border: 2px solid;
+}
+
+.consultation-badge.online {
+  background: #dbeafe;
+  color: #3b82f6;
+  border-color: #3b82f640;
+}
+
+.consultation-badge.physical {
+  background: #e0e7ff;
+  color: #6366f1;
+  border-color: #6366f140;
 }

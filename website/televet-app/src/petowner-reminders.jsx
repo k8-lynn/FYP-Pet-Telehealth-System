@@ -160,6 +160,7 @@ const RemindersPage = () => {
       const formattedAppointments = appointments.map(appt => ({
         id: appt.appt_id,
         title: `${appt.appt_type} - ${appt.pet_name}`,
+        consultationType: appt.consultation_type,
         date: new Date(appt.appt_date).toLocaleDateString('en-US', { 
           month: 'short', 
           day: 'numeric', 
@@ -594,7 +595,12 @@ const RemindersPage = () => {
                       style={{ cursor: 'pointer' }}
                     >
                       <div className="upcoming-info">
-                        <div className="upcoming-title">{appointment.title}</div>
+                        <div className="upcoming-title">
+                          {appointment.title}
+                          <span className={`consultation-badge ${appointment.consultationType === 'online' ? 'online' : 'physical'}`}>
+                            {appointment.consultationType === 'online' ? 'Online' : 'Physical'}
+                          </span>
+                        </div>
                         <div className="upcoming-date">{appointment.date}</div>
                       </div>
                       <div className="upcoming-time">{appointment.time}</div>

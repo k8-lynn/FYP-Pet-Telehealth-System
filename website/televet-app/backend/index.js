@@ -4450,3 +4450,307 @@ app.get('/api/reminders/:pp_id/by-date/:date', (req, res) => {
     res.status(200).json(result);
   });
 });
+
+// -------------------------------------------------------------
+// 🟢 TRACKING & MONITORING ENDPOINTS
+// -------------------------------------------------------------
+
+// GET weight log for a pet
+app.get('/api/pets/:pet_id/weight-log', (req, res) => {
+  const { pet_id } = req.params;
+
+  const sql = `
+    SELECT 
+      weight_id,
+      weight,
+      rec_date,
+      notes,
+      created_at
+    FROM pet_weight_log_t
+    WHERE pet_id = ?
+    ORDER BY rec_date DESC
+  `;
+
+  db.query(sql, [pet_id], (err, result) => {
+    if (err) {
+      console.error('❌ Error fetching weight log:', err);
+      return res.status(500).json({ error: 'Failed to fetch weight log' });
+    }
+    res.status(200).json(result);
+  });
+});
+
+// POST new weight entry
+app.post('/api/pets/:pet_id/weight-log', (req, res) => {
+  const { pet_id } = req.params;
+  const { weight, rec_date, notes } = req.body;
+
+  // Get pp_id from pet_id
+  const getPpIdSQL = 'SELECT pp_id FROM pet_t WHERE pet_id = ?';
+  
+  db.query(getPpIdSQL, [pet_id], (err, ppResult) => {
+    if (err || ppResult.length === 0) {
+      return res.status(500).json({ error: 'Failed to fetch pet parent info' });
+    }
+
+    const pp_id = ppResult[0].pp_id;
+
+    const insertSQL = `
+      INSERT INTO pet_weight_log_t (pet_id, pp_id, weight, rec_date, notes)
+      VALUES (?, ?, ?, ?, ?)
+    `;
+
+    db.query(insertSQL, [pet_id, pp_id, weight, rec_date, notes || null], (err2, result) => {
+      if (err2) {
+        console.error('❌ Error creating weight entry:', err2);
+        return res.status(500).json({ error: 'Failed to create weight entry' });
+      }
+
+      console.log(`✅ Weight entry created for pet ${pet_id}`);
+      res.status(201).json({ 
+        message: 'Weight entry created successfully',
+        weight_id: result.insertId 
+      });
+    });
+  });
+});
+
+// GET activity log for a pet
+app.get('/api/pets/:pet_id/activity-log', (req, res) => {
+  const { pet_id } = req.params;
+
+  const sql = `
+    SELECT 
+      activity_id,
+      activ_type,
+      duration_min,
+      activ_date,
+      notes,
+      created_at
+    FROM pet_activity_log_t
+    WHERE pet_id = ?
+    ORDER BY activ_date DESC
+  `;
+
+  db.query(sql, [pet_id], (err, result) => {
+    if (err) {
+      console.error('❌ Error fetching activity log:', err);
+      return res.status(500).json({ error: 'Failed to fetch activity log' });
+    }
+    res.status(200).json(result);
+  });
+});
+
+// POST new activity entry
+app.post('/api/pets/:pet_id/activity-log', (req, res) => {
+  const { pet_id } = req.params;
+  const { activityType, duration, activ_date, notes } = req.body;
+
+  const getPpIdSQL = 'SELECT pp_id FROM pet_t WHERE pet_id = ?';
+  
+  db.query(getPpIdSQL, [pet_id], (err, ppResult) => {
+    if (err || ppResult.length === 0) {
+      return res.status(500).json({ error: 'Failed to fetch pet parent info' });
+    }
+
+    const pp_id = ppResult[0].pp_id;
+
+    const insertSQL = `
+      INSERT INTO pet_activity_log_t (pet_id, pp_id, activ_type, duration_min, activ_date, notes)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `;
+
+    db.query(insertSQL, [pet_id, pp_id, activityType, duration, activ_date, notes || null], (err2, result) => {
+      if (err2) {
+        console.error('❌ Error creating activity entry:', err2);
+        return res.status(500).json({ error: 'Failed to create activity entry' });
+      }
+
+      console.log(`✅ Activity entry created for pet ${pet_id}`);
+      res.status(201).json({ 
+        message: 'Activity entry created successfully',
+        activity_id: result.insertId 
+      });
+    });
+  });
+});
+
+// GET symptom log for a pet
+app.get('/api/pets/:pet_id/symptom-log', (req, res) => {
+  const { pet_id } = req.params;
+
+  const sql = `
+    SELECT 
+      symptom_id,
+      symp_title,
+      symp_desc,
+      symp_date,
+      created_at
+    FROM pet_symptom_log_t
+    WHERE pet_id = ?
+    ORDER BY symp_date DESC
+  `;
+
+  db.query(sql, [pet_id], (err, result) => {
+    if (err) {
+      console.error('❌ Error fetching symptom log:', err);
+      return res.status(500).json({ error: 'Failed to fetch symptom log' });
+    }
+    res.status(200).json(result);
+  });
+});
+
+// POST new symptom entry
+app.post('/api/pets/:pet_id/symptom-log', (req, res) => {
+  const { pet_id } = req.params;
+  const { symptomTitle, symptomDescription, symp_date } = req.body;
+
+  const getPpIdSQL = 'SELECT pp_id FROM pet_t WHERE pet_id = ?';
+  
+  db.query(getPpIdSQL, [pet_id], (err, ppResult) => {
+    if (err || ppResult.length === 0) {
+      return res.status(500).json({ error: 'Failed to fetch pet parent info' });
+    }
+
+    const pp_id = ppResult[0].pp_id;
+
+    const insertSQL = `
+      INSERT INTO pet_symptom_log_t (pet_id, pp_id, symp_title, symp_desc, symp_date)
+      VALUES (?, ?, ?, ?, ?)
+    `;
+
+    db.query(insertSQL, [pet_id, pp_id, symptomTitle, symptomDescription, symp_date], (err2, result) => {
+      if (err2) {
+        console.error('❌ Error creating symptom entry:', err2);
+        return res.status(500).json({ error: 'Failed to create symptom entry' });
+      }
+
+      console.log(`✅ Symptom entry created for pet ${pet_id}`);
+      res.status(201).json({ 
+        message: 'Symptom entry created successfully',
+        symptom_id: result.insertId 
+      });
+    });
+  });
+});
+
+// GET behavior log for a pet
+app.get('/api/pets/:pet_id/behavior-log', (req, res) => {
+  const { pet_id } = req.params;
+
+  const sql = `
+    SELECT 
+      behavior_id,
+      behav_type,
+      behav_note,
+      behav_date,
+      created_at
+    FROM pet_behavior_log_t
+    WHERE pet_id = ?
+    ORDER BY behav_date DESC
+  `;
+
+  db.query(sql, [pet_id], (err, result) => {
+    if (err) {
+      console.error('❌ Error fetching behavior log:', err);
+      return res.status(500).json({ error: 'Failed to fetch behavior log' });
+    }
+    res.status(200).json(result);
+  });
+});
+
+// POST new behavior entry
+app.post('/api/pets/:pet_id/behavior-log', (req, res) => {
+  const { pet_id } = req.params;
+  const { behaviorType, behaviorNote, behav_date } = req.body;
+
+  const getPpIdSQL = 'SELECT pp_id FROM pet_t WHERE pet_id = ?';
+  
+  db.query(getPpIdSQL, [pet_id], (err, ppResult) => {
+    if (err || ppResult.length === 0) {
+      return res.status(500).json({ error: 'Failed to fetch pet parent info' });
+    }
+
+    const pp_id = ppResult[0].pp_id;
+
+    const insertSQL = `
+      INSERT INTO pet_behavior_log_t (pet_id, pp_id, behav_type, behav_note, behav_date)
+      VALUES (?, ?, ?, ?, ?)
+    `;
+
+    db.query(insertSQL, [pet_id, pp_id, behaviorType, behaviorNote, behav_date], (err2, result) => {
+      if (err2) {
+        console.error('❌ Error creating behavior entry:', err2);
+        return res.status(500).json({ error: 'Failed to create behavior entry' });
+      }
+
+      console.log(`✅ Behavior entry created for pet ${pet_id}`);
+      res.status(201).json({ 
+        message: 'Behavior entry created successfully',
+        behavior_id: result.insertId 
+      });
+    });
+  });
+});
+
+// GET SOAP notes for a pet
+app.get('/api/pets/:pet_id/soap-notes', (req, res) => {
+  const { pet_id } = req.params;
+
+  const sql = `
+    SELECT 
+      soap_id,
+      soap_date,
+      subj,
+      obj,
+      assess,
+      plan,
+      created_at,
+      updated_at
+    FROM pet_owner_soap_t
+    WHERE pet_id = ?
+    ORDER BY soap_date DESC
+  `;
+
+  db.query(sql, [pet_id], (err, result) => {
+    if (err) {
+      console.error('❌ Error fetching SOAP notes:', err);
+      return res.status(500).json({ error: 'Failed to fetch SOAP notes' });
+    }
+    res.status(200).json(result);
+  });
+});
+
+// POST new SOAP note
+app.post('/api/pets/:pet_id/soap-notes', (req, res) => {
+  const { pet_id } = req.params;
+  const { soap_date, subj, obj, assess, plan } = req.body;
+
+  const getPpIdSQL = 'SELECT pp_id FROM pet_t WHERE pet_id = ?';
+  
+  db.query(getPpIdSQL, [pet_id], (err, ppResult) => {
+    if (err || ppResult.length === 0) {
+      return res.status(500).json({ error: 'Failed to fetch pet parent info' });
+    }
+
+    const pp_id = ppResult[0].pp_id;
+
+    const insertSQL = `
+      INSERT INTO pet_owner_soap_t (pet_id, pp_id, soap_date, subj, obj, assess, plan)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `;
+
+    db.query(insertSQL, [pet_id, pp_id, soap_date, subj, obj, assess, plan], (err2, result) => {
+      if (err2) {
+        console.error('❌ Error creating SOAP note:', err2);
+        return res.status(500).json({ error: 'Failed to create SOAP note' });
+      }
+
+      console.log(`✅ SOAP note created for pet ${pet_id}`);
+      res.status(201).json({ 
+        message: 'SOAP note created successfully',
+        soap_id: result.insertId 
+      });
+    });
+  });
+});

@@ -712,3 +712,26 @@
   font-weight: 600;
   border-bottom: 1px solid #f1f5f9;
 }
+
+/* In the appointment block section */
+/* In the appointment block section */
+.appointment-block .consultation-badge {
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0.25rem 0.6rem;
+  border-radius: 6px;
+  margin-left: 0.5rem;
+  border: 2px solid;
+}
+
+.appointment-block .consultation-badge.online {
+  background: #dbeafe;
+  color: #3b82f6;
+  border-color: #3b82f640;
+}
+
+.appointment-block .consultation-badge.physical {
+  background: #e0e7ff;
+  color: #6366f1;
+  border-color: #6366f140;
+}
