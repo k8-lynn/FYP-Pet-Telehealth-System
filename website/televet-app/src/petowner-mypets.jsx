@@ -6,7 +6,8 @@ import './styles/petowner-mypets.css';
 import PawPattern from "./components/PawPattern";
 import PetOwnerNavbar from './components/petowner-navbar';
 import ProfileNotification from "./components/ProfileNotification";
-
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 
 
 const PetOwnerMyPets = () => {
@@ -572,7 +573,597 @@ const [isEditing, setIsEditing] = useState(false);
       })
     : 'N/A';
 
+    const [showExportModal, setShowExportModal] = useState(false);
+    const [exportOptions, setExportOptions] = useState({
+      petInfo: true,
+      healthRecords: true,
+      trackingMonitoring: true
+    });
 
+    const handleExportClick = () => {
+      setShowExportModal(true);
+    };
+    
+    const handleExportOptionChange = (option) => {
+      setExportOptions(prev => ({
+        ...prev,
+        [option]: !prev[option]
+      }));
+    };
+    
+    const handleExportConfirm = async () => {
+      setMessage({
+        type: 'success',
+        text: 'Generating PDF... Please wait.'
+      });
+      
+      setShowExportModal(false);
+    
+      try {
+        const pdf = new jsPDF('p', 'mm', 'a4');
+        const pageWidth = 210;
+        const pageHeight = 297;
+        const margin = 20;
+        const contentWidth = pageWidth - (margin * 2);
+        let yPos = margin;
+    
+        // Helper function to add new page if needed
+        const checkAddPage = (requiredSpace = 10) => {
+          if (yPos + requiredSpace > pageHeight - margin) {
+            pdf.addPage();
+            yPos = margin;
+            return true;
+          }
+          return false;
+        };
+    
+        // Helper function to add text with wrapping
+        const addText = (text, x, y, options = {}) => {
+          const fontSize = options.fontSize || 10;
+          const maxWidth = options.maxWidth || contentWidth;
+          const lineHeight = options.lineHeight || 6;
+          
+          pdf.setFontSize(fontSize);
+          if (options.bold) pdf.setFont(undefined, 'bold');
+          else pdf.setFont(undefined, 'normal');
+          
+          const lines = pdf.splitTextToSize(String(text || ''), maxWidth);
+          lines.forEach((line, index) => {
+            checkAddPage();
+            pdf.text(line, x, y + (index * lineHeight));
+          });
+          
+          return y + (lines.length * lineHeight);
+        };
+    
+        // Header with light blue background
+        pdf.setFillColor(240, 247, 255);
+        pdf.rect(0, 0, pageWidth, 40, 'F');
+        
+        // Title
+        pdf.setTextColor(30, 58, 138);
+        pdf.setFontSize(22);
+        pdf.setFont(undefined, 'bold');
+        pdf.text(`${selectedPet.name}'s Medical Records`, pageWidth / 2, 18, { align: 'center' });
+        
+        // Subtitle
+        pdf.setFontSize(10);
+        pdf.setFont(undefined, 'normal');
+        pdf.setTextColor(100, 116, 139);
+        pdf.text(`Generated on ${new Date().toLocaleDateString('en-GB', { 
+          day: 'numeric', 
+          month: 'long', 
+          year: 'numeric' 
+        })}`, pageWidth / 2, 28, { align: 'center' });
+        
+        pdf.text('TeleVet Pet Management System', pageWidth / 2, 34, { align: 'center' });
+        
+        // Divider line
+        pdf.setDrawColor(203, 213, 225);
+        pdf.setLineWidth(0.3);
+        pdf.line(margin, 42, pageWidth - margin, 42);
+        
+        yPos = 50;
+        pdf.setTextColor(15, 23, 42);
+    
+        // Pet Information Section
+        if (exportOptions.petInfo) {
+          checkAddPage(60);
+          
+          // Section header
+          pdf.setFillColor(240, 247, 255);
+          pdf.roundedRect(margin, yPos, contentWidth, 10, 2, 2, 'F');
+          pdf.setDrawColor(203, 213, 225);
+          pdf.setLineWidth(0.3);
+          pdf.roundedRect(margin, yPos, contentWidth, 10, 2, 2, 'S');
+          
+          pdf.setTextColor(30, 58, 138);
+          pdf.setFontSize(12);
+          pdf.setFont(undefined, 'bold');
+          pdf.text('PET INFORMATION', margin + 5, yPos + 6.5);
+          yPos += 15;
+          
+          // Pet info in two columns - FIXED
+          const infoItems = [
+            ['Name', selectedPet.name],
+            ['Species', selectedPet.species],
+            ['Breed', selectedPet.breed],
+            ['Gender', selectedPet.gender === 'm' ? 'Male' : 'Female'],
+            ['Age', `${selectedPet.age} years`],
+            ['Weight', `${selectedPet.weight} kg`],
+            ['Diet Type', selectedPet.dietType || 'N/A'],
+            ['Vaccination', selectedPet.hasVaccination === 'yes' ? 'Yes' : 'No']
+          ];
+    
+          const columnWidth = contentWidth / 2;
+          const labelWidth = 35;
+          
+          for (let i = 0; i < infoItems.length; i += 2) {
+            checkAddPage(10);
+            
+            // Left column
+            const [label1, value1] = infoItems[i];
+            pdf.setFontSize(9);
+            pdf.setFont(undefined, 'bold');
+            pdf.setTextColor(71, 85, 105);
+            pdf.text(`${label1}:`, margin, yPos);
+            
+            pdf.setFont(undefined, 'normal');
+            pdf.setTextColor(15, 23, 42);
+            pdf.text(String(value1), margin + labelWidth, yPos);
+            
+            // Right column (if exists)
+            if (i + 1 < infoItems.length) {
+              const [label2, value2] = infoItems[i + 1];
+              const rightColX = margin + columnWidth + 5;
+              
+              pdf.setFont(undefined, 'bold');
+              pdf.setTextColor(71, 85, 105);
+              pdf.text(`${label2}:`, rightColX, yPos);
+              
+              pdf.setFont(undefined, 'normal');
+              pdf.setTextColor(15, 23, 42);
+              pdf.text(String(value2), rightColX + labelWidth, yPos);
+            }
+            
+            yPos += 7;
+          }
+    
+          yPos += 5;
+    
+          // Behavioral Notes
+          if (selectedPet.behavioralNotes) {
+            checkAddPage(20);
+            
+            pdf.setFontSize(9);
+            pdf.setFont(undefined, 'bold');
+            pdf.setTextColor(71, 85, 105);
+            pdf.text('BEHAVIORAL NOTES:', margin, yPos);
+            yPos += 6;
+            
+            pdf.setFontSize(9);
+            pdf.setFont(undefined, 'normal');
+            pdf.setTextColor(15, 23, 42);
+            yPos = addText(selectedPet.behavioralNotes, margin, yPos, { 
+              maxWidth: contentWidth,
+              fontSize: 9 
+            });
+            
+            yPos += 5;
+          }
+    
+          yPos += 10;
+        }
+    
+        // Health Records Section
+        if (exportOptions.healthRecords) {
+          checkAddPage(60);
+          
+          // Section header
+          pdf.setFillColor(240, 247, 255);
+          pdf.roundedRect(margin, yPos, contentWidth, 10, 2, 2, 'F');
+          pdf.setDrawColor(203, 213, 225);
+          pdf.setLineWidth(0.3);
+          pdf.roundedRect(margin, yPos, contentWidth, 10, 2, 2, 'S');
+          
+          pdf.setTextColor(30, 58, 138);
+          pdf.setFontSize(12);
+          pdf.setFont(undefined, 'bold');
+          pdf.text('HEALTH RECORDS', margin + 5, yPos + 6.5);
+          yPos += 15;
+    
+          // Examinations
+          if (examinations.length > 0) {
+            checkAddPage(25);
+            pdf.setFontSize(11);
+            pdf.setFont(undefined, 'bold');
+            pdf.setTextColor(30, 58, 138);
+            pdf.text('Examinations & Treatments', margin, yPos);
+            yPos += 8;
+    
+            examinations.forEach((exam, index) => {
+              checkAddPage(35);
+              
+              if (index > 0) {
+                pdf.setDrawColor(226, 232, 240);
+                pdf.setLineWidth(0.2);
+                pdf.line(margin, yPos, pageWidth - margin, yPos);
+                yPos += 3;
+              }
+              
+              // Type and date
+              pdf.setFontSize(10);
+              pdf.setFont(undefined, 'bold');
+              pdf.setTextColor(15, 23, 42);
+              pdf.text(`${exam.appt_type} - ${exam.consultation_type}`, margin, yPos);
+              
+              pdf.setFontSize(9);
+              pdf.setFont(undefined, 'normal');
+              pdf.setTextColor(100, 116, 139);
+              pdf.text(new Date(exam.appt_date).toLocaleDateString('en-GB'), pageWidth - margin, yPos, { align: 'right' });
+              
+              yPos += 5;
+              
+              // Details
+              pdf.setFontSize(9);
+              pdf.setTextColor(71, 85, 105);
+              pdf.text(`Vet: ${exam.vet_name}`, margin + 3, yPos);
+              yPos += 4;
+              pdf.text(`Clinic: ${exam.clinic_name}`, margin + 3, yPos);
+              yPos += 4;
+              pdf.text(`Status: ${exam.appt_status}`, margin + 3, yPos);
+              yPos += 4;
+              
+              if (exam.appt_description) {
+                yPos += 2;
+                pdf.setFont(undefined, 'bold');
+                pdf.text('Description:', margin + 3, yPos);
+                pdf.setFont(undefined, 'normal');
+                yPos += 4;
+                yPos = addText(exam.appt_description, margin + 3, yPos, { 
+                  fontSize: 9, 
+                  maxWidth: contentWidth - 6
+                });
+              }
+              
+              yPos += 8;
+            });
+            
+            yPos += 5;
+          }
+    
+          // Prescriptions - FIXED
+          if (allPrescriptions.length > 0) {
+            checkAddPage(25);
+            pdf.setFontSize(11);
+            pdf.setFont(undefined, 'bold');
+            pdf.setTextColor(30, 58, 138);
+            pdf.text('Prescriptions', margin, yPos);
+            yPos += 8;
+    
+            allPrescriptions.forEach((p, index) => {
+              checkAddPage(25);
+              
+              if (index > 0) {
+                pdf.setDrawColor(226, 232, 240);
+                pdf.setLineWidth(0.2);
+                pdf.line(margin, yPos, pageWidth - margin, yPos);
+                yPos += 3;
+              }
+              
+              // Medication name
+              pdf.setFontSize(10);
+              pdf.setFont(undefined, 'bold');
+              pdf.setTextColor(15, 23, 42);
+              pdf.text(String(p.medication || 'N/A'), margin, yPos);
+              
+              // Status indicator - FIXED
+              pdf.setFontSize(8);
+              pdf.setFont(undefined, 'normal');
+              const isActive = !p.end_date || new Date(p.end_date) >= new Date();
+              const statusText = isActive ? 'Active' : 'Completed';
+              const statusColor = isActive ? [34, 197, 94] : [148, 163, 184];
+              pdf.setTextColor(...statusColor);
+              pdf.text(statusText, pageWidth - margin, yPos, { align: 'right' });
+              
+              pdf.setTextColor(71, 85, 105);
+              yPos += 6;
+              
+              // Details
+              pdf.setFontSize(9);
+              pdf.setFont(undefined, 'normal');
+              pdf.text(`Dosage: ${p.dose || 'N/A'}`, margin + 3, yPos);
+              yPos += 4;
+              pdf.text(`Frequency: ${p.frequency || 'N/A'}`, margin + 3, yPos);
+              yPos += 4;
+              pdf.text(`Duration: ${p.duration || 'N/A'}`, margin + 3, yPos);
+              yPos += 4;
+              
+              if (p.instructions) {
+                pdf.setFont(undefined, 'bold');
+                pdf.text('Instructions:', margin + 3, yPos);
+                pdf.setFont(undefined, 'normal');
+                yPos += 4;
+                yPos = addText(p.instructions, margin + 3, yPos, { 
+                  fontSize: 9, 
+                  maxWidth: contentWidth - 6 
+                });
+                yPos += 2;
+              }
+              
+              yPos += 6;
+            });
+            
+            yPos += 5;
+          }
+    
+          // SOAP Notes
+          if (soapNotes.length > 0) {
+            checkAddPage(25);
+            pdf.setFontSize(11);
+            pdf.setFont(undefined, 'bold');
+            pdf.setTextColor(30, 58, 138);
+            pdf.text('SOAP Notes', margin, yPos);
+            yPos += 8;
+    
+            soapNotes.forEach((note, index) => {
+              checkAddPage(30);
+              
+              if (index > 0) {
+                pdf.setDrawColor(226, 232, 240);
+                pdf.setLineWidth(0.2);
+                pdf.line(margin, yPos, pageWidth - margin, yPos);
+                yPos += 3;
+              }
+              
+              // Date
+              pdf.setFontSize(9);
+              pdf.setTextColor(100, 116, 139);
+              pdf.text(new Date(note.soap_date).toLocaleDateString('en-GB'), margin, yPos);
+              yPos += 6;
+              
+              pdf.setTextColor(15, 23, 42);
+              
+              if (note.subj) {
+                pdf.setFont(undefined, 'bold');
+                pdf.setFontSize(9);
+                pdf.text('Subjective:', margin + 3, yPos);
+                yPos += 4;
+                pdf.setFont(undefined, 'normal');
+                yPos = addText(note.subj, margin + 3, yPos, { fontSize: 9, maxWidth: contentWidth - 6 });
+                yPos += 3;
+              }
+              
+              if (note.obj) {
+                checkAddPage(10);
+                pdf.setFont(undefined, 'bold');
+                pdf.text('Objective:', margin + 3, yPos);
+                yPos += 4;
+                pdf.setFont(undefined, 'normal');
+                yPos = addText(note.obj, margin + 3, yPos, { fontSize: 9, maxWidth: contentWidth - 6 });
+                yPos += 3;
+              }
+              
+              if (note.assess) {
+                checkAddPage(10);
+                pdf.setFont(undefined, 'bold');
+                pdf.text('Assessment:', margin + 3, yPos);
+                yPos += 4;
+                pdf.setFont(undefined, 'normal');
+                yPos = addText(note.assess, margin + 3, yPos, { fontSize: 9, maxWidth: contentWidth - 6 });
+                yPos += 3;
+              }
+              
+              if (note.plan) {
+                checkAddPage(10);
+                pdf.setFont(undefined, 'bold');
+                pdf.text('Plan:', margin + 3, yPos);
+                yPos += 4;
+                pdf.setFont(undefined, 'normal');
+                yPos = addText(note.plan, margin + 3, yPos, { fontSize: 9, maxWidth: contentWidth - 6 });
+                yPos += 3;
+              }
+              
+              yPos += 6;
+            });
+          }
+    
+          yPos += 10;
+        }
+    
+        // Tracking & Monitoring Section
+        if (exportOptions.trackingMonitoring) {
+          checkAddPage(60);
+          
+          // Section header
+          pdf.setFillColor(240, 247, 255);
+          pdf.roundedRect(margin, yPos, contentWidth, 10, 2, 2, 'F');
+          pdf.setDrawColor(203, 213, 225);
+          pdf.setLineWidth(0.3);
+          pdf.roundedRect(margin, yPos, contentWidth, 10, 2, 2, 'S');
+          
+          pdf.setTextColor(30, 58, 138);
+          pdf.setFontSize(12);
+          pdf.setFont(undefined, 'bold');
+          pdf.text('TRACKING & MONITORING', margin + 5, yPos + 6.5);
+          yPos += 15;
+    
+          // Weight Log
+          if (trackingData.weightLog.length > 0) {
+            checkAddPage(25);
+            pdf.setFontSize(11);
+            pdf.setFont(undefined, 'bold');
+            pdf.setTextColor(30, 58, 138);
+            pdf.text('Weight Log', margin, yPos);
+            yPos += 8;
+    
+            trackingData.weightLog.forEach(w => {
+              checkAddPage(8);
+              
+              pdf.setFontSize(9);
+              pdf.setFont(undefined, 'normal');
+              pdf.setTextColor(71, 85, 105);
+              
+              const dateStr = new Date(w.rec_date).toLocaleDateString('en-GB');
+              const weightStr = `${w.weight} kg`;
+              const notesStr = w.notes ? ` - ${w.notes}` : '';
+              
+              pdf.text(`${dateStr}: ${weightStr}${notesStr}`, margin + 3, yPos);
+              
+              yPos += 5;
+            });
+            yPos += 8;
+          }
+    
+          // Activity Log
+          if (trackingData.activityLog.length > 0) {
+            checkAddPage(25);
+            pdf.setFontSize(11);
+            pdf.setFont(undefined, 'bold');
+            pdf.setTextColor(30, 58, 138);
+            pdf.text('Activity Log', margin, yPos);
+            yPos += 8;
+    
+            trackingData.activityLog.forEach(a => {
+              checkAddPage(8);
+              
+              pdf.setFontSize(9);
+              pdf.setFont(undefined, 'normal');
+              pdf.setTextColor(71, 85, 105);
+              
+              const dateStr = new Date(a.activ_date).toLocaleDateString('en-GB');
+              const activityStr = `${a.activ_type} (${a.duration_min} min)`;
+              const notesStr = a.notes ? ` - ${a.notes}` : '';
+              
+              pdf.text(`${dateStr}: ${activityStr}${notesStr}`, margin + 3, yPos);
+              
+              yPos += 5;
+            });
+            yPos += 8;
+          }
+    
+          // Symptom Log
+          if (trackingData.symptomLog.length > 0) {
+            checkAddPage(25);
+            pdf.setFontSize(11);
+            pdf.setFont(undefined, 'bold');
+            pdf.setTextColor(30, 58, 138);
+            pdf.text('Symptom Diary', margin, yPos);
+            yPos += 8;
+    
+            trackingData.symptomLog.forEach((s, index) => {
+              checkAddPage(15);
+              
+              if (index > 0) {
+                pdf.setDrawColor(226, 232, 240);
+                pdf.setLineWidth(0.2);
+                pdf.line(margin, yPos, pageWidth - margin, yPos);
+                yPos += 3;
+              }
+              
+              // Title and date
+              pdf.setFontSize(10);
+              pdf.setFont(undefined, 'bold');
+              pdf.setTextColor(15, 23, 42);
+              pdf.text(String(s.symp_title || 'N/A'), margin, yPos);
+              
+              pdf.setFontSize(9);
+              pdf.setFont(undefined, 'normal');
+              pdf.setTextColor(100, 116, 139);
+              pdf.text(new Date(s.symp_date).toLocaleDateString('en-GB'), pageWidth - margin, yPos, { align: 'right' });
+              
+              yPos += 6;
+              
+              // Description
+              pdf.setFontSize(9);
+              pdf.setTextColor(71, 85, 105);
+              yPos = addText(s.symp_desc, margin + 3, yPos, { fontSize: 9, maxWidth: contentWidth - 6 });
+              
+              yPos += 6;
+            });
+            
+            yPos += 5;
+          }
+    
+          // Behavior Log
+          if (trackingData.behaviorLog.length > 0) {
+            checkAddPage(25);
+            pdf.setFontSize(11);
+            pdf.setFont(undefined, 'bold');
+            pdf.setTextColor(30, 58, 138);
+            pdf.text('Behavioral Notes', margin, yPos);
+            yPos += 8;
+    
+            trackingData.behaviorLog.forEach((b, index) => {
+              checkAddPage(15);
+              
+              if (index > 0) {
+                pdf.setDrawColor(226, 232, 240);
+                pdf.setLineWidth(0.2);
+                pdf.line(margin, yPos, pageWidth - margin, yPos);
+                yPos += 3;
+              }
+              
+              // Type and date
+              pdf.setFontSize(10);
+              pdf.setFont(undefined, 'bold');
+              pdf.setTextColor(15, 23, 42);
+              pdf.text(String(b.behav_type || 'N/A'), margin, yPos);
+              
+              pdf.setFontSize(9);
+              pdf.setFont(undefined, 'normal');
+              pdf.setTextColor(100, 116, 139);
+              pdf.text(new Date(b.behav_date).toLocaleDateString('en-GB'), pageWidth - margin, yPos, { align: 'right' });
+              
+              yPos += 6;
+              
+              // Note
+              pdf.setFontSize(9);
+              pdf.setTextColor(71, 85, 105);
+              yPos = addText(b.behav_note, margin + 3, yPos, { fontSize: 9, maxWidth: contentWidth - 6 });
+              
+              yPos += 6;
+            });
+          }
+        }
+    
+        // Footer
+        checkAddPage(25);
+        pdf.setDrawColor(226, 232, 240);
+        pdf.setLineWidth(0.5);
+        pdf.line(margin, yPos, pageWidth - margin, yPos);
+        yPos += 8;
+        
+        pdf.setFontSize(9);
+        pdf.setTextColor(100, 116, 139);
+        pdf.setFont(undefined, 'normal');
+        pdf.text('This document was generated from TeleVet Pet Management System', pageWidth / 2, yPos, { align: 'center' });
+        yPos += 5;
+        pdf.text('For veterinary use and pet owner records', pageWidth / 2, yPos, { align: 'center' });
+        yPos += 4;
+        pdf.text('Please consult your veterinarian for medical advice', pageWidth / 2, yPos, { align: 'center' });
+    
+        // Save the PDF
+        pdf.save(`${selectedPet.name}_Medical_Records_${new Date().toISOString().split('T')[0]}.pdf`);
+    
+        setMessage({
+          type: 'success',
+          text: 'PDF exported successfully!'
+        });
+    
+        setTimeout(() => setMessage(null), 2000);
+    
+      } catch (error) {
+        console.error('Error generating PDF:', error);
+        
+        setMessage({
+          type: 'error',
+          text: 'Failed to generate PDF. Please try again.'
+        });
+    
+        setTimeout(() => setMessage(null), 3000);
+      }
+    };
 
 
 
@@ -1620,6 +2211,96 @@ const [isEditing, setIsEditing] = useState(false);
                       <span>{selectedPet.behavioralNotes || 'N/A'}</span>
                     )}
                   </div>
+
+                  <div className="info-row">
+                    <span className="info-label">Vaccination:</span>
+                    {isEditing ? (
+                      <select
+                        value={selectedPet.hasVaccination}
+                        onChange={(e) => setSelectedPet({ ...selectedPet, hasVaccination: e.target.value })}
+                      >
+                        <option value="yes">Yes</option>
+                        <option value="no">No</option>
+                      </select>
+                    ) : (
+                      <span>{selectedPet.hasVaccination === 'yes' ? 'Yes' : 'No'}</span>
+                    )}
+                  </div>
+
+                  {selectedPet.hasVaccination === 'yes' && (
+                    <div className="info-row">
+                      <span className="info-label">Vaccination Date:</span>
+                      {isEditing ? (
+                        <input
+                          type="date"
+                          value={selectedPet.vaccinationDate ? new Date(selectedPet.vaccinationDate).toISOString().split('T')[0] : ''}
+                          onChange={(e) => setSelectedPet({ ...selectedPet, vaccinationDate: e.target.value })}
+                        />
+                      ) : (
+                        <span>{selectedPet.vaccinationDate ? new Date(selectedPet.vaccinationDate).toLocaleDateString('en-GB') : 'N/A'}</span>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="info-row">
+                    <span className="info-label">Medication:</span>
+                    {isEditing ? (
+                      <select
+                        value={selectedPet.hasMedication}
+                        onChange={(e) => setSelectedPet({ ...selectedPet, hasMedication: e.target.value })}
+                      >
+                        <option value="yes">Yes</option>
+                        <option value="no">No</option>
+                      </select>
+                    ) : (
+                      <span>{selectedPet.hasMedication === 'yes' ? 'Yes' : 'No'}</span>
+                    )}
+                  </div>
+
+                  {selectedPet.hasMedication === 'yes' && (
+                    <div className="info-row">
+                      <span className="info-label">Medication Details:</span>
+                      {isEditing ? (
+                        <textarea
+                          rows="2"
+                          value={selectedPet.medicationDetails || ''}
+                          onChange={(e) => setSelectedPet({ ...selectedPet, medicationDetails: e.target.value })}
+                        />
+                      ) : (
+                        <span>{selectedPet.medicationDetails || 'N/A'}</span>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="info-row">
+                    <span className="info-label">Allergies:</span>
+                    {isEditing ? (
+                      <select
+                        value={selectedPet.hasAllergies}
+                        onChange={(e) => setSelectedPet({ ...selectedPet, hasAllergies: e.target.value })}
+                      >
+                        <option value="yes">Yes</option>
+                        <option value="no">No</option>
+                      </select>
+                    ) : (
+                      <span>{selectedPet.hasAllergies === 'yes' ? 'Yes' : 'No'}</span>
+                    )}
+                  </div>
+
+                  {selectedPet.hasAllergies === 'yes' && (
+                    <div className="info-row">
+                      <span className="info-label">Allergy Details:</span>
+                      {isEditing ? (
+                        <textarea
+                          rows="2"
+                          value={selectedPet.allergyDetails || ''}
+                          onChange={(e) => setSelectedPet({ ...selectedPet, allergyDetails: e.target.value })}
+                        />
+                      ) : (
+                        <span>{selectedPet.allergyDetails || 'N/A'}</span>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 <div className="action-buttons">
@@ -1631,16 +2312,25 @@ const [isEditing, setIsEditing] = useState(false);
                   </button>
 
                   {isEditing ? (
-                    <button className="btn-update" onClick={handleUpdatePet}>
-                      Save Changes
-                    </button>
+                    <>
+                      <button className="btn-update" onClick={handleUpdatePet}>
+                        Save Changes
+                      </button>
+                      <button className="btn-cancel" onClick={() => {
+                        setIsEditing(false);
+                        // Refresh pet data to discard changes
+                        fetchPets();
+                      }}>
+                        Cancel
+                      </button>
+                    </>
                   ) : (
                     <button className="btn-update" onClick={() => setIsEditing(true)}>
                       Update
                     </button>
                   )}
 
-                  <button className="btn-export">Export</button>
+                  <button className="btn-export" onClick={handleExportClick}>Export</button>
                 </div>
               </div>
             )}
@@ -1853,6 +2543,79 @@ const [isEditing, setIsEditing] = useState(false);
                 </button>
                 <button className="modal-button-save" onClick={handleSubmitTrackingEntry}>
                   Save Entry
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Export Modal */}
+      {showExportModal && (
+        <div className="modal-overlay" onClick={() => setShowExportModal(false)}>
+          <div className="modal-container" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2 className="modal-title">Export Pet Records</h2>
+              <button className="modal-close" onClick={() => setShowExportModal(false)}>×</button>
+            </div>
+
+            <div className="modal-body">
+              <p className="export-description">Select the data you want to export for {selectedPet?.name}</p>
+              
+              <div className="export-options">
+                <label className="export-option">
+                  <input
+                    type="checkbox"
+                    checked={exportOptions.petInfo}
+                    onChange={() => handleExportOptionChange('petInfo')}
+                  />
+                  <span className="export-option-label">
+                    <strong>Pet Information</strong>
+                    <span className="export-option-description">
+                      Basic info (name, species, breed, age, weight, diet, allergies, medications)
+                    </span>
+                  </span>
+                </label>
+
+                <label className="export-option">
+                  <input
+                    type="checkbox"
+                    checked={exportOptions.healthRecords}
+                    onChange={() => handleExportOptionChange('healthRecords')}
+                  />
+                  <span className="export-option-label">
+                    <strong>Health Records</strong>
+                    <span className="export-option-description">
+                      Examinations, treatments, prescriptions, SOAP notes, vaccinations, conditions, surgeries
+                    </span>
+                  </span>
+                </label>
+
+                <label className="export-option">
+                  <input
+                    type="checkbox"
+                    checked={exportOptions.trackingMonitoring}
+                    onChange={() => handleExportOptionChange('trackingMonitoring')}
+                  />
+                  <span className="export-option-label">
+                    <strong>Tracking & Monitoring</strong>
+                    <span className="export-option-description">
+                      Weight log, activity log, symptom diary, behavioral notes
+                    </span>
+                  </span>
+                </label>
+              </div>
+
+              <div className="modal-actions">
+                <button className="modal-button-cancel" onClick={() => setShowExportModal(false)}>
+                  Cancel
+                </button>
+                <button 
+                  className="modal-button-save" 
+                  onClick={handleExportConfirm}
+                  disabled={!exportOptions.petInfo && !exportOptions.healthRecords && !exportOptions.trackingMonitoring}
+                >
+                  Export as Document
                 </button>
               </div>
             </div>
