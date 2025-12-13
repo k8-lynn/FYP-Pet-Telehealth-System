@@ -721,3 +721,173 @@
   color: #94a3b8;
   font-weight: 500;
 }
+
+/* Health Records Modal Styles */
+.mypatients-modal-content.health-modal {
+  max-width: 1000px;
+}
+
+.health-modal-tabs {
+  display: flex;
+  gap: 0.5rem;
+  padding: 0 2rem;
+  border-bottom: 2px solid #e8f0f7;
+}
+
+.health-tab {
+  padding: 1rem 1.5rem;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #64748b;
+  border-bottom: 3px solid transparent;
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+
+.health-tab.active {
+  color: #1a2e35;
+  border-bottom-color: #a8ceff;
+}
+
+.health-tab:hover {
+  color: #1a2e35;
+  background: #f8fbff;
+}
+
+.health-modal-body {
+  padding: 2rem;
+}
+
+.health-dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.health-card {
+  background: linear-gradient(135deg, #f8fbff 0%, #ffffff 100%);
+  border: 2px solid #e8f0f7;
+  border-radius: 16px;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  transition: all 0.3s ease;
+}
+
+.health-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(26, 46, 53, 0.15);
+  border-color: #a8ceff;
+}
+
+.health-card svg {
+  color: #a8ceff;
+}
+
+.health-card h4 {
+  font-size: 1rem;
+  color: #1a2e35;
+  font-weight: 700;
+  margin: 0;
+}
+
+.health-card p {
+  font-size: 0.9rem;
+  color: #64748b;
+  font-weight: 600;
+  margin: 0;
+}
+
+.btn-add-record {
+  background: linear-gradient(135deg, #a8ceff 0%, #91befe 100%);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  padding: 1rem 2rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+  font-family: inherit;
+  transition: all 0.25s ease;
+  margin: 0 auto;
+}
+
+.btn-add-record:hover {
+  transform: translateY(-2px);
+  background: linear-gradient(135deg, #91befe 0%, #7aabf5 100%);
+  box-shadow: 0 8px 20px rgba(145, 190, 254, 0.4);
+}
+
+/* In vetadmin-mypatients.css */
+.health-modal-large {
+  max-width: 1400px !important;
+  max-height: 90vh;
+  width: 95%;
+}
+
+.health-card.clickable {
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.health-card.clickable:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+}
+
+.health-modal-large {
+  max-width: 1400px !important;
+  max-height: 90vh;
+  width: 95%;
+}
+
+.health-card.clickable {
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.health-card.clickable:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+}
+
+.health-card {
+  position: relative;
+  padding: 1.5rem;
+}
+
+.btn-add-card {
+  margin-top: 1rem;
+  padding: 0.6rem 1.2rem;
+  background: linear-gradient(135deg, #a8ceff 0%, #91befe 100%);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  width: 100%;
+  justify-content: center;
+  transition: all 0.25s ease;
+}
+
+.btn-add-card:hover {
+  background: linear-gradient(135deg, #91befe 0%, #7aabf5 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(145, 190, 254, 0.4);
+}
+
+.health-card.clickable:hover .btn-add-card {
+  background: linear-gradient(135deg, #91befe 0%, #7aabf5 100%);
+}

@@ -1,11 +1,12 @@
 //vet-mypatients.jsx
 import React, { useState, useEffect } from 'react';
-import { Trash2, X, MapPin, Eye, MoreVertical, Search } from 'lucide-react';
+import { Trash2, X, MapPin, Eye, MoreVertical, Search, Activity, FileText, Plus, Scale, ChevronDown, Syringe, AlertCircle, Pill, Scissors } from 'lucide-react';
 
 import PawPattern from "./components/PawPattern";
 import VetNavbar from './components/vet-navbar';
 import ProfileNotification from "./components/ProfileNotification";
 import './styles/vetadmin-mypatients.css';
+import PatientProfileModal from './components/PatientProfileModal';
 
 const VetMyPatients = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -18,6 +19,178 @@ const VetMyPatients = () => {
   const [userid, setUserid] = useState(null);
   const [openMenuId, setOpenMenuId] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [showHealthModal, setShowHealthModal] = useState(false);
+  const [healthRecordsData, setHealthRecordsData] = useState({
+    examinations: [],
+    documents: [],
+    vaccinations: [],
+    conditions: [],
+    currentMedications: [],
+    surgeries: []
+  });
+  const [trackingData, setTrackingData] = useState({
+    weightLog: [],
+    activityLog: [],
+    symptomLog: [],
+    behaviorLog: []
+  });
+  const [activeHealthTab, setActiveHealthTab] = useState('records'); // 'records' or 'tracking'
+  const [activeHealthView, setActiveHealthView] = useState(null);
+  const [activeTrackingView, setActiveTrackingView] = useState(null);
+  const [showAddRecordModal, setShowAddRecordModal] = useState(false);
+  const [addRecordType, setAddRecordType] = useState(null); // 'examination', 'vaccination', etc.
+  const [examinations, setExaminations] = useState([]);
+  const [medicalHistory, setMedicalHistory] = useState({
+    documents: [],
+    vaccinations: [],
+    conditions: [],
+    currentMedications: [],
+    surgeries: []
+  });
+  const [expandedExam, setExpandedExam] = useState(null);
+  const [showTrackingModal, setShowTrackingModal] = useState(false);
+  const [trackingModalType, setTrackingModalType] = useState(null);
+  const [newTrackingEntry, setNewTrackingEntry] = useState({
+    date: '',
+    weight: '',
+    notes: '',
+    activityType: '',
+    duration: '',
+    symptomTitle: '',
+    symptomDescription: '',
+    behaviorType: '',
+    behaviorNote: ''
+  });
+
+  const [newRecordData, setNewRecordData] = useState({
+    // Vaccination
+    vac_name: '',
+    vac_date: '',
+    next_date: '',
+    vac_notes: '',
+    
+    // Document
+    doc_title: '',
+    doc_type: 'report',
+    file_url: '',
+    
+    // Condition
+    cond_name: '',
+    diag_date: '',
+    status: 'active',
+    cond_notes: '',
+    
+    // Surgery
+    surg_name: '',
+    surg_date: '',
+    surg_notes: '',
+    complications: ''
+  });
+  const [showAddTreatmentModal, setShowAddTreatmentModal] = useState(false);
+  const [showAddPrescriptionModal, setShowAddPrescriptionModal] = useState(false);
+  const [selectedApptId, setSelectedApptId] = useState(null);
+  const [newTreatment, setNewTreatment] = useState({
+    type: '',
+    dose: '',
+    frequency: '',
+    duration: '',
+    notes: ''
+  });
+  const [newPrescription, setNewPrescription] = useState({
+    medication: '',
+    dose: '',
+    frequency: '',
+    duration: '',
+    instructions: '',
+    start_date: '',
+    end_date: ''
+  });
+
+  const handleOpenAddTreatmentModal = (apptId) => {
+    setSelectedApptId(apptId);
+    setShowAddTreatmentModal(true);
+    setNewTreatment({
+      type: '',
+      dose: '',
+      frequency: '',
+      duration: '',
+      notes: ''
+    });
+  };
+  
+  const handleOpenAddPrescriptionModal = (apptId) => {
+    setSelectedApptId(apptId);
+    setShowAddPrescriptionModal(true);
+    setNewPrescription({
+      medication: '',
+      dose: '',
+      frequency: '',
+      duration: '',
+      instructions: '',
+      start_date: new Date().toISOString().split('T')[0],
+      end_date: ''
+    });
+  };
+  
+  const handleSubmitTreatment = async () => {
+    if (!newTreatment.type || !newTreatment.dose) {
+      alert('Please fill in treatment type and dose');
+      return;
+    }
+  
+    try {
+      await fetch(`http://localhost:5000/api/examinations/${selectedApptId}/treatments`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          pet_id: selectedPatient.pet_id,
+          treat_type: newTreatment.type,
+          dose: newTreatment.dose,
+          freq: newTreatment.frequency,
+          duration: newTreatment.duration,
+          notes: newTreatment.notes
+        })
+      });
+  
+      alert('Treatment added successfully!');
+      setShowAddTreatmentModal(false);
+      fetchHealthRecords(selectedPatient.pet_id);
+    } catch (error) {
+      console.error('Error adding treatment:', error);
+      alert('Failed to add treatment');
+    }
+  };
+  
+  const handleSubmitPrescription = async () => {
+    if (!newPrescription.medication || !newPrescription.dose) {
+      alert('Please fill in medication name and dose');
+      return;
+    }
+  
+    try {
+      await fetch(`http://localhost:5000/api/examinations/${selectedApptId}/prescriptions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          pet_id: selectedPatient.pet_id,
+          med_name: newPrescription.medication,
+          dose: newPrescription.dose,
+          freq: newPrescription.frequency,
+          duration: newPrescription.duration,
+          instructions: newPrescription.instructions,
+          start_date: newPrescription.start_date,
+          end_date: newPrescription.end_date || null
+        })
+      });
+  
+      alert('Prescription added successfully!');
+      setShowAddPrescriptionModal(false);
+      fetchHealthRecords(selectedPatient.pet_id);
+    } catch (error) {
+      console.error('Error adding prescription:', error);
+      alert('Failed to add prescription');
+    }
+  };
 
   // Load from sessionStorage
   useEffect(() => {
@@ -128,6 +301,309 @@ const VetMyPatients = () => {
       (patient.vet_name && patient.vet_name.toLowerCase().includes(search))
     );
   });
+
+  // Fetch health records for selected patient
+  const fetchHealthRecords = async (petId) => {
+    try {
+      const [examRes, historyRes] = await Promise.all([
+        fetch(`http://localhost:5000/api/pets/${petId}/examinations`),
+        fetch(`http://localhost:5000/api/pets/${petId}/medical-history`)
+      ]);
+      
+      const examinationsData = await examRes.json();
+      const medicalHistoryData = await historyRes.json();
+      
+      console.log('📋 Examinations:', examinationsData);
+      console.log('📋 Medical History:', medicalHistoryData);
+      
+      setExaminations(examinationsData);
+      
+      // ✅ Ensure all properties exist with default empty arrays
+      setMedicalHistory({
+        documents: medicalHistoryData.documents || [],
+        vaccinations: medicalHistoryData.vaccinations || [],
+        conditions: medicalHistoryData.conditions || [],
+        currentMedications: medicalHistoryData.currentMedications || [],
+        surgeries: medicalHistoryData.surgeries || []  // ✅ Add fallback
+      });
+    } catch (error) {
+      console.error('Error fetching health records:', error);
+      // ✅ Set empty arrays on error
+      setMedicalHistory({
+        documents: [],
+        vaccinations: [],
+        conditions: [],
+        currentMedications: [],
+        surgeries: []
+      });
+    }
+  };
+
+  // Fetch tracking data for selected patient
+  const fetchTrackingData = async (petId) => {
+    try {
+      const [weightRes, activityRes, symptomRes, behaviorRes] = await Promise.all([
+        fetch(`http://localhost:5000/api/pets/${petId}/weight-log`),
+        fetch(`http://localhost:5000/api/pets/${petId}/activity-log`),
+        fetch(`http://localhost:5000/api/pets/${petId}/symptom-log`),
+        fetch(`http://localhost:5000/api/pets/${petId}/behavior-log`)
+      ]);
+
+      setTrackingData({
+        weightLog: await weightRes.json(),
+        activityLog: await activityRes.json(),
+        symptomLog: await symptomRes.json(),
+        behaviorLog: await behaviorRes.json()
+      });
+    } catch (error) {
+      console.error('Error fetching tracking data:', error);
+    }
+  };
+
+  // Open health records modal
+  const handleViewHealthRecords = async (patient) => {
+    setSelectedPatient(patient);
+    setActiveHealthTab('details'); // Start with details tab
+    await Promise.all([
+      fetchHealthRecords(patient.pet_id),
+      fetchTrackingData(patient.pet_id)
+    ]);
+    setShowHealthModal(true);
+    setOpenMenuId(null);
+  };
+
+  const handleOpenTrackingModal = (type) => {
+    setTrackingModalType(type);
+    setShowTrackingModal(true);
+    setNewTrackingEntry({
+      date: new Date().toISOString().split('T')[0],
+      weight: '',
+      notes: '',
+      activityType: '',
+      duration: '',
+      symptomTitle: '',
+      symptomDescription: '',
+      behaviorType: '',
+      behaviorNote: ''
+    });
+  };
+  
+  const handleCloseTrackingModal = () => {
+    setShowTrackingModal(false);
+    setTrackingModalType(null);
+    setNewTrackingEntry({
+      date: '',
+      weight: '',
+      notes: '',
+      activityType: '',
+      duration: '',
+      symptomTitle: '',
+      symptomDescription: '',
+      behaviorType: '',
+      behaviorNote: ''
+    });
+  };
+  
+  const handleTrackingInputChange = (field, value) => {
+    setNewTrackingEntry(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+  
+  const handleSubmitTrackingEntry = async () => {
+    // Validation
+    if (trackingModalType === 'weight' && (!newTrackingEntry.weight || !newTrackingEntry.date)) {
+      alert('Please fill in all required fields');
+      return;
+    }
+    if (trackingModalType === 'activity' && (!newTrackingEntry.activityType || !newTrackingEntry.duration || !newTrackingEntry.date)) {
+      alert('Please fill in all required fields');
+      return;
+    }
+    if (trackingModalType === 'symptoms' && (!newTrackingEntry.symptomTitle || !newTrackingEntry.date)) {
+      alert('Please fill in all required fields');
+      return;
+    }
+    if (trackingModalType === 'behavior' && (!newTrackingEntry.behaviorType || !newTrackingEntry.behaviorNote || !newTrackingEntry.date)) {
+      alert('Please fill in all required fields');
+      return;
+    }
+  
+    try {
+      let endpoint = '';
+      let payload = {};
+  
+      switch (trackingModalType) {
+        case 'weight':
+          endpoint = `http://localhost:5000/api/pets/${selectedPatient.pet_id}/weight-log`;
+          payload = {
+            weight: newTrackingEntry.weight,
+            rec_date: newTrackingEntry.date,
+            notes: newTrackingEntry.notes
+          };
+          break;
+        case 'activity':
+          endpoint = `http://localhost:5000/api/pets/${selectedPatient.pet_id}/activity-log`;
+          payload = {
+            activityType: newTrackingEntry.activityType,
+            duration: newTrackingEntry.duration,
+            activ_date: newTrackingEntry.date,
+            notes: newTrackingEntry.notes
+          };
+          break;
+        case 'symptoms':
+          endpoint = `http://localhost:5000/api/pets/${selectedPatient.pet_id}/symptom-log`;
+          payload = {
+            symptomTitle: newTrackingEntry.symptomTitle,
+            symptomDescription: newTrackingEntry.symptomDescription,
+            symp_date: newTrackingEntry.date
+          };
+          break;
+        case 'behavior':
+          endpoint = `http://localhost:5000/api/pets/${selectedPatient.pet_id}/behavior-log`;
+          payload = {
+            behaviorType: newTrackingEntry.behaviorType,
+            behaviorNote: newTrackingEntry.behaviorNote,
+            behav_date: newTrackingEntry.date
+          };
+          break;
+      }
+  
+      await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      
+      alert('Entry added successfully!');
+      handleCloseTrackingModal();
+      
+      // Refresh tracking data
+      fetchTrackingData(selectedPatient.pet_id);
+    } catch (error) {
+      console.error('Error adding tracking entry:', error);
+      alert('Failed to add entry. Please try again.');
+    }
+  };
+
+  const handleOpenAddRecordModal = (type) => {
+    setAddRecordType(type);
+    setShowAddRecordModal(true);
+    setNewRecordData({
+      vac_name: '',
+      vac_date: '',
+      next_date: '',
+      vac_notes: '',
+      doc_title: '',
+      doc_type: 'report',
+      file_url: '',
+      cond_name: '',
+      diag_date: '',
+      status: 'active',
+      cond_notes: '',
+      surg_name: '',
+      surg_date: '',
+      surg_notes: '',
+      complications: ''
+    });
+  };
+  
+  const handleCloseAddRecordModal = () => {
+    setShowAddRecordModal(false);
+    setAddRecordType(null);
+  };
+  
+  const handleRecordInputChange = (field, value) => {
+    setNewRecordData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+  
+  const handleSubmitRecord = async () => {
+    try {
+      let endpoint = '';
+      let payload = {};
+  
+      switch (addRecordType) {
+        case 'vaccinations':
+          if (!newRecordData.vac_name || !newRecordData.vac_date) {
+            alert('Please fill in vaccine name and date');
+            return;
+          }
+          endpoint = `http://localhost:5000/api/pets/${selectedPatient.pet_id}/vaccinations`;
+          payload = {
+            vac_name: newRecordData.vac_name,
+            vac_date: newRecordData.vac_date,
+            next_date: newRecordData.next_date,
+            vt_id: vtId,
+            notes: newRecordData.vac_notes
+          };
+          break;
+  
+        case 'documents':
+          if (!newRecordData.doc_title || !newRecordData.doc_type) {
+            alert('Please fill in document title and type');
+            return;
+          }
+          endpoint = `http://localhost:5000/api/pets/${selectedPatient.pet_id}/documents`;
+          payload = {
+            doc_title: newRecordData.doc_title,
+            doc_type: newRecordData.doc_type,
+            file_url: newRecordData.file_url
+          };
+          break;
+  
+        case 'conditions':
+          if (!newRecordData.cond_name) {
+            alert('Please fill in condition name');
+            return;
+          }
+          endpoint = `http://localhost:5000/api/pets/${selectedPatient.pet_id}/conditions`;
+          payload = {
+            cond_name: newRecordData.cond_name,
+            diag_date: newRecordData.diag_date,
+            status: newRecordData.status,
+            notes: newRecordData.cond_notes
+          };
+          break;
+  
+        case 'surgeries':
+          if (!newRecordData.surg_name || !newRecordData.surg_date) {
+            alert('Please fill in surgery name and date');
+            return;
+          }
+          endpoint = `http://localhost:5000/api/pets/${selectedPatient.pet_id}/surgeries`;
+          payload = {
+            surg_name: newRecordData.surg_name,
+            surg_date: newRecordData.surg_date,
+            vt_id: vtId,
+            notes: newRecordData.surg_notes,
+            complications: newRecordData.complications
+          };
+          break;
+      }
+  
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+  
+      if (response.ok) {
+        alert('Record added successfully!');
+        handleCloseAddRecordModal();
+        // Refresh health records
+        fetchHealthRecords(selectedPatient.pet_id);
+      } else {
+        alert('Failed to add record');
+      }
+    } catch (error) {
+      console.error('Error adding record:', error);
+      alert('Failed to add record. Please try again.');
+    }
+  };
 
   return (
     <div className="vetadmin-dashboard-container">
@@ -260,6 +736,13 @@ const VetMyPatients = () => {
                               <Eye size={16} />
                               View Details
                             </button>
+                            <button 
+                              className="menu-item"
+                              onClick={() => handleViewHealthRecords(patient)}
+                            >
+                              <Activity size={16} />
+                              Health Records
+                            </button>
                           </div>
                         )}
                       </div>
@@ -272,130 +755,16 @@ const VetMyPatients = () => {
         </div>
       </div>
 
-      {/* View Patient Details Modal */}
-      {showViewModal && selectedPatient && (
-        <div className="mypatients-modal-overlay" onClick={() => setShowViewModal(false)}>
-          <div className="mypatients-modal-content view-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="mypatients-modal-header">
-              <h2 className="mypatients-modal-title">Patient Details</h2>
-              <button className="mypatients-modal-close" onClick={() => setShowViewModal(false)}>
-                <X size={24} />
-              </button>
-            </div>
 
-            <div className="view-modal-body">
-              <div className="view-section">
-                <h3>Pet Information</h3>
-                <div className="view-grid">
-                  <div className="view-item">
-                    <strong>Pet Name</strong>
-                    {selectedPatient.pet_name}
-                  </div>
-                  <div className="view-item">
-                    <strong>Species</strong>
-                    {selectedPatient.pet_species}
-                  </div>
-                  <div className="view-item">
-                    <strong>Breed</strong>
-                    {selectedPatient.pet_breed || 'Not specified'}
-                  </div>
-                  <div className="view-item">
-                    <strong>Age</strong>
-                    {selectedPatient.pet_age} years
-                  </div>
-                  <div className="view-item">
-                    <strong>Gender</strong>
-                    {selectedPatient.pet_gender === 'm' ? 'Male' : 'Female'}
-                  </div>
-                  <div className="view-item">
-                    <strong>Weight</strong>
-                    {selectedPatient.pet_weight ? `${selectedPatient.pet_weight} kg` : 'Not specified'}
-                  </div>
-                </div>
-              </div>
-
-              <div className="view-section">
-                <h3>Medical Information</h3>
-                <div className="view-grid">
-                  <div className="view-item">
-                    <strong>Vaccination</strong>
-                    {selectedPatient.pet_hasVaccination === 'yes' ? (
-                      <>Yes {selectedPatient.pet_vaccinationDate && 
-                        `(${new Date(selectedPatient.pet_vaccinationDate).toLocaleDateString()})`}</>
-                    ) : 'No'}
-                  </div>
-                  <div className="view-item">
-                    <strong>Medication</strong>
-                    {selectedPatient.pet_hasMedication === 'yes' ? 'Yes' : 'No'}
-                  </div>
-                  {selectedPatient.pet_hasMedication === 'yes' && (
-                    <div className="view-item full-width">
-                      <strong>Medication Details</strong>
-                      {selectedPatient.pet_medicationDetails || 'Not specified'}
-                    </div>
-                  )}
-                  <div className="view-item">
-                    <strong>Allergies</strong>
-                    {selectedPatient.pet_hasAllergies === 'yes' ? 'Yes' : 'No'}
-                  </div>
-                  {selectedPatient.pet_hasAllergies === 'yes' && (
-                    <div className="view-item full-width">
-                      <strong>Allergy Details</strong>
-                      {selectedPatient.pet_allergyDetails || 'Not specified'}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div className="view-section">
-                <h3>Diet & Behavior</h3>
-                <div className="view-grid">
-                  <div className="view-item full-width">
-                    <strong>Diet Type</strong>
-                    {selectedPatient.pet_dietType || 'Not specified'}
-                  </div>
-                  <div className="view-item full-width">
-                    <strong>Behavioral Notes</strong>
-                    {selectedPatient.pet_behavioralNotes || 'No notes recorded'}
-                  </div>
-                </div>
-              </div>
-
-              <div className="view-section">
-                <h3>Owner Information</h3>
-                <div className="view-grid">
-                  <div className="view-item">
-                    <strong>Owner Name</strong>
-                    {selectedPatient.owner_firstName} {selectedPatient.owner_lastName}
-                  </div>
-                  <div className="view-item">
-                    <strong>Email</strong>
-                    {selectedPatient.owner_email}
-                  </div>
-                </div>
-              </div>
-
-              <div className="view-section">
-                <h3>Assignment Information</h3>
-                <div className="view-grid">
-                  <div className="view-item">
-                    <strong>Assigned Veterinarian</strong>
-                    {selectedPatient.vet_name ? `Dr. ${selectedPatient.vet_name}` : 'Not assigned yet'}
-                  </div>
-                  <div className="view-item">
-                    <strong>Date Registered</strong>
-                    {new Date(selectedPatient.pp_createdAt).toLocaleDateString('en-US', {
-                      year: 'numeric',
-                      month: 'long',
-                      day: 'numeric'
-                    })}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+      {/* Health Records & Tracking Modal */}
+      {showHealthModal && selectedPatient && (
+        <PatientProfileModal
+          petId={selectedPatient.pet_id}
+          vtId={vtId}
+          onClose={() => setShowHealthModal(false)}
+        />
       )}
+      
     </div>
   );
 };

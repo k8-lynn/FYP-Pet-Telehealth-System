@@ -4754,3 +4754,440 @@ app.post('/api/pets/:pet_id/soap-notes', (req, res) => {
     });
   });
 });
+
+// -------------------------------------------------------------
+// 🟢 VET HEALTH RECORDS ENDPOINTS
+// -------------------------------------------------------------
+
+// POST new examination/treatment
+app.post('/api/pets/:pet_id/examinations', (req, res) => {
+  const { pet_id } = req.params;
+  const { appt_id, appt_type, appt_date, consultation_type, appt_description } = req.body;
+
+  const sql = `
+    INSERT INTO appointment_t (pet_id, appt_type, appt_date, consultation_type, appt_description, appt_status)
+    VALUES (?, ?, ?, ?, ?, 'completed')
+  `;
+
+  db.query(sql, [pet_id, appt_type, appt_date, consultation_type, appt_description], (err, result) => {
+    if (err) {
+      console.error('❌ Error creating examination:', err);
+      return res.status(500).json({ error: 'Failed to create examination' });
+    }
+    res.status(201).json({ message: 'Examination created', appt_id: result.insertId });
+  });
+});
+
+// POST treatment for an examination
+app.post('/api/examinations/:appt_id/treatments', (req, res) => {
+  const { appt_id } = req.params;
+  const { pet_id, treat_type, dose, freq, duration, notes } = req.body;
+
+  const sql = `
+    INSERT INTO pet_treatment_t (appt_id, pet_id, treat_type, dose, freq, duration, notes)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+  `;
+
+  db.query(sql, [appt_id, pet_id, treat_type, dose, freq, duration, notes], (err, result) => {
+    if (err) {
+      console.error('❌ Error adding treatment:', err);
+      return res.status(500).json({ error: 'Failed to add treatment' });
+    }
+    res.status(201).json({ message: 'Treatment added', treatment_id: result.insertId });
+  });
+});
+
+// POST prescription for an examination
+app.post('/api/examinations/:appt_id/prescriptions', (req, res) => {
+  const { appt_id } = req.params;
+  const { pet_id, med_name, dose, freq, duration, instructions, start_date, end_date } = req.body;
+
+  const sql = `
+    INSERT INTO pet_prescription_t (appt_id, pet_id, med_name, dose, freq, duration, instructions, start_date, end_date)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `;
+
+  db.query(sql, [appt_id, pet_id, med_name, dose, freq, duration, instructions, start_date, end_date], (err, result) => {
+    if (err) {
+      console.error('❌ Error adding prescription:', err);
+      return res.status(500).json({ error: 'Failed to add prescription' });
+    }
+    res.status(201).json({ message: 'Prescription added', rx_id: result.insertId });
+  });
+});
+
+// POST new vaccination
+app.post('/api/pets/:pet_id/vaccinations', (req, res) => {
+  const { pet_id } = req.params;
+  const { vac_name, vac_date, next_date, vt_id, notes } = req.body;
+
+  const sql = `
+    INSERT INTO pet_vaccination_t (pet_id, vac_name, vac_date, next_date, vt_id, notes)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `;
+
+  db.query(sql, [pet_id, vac_name, vac_date, next_date, vt_id, notes], (err, result) => {
+    if (err) {
+      console.error('❌ Error adding vaccination:', err);
+      return res.status(500).json({ error: 'Failed to add vaccination' });
+    }
+    res.status(201).json({ message: 'Vaccination added', vac_id: result.insertId });
+  });
+});
+
+// POST new condition
+app.post('/api/pets/:pet_id/conditions', (req, res) => {
+  const { pet_id } = req.params;
+  const { cond_name, diag_date, status, notes } = req.body;
+
+  const sql = `
+    INSERT INTO pet_condition_t (pet_id, cond_name, diag_date, status, notes)
+    VALUES (?, ?, ?, ?, ?)
+  `;
+
+  db.query(sql, [pet_id, cond_name, diag_date, status || 'active', notes], (err, result) => {
+    if (err) {
+      console.error('❌ Error adding condition:', err);
+      return res.status(500).json({ error: 'Failed to add condition' });
+    }
+    res.status(201).json({ message: 'Condition added', cond_id: result.insertId });
+  });
+});
+
+// POST new surgery
+app.post('/api/pets/:pet_id/surgeries', (req, res) => {
+  const { pet_id } = req.params;
+  const { surg_name, surg_date, vt_id, notes, complications } = req.body;
+
+  const sql = `
+    INSERT INTO pet_surgery_t (pet_id, surg_name, surg_date, vt_id, notes, complications)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `;
+
+  db.query(sql, [pet_id, surg_name, surg_date, vt_id, notes, complications], (err, result) => {
+    if (err) {
+      console.error('❌ Error adding surgery:', err);
+      return res.status(500).json({ error: 'Failed to add surgery' });
+    }
+    res.status(201).json({ message: 'Surgery added', surg_id: result.insertId });
+  });
+});
+
+// POST new document
+app.post('/api/pets/:pet_id/documents', (req, res) => {
+  const { pet_id } = req.params;
+  const { appt_id, doc_title, doc_type, file_url } = req.body;
+
+  const sql = `
+    INSERT INTO pet_document_t (pet_id, appt_id, doc_title, doc_type, file_url)
+    VALUES (?, ?, ?, ?, ?)
+  `;
+
+  db.query(sql, [pet_id, appt_id || null, doc_title, doc_type, file_url], (err, result) => {
+    if (err) {
+      console.error('❌ Error adding document:', err);
+      return res.status(500).json({ error: 'Failed to add document' });
+    }
+    res.status(201).json({ message: 'Document added', doc_id: result.insertId });
+  });
+});
+
+// GET /api/pets/:pet_id/medical-history
+app.get('/api/pets/:pet_id/medical-history', (req, res) => {
+  const { pet_id } = req.params;
+
+  // Query for documents
+  const documentsSQL = `
+    SELECT 
+      doc_id as id,
+      doc_title as title,
+      doc_type as type,
+      upload_date as date,
+      file_url
+    FROM pet_document_t
+    WHERE pet_id = ?
+    ORDER BY upload_date DESC
+  `;
+
+  // Query for vaccinations
+  const vaccinationsSQL = `
+    SELECT 
+      vac_id,
+      vac_name as vaccine,
+      vac_date,
+      next_date,
+      notes,
+      CONCAT(u.usr_firstName, ' ', u.usr_lastName) as vet
+    FROM pet_vaccination_t pv
+    LEFT JOIN veterinarian_t vt ON pv.vt_id = vt.vt_id
+    LEFT JOIN user_t u ON vt.usr_id = u.usr_id
+    WHERE pv.pet_id = ?
+    ORDER BY vac_date DESC
+  `;
+
+  // Query for conditions
+  const conditionsSQL = `
+    SELECT 
+      cond_id,
+      cond_name as \`condition\`,
+      diag_date,
+      status,
+      notes
+    FROM pet_condition_t
+    WHERE pet_id = ?
+    ORDER BY diag_date DESC
+  `;
+
+  // Query for current medications (from prescriptions that are ongoing)
+  const medicationsSQL = `
+    SELECT 
+      rx_id,
+      med_name as medication,
+      dose,
+      freq as frequency,
+      instructions,
+      start_date,
+      end_date
+    FROM pet_prescription_t
+    WHERE pet_id = ? 
+    AND (end_date IS NULL OR end_date >= CURDATE())
+    ORDER BY start_date DESC
+  `;
+
+  // Query for surgeries
+  const surgeriesSQL = `
+    SELECT 
+      surg_id,
+      surg_name as name,
+      surg_date as date,
+      notes,
+      complications,
+      CONCAT(u.usr_firstName, ' ', u.usr_lastName) as vet
+    FROM pet_surgery_t ps
+    LEFT JOIN veterinarian_t vt ON ps.vt_id = vt.vt_id
+    LEFT JOIN user_t u ON vt.usr_id = u.usr_id
+    WHERE ps.pet_id = ?
+    ORDER BY surg_date DESC
+  `;
+
+  // Execute all queries
+  Promise.all([
+    new Promise((resolve, reject) => {
+      db.query(documentsSQL, [pet_id], (err, results) => {
+        if (err) reject(err);
+        else resolve(results);
+      });
+    }),
+    new Promise((resolve, reject) => {
+      db.query(vaccinationsSQL, [pet_id], (err, results) => {
+        if (err) reject(err);
+        else resolve(results);
+      });
+    }),
+    new Promise((resolve, reject) => {
+      db.query(conditionsSQL, [pet_id], (err, results) => {
+        if (err) reject(err);
+        else resolve(results);
+      });
+    }),
+    new Promise((resolve, reject) => {
+      db.query(medicationsSQL, [pet_id], (err, results) => {
+        if (err) reject(err);
+        else resolve(results);
+      });
+    }),
+    new Promise((resolve, reject) => {
+      db.query(surgeriesSQL, [pet_id], (err, results) => {
+        if (err) reject(err);
+        else resolve(results);
+      });
+    })
+  ])
+    .then(([documents, vaccinations, conditions, currentMedications, surgeries]) => {
+      res.status(200).json({
+        documents,
+        vaccinations,
+        conditions,
+        currentMedications,
+        surgeries
+      });
+    })
+    .catch((err) => {
+      console.error('❌ Error fetching medical history:', err);
+      res.status(500).json({ error: 'Failed to fetch medical history' });
+    });
+});
+
+// GET /api/pets/:pet_id/examinations
+app.get('/api/pets/:pet_id/examinations', (req, res) => {
+  const { pet_id } = req.params;
+
+  // Get all appointments for this pet
+  const appointmentsSQL = `
+    SELECT 
+      a.appt_id,
+      a.appt_type,
+      a.appt_date,
+      a.consultation_type,
+      a.appt_description,
+      a.appt_status,
+      CONCAT(u.usr_firstName, ' ', u.usr_lastName) as vet_name,
+      c.clinic_name
+    FROM appointment_t a
+    LEFT JOIN veterinarian_t vt ON a.vt_id = vt.vt_id
+    LEFT JOIN user_t u ON vt.usr_id = u.usr_id
+    LEFT JOIN clinic_t c ON a.clinic_id = c.clinic_id
+    WHERE a.pet_id = ?
+    ORDER BY a.appt_date DESC
+  `;
+
+  db.query(appointmentsSQL, [pet_id], (err, appointments) => {
+    if (err) {
+      console.error('❌ Error fetching appointments:', err);
+      return res.status(500).json({ error: 'Failed to fetch examinations' });
+    }
+
+    // For each appointment, fetch treatments and prescriptions
+    const promises = appointments.map(appt => {
+      return Promise.all([
+        // Get treatments
+        new Promise((resolve, reject) => {
+          const treatmentsSQL = `
+            SELECT 
+              treat_type as type,
+              dose,
+              freq as frequency,
+              duration,
+              notes
+            FROM pet_treatment_t
+            WHERE appt_id = ?
+          `;
+          db.query(treatmentsSQL, [appt.appt_id], (err, results) => {
+            if (err) reject(err);
+            else resolve(results);
+          });
+        }),
+        // Get prescriptions
+        new Promise((resolve, reject) => {
+          const prescriptionsSQL = `
+            SELECT 
+              med_name as medication,
+              dose,
+              freq as frequency,
+              duration,
+              instructions,
+              start_date,
+              end_date
+            FROM pet_prescription_t
+            WHERE appt_id = ?
+          `;
+          db.query(prescriptionsSQL, [appt.appt_id], (err, results) => {
+            if (err) reject(err);
+            else resolve(results);
+          });
+        })
+      ]).then(([treatments, prescriptions]) => {
+        return {
+          ...appt,
+          treatments,
+          prescriptions
+        };
+      });
+    });
+
+    Promise.all(promises)
+      .then(results => {
+        res.status(200).json(results);
+      })
+      .catch(err => {
+        console.error('❌ Error fetching treatments/prescriptions:', err);
+        res.status(500).json({ error: 'Failed to fetch examination details' });
+      });
+  });
+});
+
+// GET /api/pets/:pet_id/all-medications
+app.get('/api/pets/:pet_id/all-medications', (req, res) => {
+  const { pet_id } = req.params;
+
+  const sql = `
+    SELECT 
+      rx_id,
+      med_name as medication,
+      dose,
+      freq as frequency,
+      duration,
+      instructions,
+      start_date,
+      end_date,
+      created_at
+    FROM pet_prescription_t
+    WHERE pet_id = ?
+    ORDER BY start_date DESC, created_at DESC
+  `;
+
+  db.query(sql, [pet_id], (err, results) => {
+    if (err) {
+      console.error('❌ Error fetching all medications:', err);
+      return res.status(500).json({ error: 'Failed to fetch medications' });
+    }
+    res.status(200).json(results);
+  });
+});
+
+// GET /api/pets/:pet_id/all-treatments
+app.get('/api/pets/:pet_id/all-treatments', (req, res) => {
+  const { pet_id } = req.params;
+
+  const sql = `
+    SELECT 
+      t.treatment_id,
+      t.treat_type as type,
+      t.dose,
+      t.freq as frequency,
+      t.duration,
+      t.notes,
+      t.admin_at as admin_date,
+      a.appt_date
+    FROM pet_treatment_t t
+    LEFT JOIN appointment_t a ON t.appt_id = a.appt_id
+    WHERE t.pet_id = ?
+    ORDER BY a.appt_date DESC, t.admin_at DESC
+  `;
+
+  db.query(sql, [pet_id], (err, results) => {
+    if (err) {
+      console.error('❌ Error fetching all treatments:', err);
+      return res.status(500).json({ error: 'Failed to fetch treatments' });
+    }
+    res.status(200).json(results);
+  });
+});
+
+// GET /api/pets/:pet_id/soap-notes
+app.get('/api/pets/:pet_id/soap-notes', (req, res) => {
+  const { pet_id } = req.params;
+
+  const sql = `
+    SELECT 
+      soap_id,
+      soap_date,
+      subj,
+      obj,
+      assess,
+      plan,
+      created_at,
+      updated_at
+    FROM pet_owner_soap_t
+    WHERE pet_id = ?
+    ORDER BY soap_date DESC
+  `;
+
+  db.query(sql, [pet_id], (err, results) => {
+    if (err) {
+      console.error('❌ Error fetching SOAP notes:', err);
+      return res.status(500).json({ error: 'Failed to fetch SOAP notes' });
+    }
+    res.status(200).json(results);
+  });
+});

@@ -23,6 +23,8 @@ const PetOwnerMyPets = () => {
   const [activeTrackingView, setActiveTrackingView] = useState(null); // 'weight', 'activity', 'symptoms', 'behavior'
   const [showTrackingModal, setShowTrackingModal] = useState(false);
   const [trackingModalType, setTrackingModalType] = useState(null); // 'weight', 'activity', 'symptoms', 'behavior'
+  const [allTreatments, setAllTreatments] = useState([]);
+  const [allPrescriptions, setAllPrescriptions] = useState([]);
   const [newTrackingEntry, setNewTrackingEntry] = useState({
     date: '',
     weight: '',
@@ -122,6 +124,28 @@ const fetchSoapNotes = async (petId) => {
   }
 };
 
+// Fetch all treatments
+const fetchAllTreatments = async (petId) => {
+  try {
+    const response = await axios.get(`http://localhost:5000/api/pets/${petId}/all-treatments`);
+    setAllTreatments(response.data);
+  } catch (error) {
+    console.error('Error fetching treatments:', error);
+    setAllTreatments([]);
+  }
+};
+
+// Fetch all prescriptions
+const fetchAllPrescriptions = async (petId) => {
+  try {
+    const response = await axios.get(`http://localhost:5000/api/pets/${petId}/all-medications`);
+    setAllPrescriptions(response.data);
+  } catch (error) {
+    console.error('Error fetching prescriptions:', error);
+    setAllPrescriptions([]);
+  }
+};
+
 
 const [expandedExam, setExpandedExam] = useState(null);
 
@@ -190,6 +214,8 @@ const toggleSection = (section) => {
     fetchTrackingData(pet.id);
     fetchHealthRecords(pet.id);
     fetchSoapNotes(pet.id);
+    fetchAllTreatments(pet.id);      // ADD THIS
+    fetchAllPrescriptions(pet.id);   // ADD THIS
   };
 
   const toggleCard = () => {
@@ -803,52 +829,55 @@ const [isEditing, setIsEditing] = useState(false);
                 <div className="section-content">
                   {!activeHealthView ? (
                     /* Health Dashboard - Icon Grid */
-                    <div className="health-dashboard">
-                      <h3>Health Records Dashboard</h3>
-                      <div className="dashboard-grid">
-                        <div className="dashboard-card" onClick={() => setActiveHealthView('examinations')}>
-                          <Activity size={32} />
-                          <h4>Examinations & Treatment</h4>
-                          <p>{examinations.length} records</p>
-                        </div>
-
-                        <div className="dashboard-card" onClick={() => setActiveHealthView('documents')}>
-                          <FileText size={32} />
-                          <h4>Documents & Attachments</h4>
-                          <p>{medicalHistory.documents.length} files</p>
-                        </div>
-
-                        <div className="dashboard-card" onClick={() => setActiveHealthView('vaccinations')}>
-                          <Syringe size={32} />
-                          <h4>Vaccination History</h4>
-                          <p>{medicalHistory.vaccinations.length} vaccines</p>
-                        </div>
-
-                        <div className="dashboard-card" onClick={() => setActiveHealthView('conditions')}>
-                          <AlertCircle size={32} />
-                          <h4>Chronic Conditions</h4>
-                          <p>{medicalHistory.conditions.length} conditions</p>
-                        </div>
-
-                        <div className="dashboard-card" onClick={() => setActiveHealthView('medications')}>
-                          <Pill size={32} />
-                          <h4>Current Medications</h4>
-                          <p>{medicalHistory.currentMedications.length} medications</p>
-                        </div>
-
-                        <div className="dashboard-card" onClick={() => setActiveHealthView('surgeries')}>
-                          <Scissors size={32} />
-                          <h4>Surgical History</h4>
-                          <p>{medicalHistory.surgeries.length} surgeries</p>
-                        </div>
-
-                        <div className="dashboard-card" onClick={() => setActiveHealthView('soap')}>
-                          <FileText size={32} />
-                          <h4>My SOAP Notes</h4>
-                          <p>Add personal observations</p>
-                        </div>
-                      </div>
+                    <div className="dashboard-grid">
+                    <div className="dashboard-card" onClick={() => setActiveHealthView('examinations')}>
+                      <Activity size={32} />
+                      <h4>Examinations & Treatment</h4>
+                      <p>{examinations.length} records</p>
                     </div>
+
+                    <div className="dashboard-card" onClick={() => setActiveHealthView('treatments')}>
+                      <Activity size={32} />
+                      <h4>Treatments</h4>
+                      <p>{allTreatments?.length || 0} treatments</p>
+                    </div>
+
+                    <div className="dashboard-card" onClick={() => setActiveHealthView('prescriptions')}>
+                      <Pill size={32} />
+                      <h4>Prescriptions</h4>
+                      <p>{allPrescriptions?.length || 0} prescriptions</p>
+                    </div>
+
+                    <div className="dashboard-card" onClick={() => setActiveHealthView('soap')}>
+                      <FileText size={32} />
+                      <h4>SOAP Notes</h4>
+                      <p>{soapNotes?.length || 0} notes</p>
+                    </div>
+
+                    <div className="dashboard-card" onClick={() => setActiveHealthView('documents')}>
+                      <FileText size={32} />
+                      <h4>Documents & Attachments</h4>
+                      <p>{medicalHistory.documents.length} files</p>
+                    </div>
+
+                    <div className="dashboard-card" onClick={() => setActiveHealthView('vaccinations')}>
+                      <Syringe size={32} />
+                      <h4>Vaccination History</h4>
+                      <p>{medicalHistory.vaccinations.length} vaccines</p>
+                    </div>
+
+                    <div className="dashboard-card" onClick={() => setActiveHealthView('conditions')}>
+                      <AlertCircle size={32} />
+                      <h4>Chronic Conditions</h4>
+                      <p>{medicalHistory.conditions.length} conditions</p>
+                    </div>
+
+                    <div className="dashboard-card" onClick={() => setActiveHealthView('surgeries')}>
+                      <Scissors size={32} />
+                      <h4>Surgical History</h4>
+                      <p>{medicalHistory.surgeries.length} surgeries</p>
+                    </div>
+                  </div>
                   ) : (
                     /* Detailed View with Back Button */
                     <div className="detailed-view">
@@ -968,6 +997,41 @@ const [isEditing, setIsEditing] = useState(false);
                         </>
                       )}
 
+                      {/* Treatments View */}
+                      {activeHealthView === 'treatments' && (
+                        <>
+                          <h3>All Treatments Administered</h3>
+                          {allTreatments.length === 0 ? (
+                            <p className="no-data">No treatments recorded.</p>
+                          ) : (
+                            <table className="data-table">
+                              <thead>
+                                <tr>
+                                  <th>Date</th>
+                                  <th>Type</th>
+                                  <th>Dose</th>
+                                  <th>Frequency</th>
+                                  <th>Duration</th>
+                                  <th>Notes</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {allTreatments.map((treatment, idx) => (
+                                  <tr key={idx}>
+                                    <td>{treatment.admin_date ? new Date(treatment.admin_date).toLocaleDateString('en-GB') : 'N/A'}</td>
+                                    <td>{treatment.type}</td>
+                                    <td>{treatment.dose}</td>
+                                    <td>{treatment.frequency || 'N/A'}</td>
+                                    <td>{treatment.duration || 'N/A'}</td>
+                                    <td>{treatment.notes || 'N/A'}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          )}
+                        </>
+                      )}
+
                       {/* Documents View */}
                       {activeHealthView === 'documents' && (
                         <>
@@ -1061,11 +1125,11 @@ const [isEditing, setIsEditing] = useState(false);
                       )}
 
                       {/* Medications View */}
-                      {activeHealthView === 'medications' && (
+                      {activeHealthView === 'prescriptions' && (
                         <>
-                          <h3>Current Medications</h3>
-                          {medicalHistory.currentMedications.length === 0 ? (
-                            <p className="no-data">No current medications.</p>
+                          <h3>All Medications & Prescriptions</h3>
+                          {allPrescriptions.length === 0 ? (
+                            <p className="no-data">No prescriptions recorded.</p>
                           ) : (
                             <table className="data-table">
                               <thead>
@@ -1073,20 +1137,33 @@ const [isEditing, setIsEditing] = useState(false);
                                   <th>Medication</th>
                                   <th>Dose</th>
                                   <th>Frequency</th>
+                                  <th>Duration</th>
                                   <th>Instructions</th>
-                                  <th>Started</th>
+                                  <th>Start Date</th>
+                                  <th>End Date</th>
+                                  <th>Status</th>
                                 </tr>
                               </thead>
                               <tbody>
-                                {medicalHistory.currentMedications.map((med, idx) => (
-                                  <tr key={idx}>
-                                    <td>{med.medication}</td>
-                                    <td>{med.dose}</td>
-                                    <td>{med.frequency}</td>
-                                    <td>{med.instructions}</td>
-                                    <td>{new Date(med.start_date).toLocaleDateString('en-GB')}</td>
-                                  </tr>
-                                ))}
+                                {allPrescriptions.map((med, idx) => {
+                                  const isActive = !med.end_date || new Date(med.end_date) >= new Date();
+                                  return (
+                                    <tr key={idx}>
+                                      <td>{med.medication}</td>
+                                      <td>{med.dose}</td>
+                                      <td>{med.frequency}</td>
+                                      <td>{med.duration}</td>
+                                      <td>{med.instructions || 'N/A'}</td>
+                                      <td>{med.start_date ? new Date(med.start_date).toLocaleDateString('en-GB') : 'N/A'}</td>
+                                      <td>{med.end_date ? new Date(med.end_date).toLocaleDateString('en-GB') : 'Ongoing'}</td>
+                                      <td>
+                                        <span className={`badge ${isActive ? 'active' : 'resolved'}`}>
+                                          {isActive ? 'Active' : 'Completed'}
+                                        </span>
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
                               </tbody>
                             </table>
                           )}
