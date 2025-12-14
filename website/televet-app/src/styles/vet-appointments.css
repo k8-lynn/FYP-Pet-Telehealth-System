@@ -95,6 +95,24 @@
   border: 2px solid #ff8b8b60;
 }
 
+.appt-type-follow-up {
+  background: #c6e5b120;
+  color: #4d7c0f;
+  border: 2px solid #c6e5b160;
+}
+
+.appt-type-behavioral-consultation {
+  background: #d0bfff20;
+  color: #7c3aed;
+  border: 2px solid #d0bfff60;
+}
+
+.appt-type-nutrition-diet {
+  background: #b8f2e620;
+  color: #0d9488;
+  border: 2px solid #b8f2e660;
+}
+
 /* ========================================
    CONSULTATION TYPE BADGES
    ======================================== */
@@ -123,29 +141,29 @@
 /* ========================================
    STATUS BADGES FOR APPOINTMENTS
    ======================================== */
-.status-scheduled {
-  background: #d1fae520;
-  color: #10b981;
-  border: 2px solid #10b98140;
-}
-
-.status-pending {
-  background: #fef3c7;
-  color: #f59e0b;
-  border: 2px solid #f59e0b40;
-}
-
-.status-completed {
-  background: #e0e7ff;
-  color: #6366f1;
-  border: 2px solid #6366f140;
-}
-
-.status-cancelled {
-  background: #fee;
-  color: #ef4444;
-  border: 2px solid #ef444440;
-}
+   .status-scheduled {
+    background: #e0e7ff;
+    color: #6366f1;
+    border: 2px solid #6366f140;
+  }
+  
+  .status-pending {
+    background: #fef3c7;
+    color: #f59e0b;
+    border: 2px solid #f59e0b40;
+  }
+  
+  .status-completed {
+    background: #d1fae520;
+    color: #10b981;
+    border: 2px solid #10b98140;
+  }
+  
+  .status-cancelled {
+    background: #fee;
+    color: #ef4444;
+    border: 2px solid #ef444440;
+  }
 
 /* ========================================
    ACTIONS CELL

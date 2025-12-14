@@ -11,6 +11,7 @@ import { useNotification } from './components/NotificationProvider';
 import VideoCall from './components/VideoCall';
 import IncomingCallNotification from './components/IncomingCallNotification';
 import PatientProfileModal from './components/PatientProfileModal';
+import BookAppointment from './components/bookAppointment';
 
 const PetOwnerChat = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -38,6 +39,8 @@ const PetOwnerChat = () => {
   const [showVideoCall, setShowVideoCall] = useState(false);
   const [showHealthModal, setShowHealthModal] = useState(false);
   const [showCreateReminderModal, setShowCreateReminderModal] = useState(false);
+  const [showBookingModal, setShowBookingModal] = useState(false);
+  const [registeredClinic, setRegisteredClinic] = useState(null);
   const [newReminder, setNewReminder] = useState({
     title: '',
     pet_id: '',
@@ -244,6 +247,33 @@ const shouldShowDateDivider = (currentMsg, previousMsg) => {
       socket.off('userStatusChanged', handleUserStatusChanged);
     };
   }, [socket]);
+
+  // Fetch registered clinic for booking
+  React.useEffect(() => {
+    const fetchRegisteredClinic = async () => {
+      if (!userid) return;
+      
+      try {
+        const res = await fetch(`http://localhost:5000/api/user-clinic/${userid}`);
+        const data = await res.json();
+
+        if (data.clinic) {
+          const vetRes = await fetch(`http://localhost:5000/api/vet-by-name/${encodeURIComponent(data.clinic)}`);
+          const vetData = await vetRes.json();
+
+          if (vetRes.ok && vetData) {
+            setRegisteredClinic(vetData);
+          }
+        }
+      } catch (error) {
+        console.error("❌ Error fetching registered clinic:", error);
+      }
+    };
+
+    if (userid) {
+      fetchRegisteredClinic();
+    }
+  }, [userid]);
 
   // In your frontend - petowner-chat.jsx
   const fetchPetParentInfo = async (userId) => {
@@ -1114,6 +1144,14 @@ React.useEffect(() => {
                 <Clock size={14} />
                 Set Reminder
               </button>
+              <button 
+                className="quick-action-chip"
+                onClick={() => setShowBookingModal(true)}
+                disabled={!registeredClinic}
+              >
+                <Calendar size={14} />
+                Schedule Follow-Up
+              </button>
             </div>
 
             {/* Messages Area */}
@@ -1391,6 +1429,11 @@ React.useEffect(() => {
             appointmentDetails={appointmentDetails}
             onClose={() => setShowAppointmentModal(false)}
             formatDate={formatDate}
+            userRole="pp"
+            onContactVet={() => {
+              // Already on chat page, just close modal
+              setShowAppointmentModal(false);
+            }}
           />
 
         </div>
@@ -1531,6 +1574,25 @@ React.useEffect(() => {
             </button>
           </div>
         </div>
+      </div>
+    </div>
+  )}
+
+  {/* Book Follow-Up Appointment Modal */}
+  {showBookingModal && registeredClinic && (
+    <div className="myvet-modal-overlay" onClick={() => setShowBookingModal(false)}>
+      <div onClick={(e) => e.stopPropagation()}>
+        <BookAppointment 
+          clinicId={registeredClinic.clinic_id}
+          onClose={() => setShowBookingModal(false)}
+          onBookingSuccess={(details) => {
+            setShowBookingModal(false);
+            // Optionally show success message
+            alert(`Follow-up appointment booked for ${details.time}`);
+          }}
+          initialDescription={`Follow-up with ${currentChat?.name || 'veterinarian'}`}
+          autoFillDescription={true}
+        />
       </div>
     </div>
   )}

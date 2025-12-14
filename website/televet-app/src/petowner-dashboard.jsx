@@ -572,6 +572,11 @@ const PetOwnerDashboard = () => {
             setSelectedAppointmentDetails(null);
           }}
           formatDate={formatDateForModal}
+          userRole="pp" // ✅ ADD THIS
+          onContactVet={() => { // ✅ ADD THIS
+            // Navigate to chat page
+            window.location.href = '/petowner-chat';
+          }}
         />
 
         {/* Create Reminder Modal */}

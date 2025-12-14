@@ -891,3 +891,45 @@
 .health-card.clickable:hover .btn-add-card {
   background: linear-gradient(135deg, #91befe 0%, #7aabf5 100%);
 }
+
+.view-item:has(.contact-vet-btn) {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.25rem;
+}
+
+/* Contact Veterinarian Button */
+.contact-vet-btn {
+  background: linear-gradient(135deg, #a8ceff 0%, #91befe 100%);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  padding: 0.7rem 1.2rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: all 0.25s ease;
+  white-space: nowrap;
+  flex-shrink: 0;
+  font-family: inherit;
+}
+
+.contact-vet-btn:hover {
+  background: linear-gradient(135deg, #91befe 0%, #7aabf5 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(145, 190, 254, 0.4);
+}
+
+.contact-vet-btn:active {
+  transform: translateY(0);
+}
+
+/* Not Assigned State */
+.view-modal-body .view-item > div > div.not-assigned {
+  color: #94a3b8;
+  font-style: italic;
+}

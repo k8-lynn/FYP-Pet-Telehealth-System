@@ -1,11 +1,14 @@
+//AppointmentDetailsModal.jsx
 import React from 'react';
-import { X } from 'lucide-react';
+import { X, MessageCircle } from 'lucide-react';
 
 const AppointmentDetailsModal = ({ 
   showModal, 
   appointmentDetails, 
   onClose, 
-  formatDate 
+  formatDate,
+  userRole, // 'pp' or 'vt'
+  onContactVet // Callback function for pet owners to contact vet
 }) => {
   if (!showModal || !appointmentDetails) return null;
 
@@ -52,6 +55,34 @@ const AppointmentDetailsModal = ({
               <div className="view-item full-width">
                 <strong>Description</strong>
                 {appointmentDetails.appt_description || 'No description provided'}
+              </div>
+            </div>
+          </div>
+
+          {/* Veterinarian Section - shown for both pet owners and vets */}
+          <div className="view-section">
+            <h3>Assigned Veterinarian</h3>
+            <div className="view-grid">
+              <div className="view-item" style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                <div style={{ flex: 1 }}>
+                  <strong>Veterinarian</strong>
+                  <div style={{ marginTop: '0.5rem', fontSize: '1.05rem', color: '#1a2e35' }}>
+                    {appointmentDetails.vet_name || 'Not assigned yet'}
+                  </div>
+                </div>
+                {/* Contact button - only for pet owners when vet is assigned */}
+                {userRole === 'pp' && appointmentDetails.vet_name && (
+                  <button 
+                    className="contact-vet-btn"
+                    onClick={() => {
+                      onContactVet();
+                      onClose();
+                    }}
+                  >
+                    <MessageCircle size={16} />
+                    Contact
+                  </button>
+                )}
               </div>
             </div>
           </div>

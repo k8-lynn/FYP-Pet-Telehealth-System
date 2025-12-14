@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Calendar, Clock, CheckCircle, ChevronLeft, ChevronRight, X, Monitor, Building2, AlertTriangle, Droplet, Wind, Activity, HeartPulse, CircleAlert, AlertCircle } from 'lucide-react';import "../styles/bookAppointment.css";
 import { io } from "socket.io-client";
 
-const BookAppointment = ({ clinicId, onClose, onBookingSuccess }) => {
+const BookAppointment = ({ clinicId, onClose, onBookingSuccess, initialDescription = '', autoFillDescription = false }) => {
   const [viewMode, setViewMode] = useState('today');
   const [currentDate, setCurrentDate] = useState(new Date());
   const [timeSlots, setTimeSlots] = useState([]);
@@ -15,7 +15,7 @@ const BookAppointment = ({ clinicId, onClose, onBookingSuccess }) => {
   const [selectedDate, setSelectedDate] = useState(null);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [appointmentType, setAppointmentType] = useState('');
-  const [appointmentDescription, setAppointmentDescription] = useState('');
+  const [appointmentDescription, setAppointmentDescription] = useState(initialDescription);
   const socketRef = useRef(null);
   const [userPets, setUserPets] = useState([]);
   const [selectedPet, setSelectedPet] = useState(null);
@@ -25,12 +25,47 @@ const BookAppointment = ({ clinicId, onClose, onBookingSuccess }) => {
   const [bookingStep, setBookingStep] = useState(1); // 1: choose type, 2: emergency check, 3: slot selection, 4: details
 
   const appointmentTypes = [
-    { value: 'Check-up', color: '#a8ceff' },
-    { value: 'Vaccination', color: '#91befe' },
-    { value: 'Dental', color: '#ffd666' },
-    { value: 'Surgery', color: '#ffb088' },
-    { value: 'Emergency', color: '#ff8b8b' }
-  ];
+    {
+      value: 'Check-up',
+      color: '#a8ceff',
+      consultationTypes: ['physical', 'online'] // triage / assessment
+    },
+    {
+      value: 'Follow-up',
+      color: '#c6e5b1',
+      consultationTypes: ['physical', 'online'] // monitoring / review
+    },
+    {
+      value: 'Behavioral Consultation',
+      color: '#d0bfff',
+      consultationTypes: ['physical', 'online'] // talk-based
+    },
+    {
+      value: 'Nutrition & Diet',
+      color: '#b8f2e6',
+      consultationTypes: ['physical', 'online'] // guidance
+    },
+    {
+      value: 'Vaccination',
+      color: '#91befe',
+      consultationTypes: ['physical'] // injections
+    },
+    {
+      value: 'Dental',
+      color: '#ffd666',
+      consultationTypes: ['physical', 'online'] // advice vs procedure
+    },
+    {
+      value: 'Surgery',
+      color: '#ffb088',
+      consultationTypes: ['physical']
+    },
+    {
+      value: 'Emergency',
+      color: '#ff8b8b',
+      consultationTypes: ['physical']
+    }
+  ];  
 
   // ✅ FORMAT DATE HELPER (moved up to be used in socket handler)
   const formatDateForAPI = (date) => {
@@ -112,6 +147,13 @@ const BookAppointment = ({ clinicId, onClose, onBookingSuccess }) => {
       setLoading(false);
     }
   };
+
+  // Auto-fill description when provided
+  useEffect(() => {
+    if (autoFillDescription && initialDescription) {
+      setAppointmentDescription(initialDescription);
+    }
+  }, [initialDescription, autoFillDescription]);
 
   // ✅ Initial data fetch
   useEffect(() => {
@@ -833,7 +875,9 @@ const handleEmergencyResponse = (isEmergency) => {
                   Appointment Type <span className="required">*</span>
                 </label>
                 <div className="book-type-grid">
-                  {appointmentTypes.map((type) => (
+                {appointmentTypes
+                  .filter(type => type.consultationTypes.includes(consultationType))
+                  .map((type) => (
                     <div
                       key={type.value}
                       className={`book-type-card ${appointmentType === type.value ? 'selected' : ''}`}
@@ -846,13 +890,13 @@ const handleEmergencyResponse = (isEmergency) => {
                       <span>{type.value}</span>
                     </div>
                   ))}
-                </div>
+              </div>
               </div>
 
               <div className="book-description-section">
-              <label className="book-description-label">
-                Description <span className="required">*</span>
-              </label>
+                <label className="book-description-label">
+                  Description <span className="required">*</span>
+                </label>
                 <textarea
                   className="book-description-input"
                   placeholder="Describe the reason for your visit or any specific concerns..."

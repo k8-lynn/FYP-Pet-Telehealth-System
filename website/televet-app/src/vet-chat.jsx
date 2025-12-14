@@ -1283,6 +1283,7 @@ React.useEffect(() => {
             appointmentDetails={appointmentDetails}
             onClose={() => setShowAppointmentModal(false)}
             formatDate={formatDate}
+            userRole="vt"
           />
 
         </div>

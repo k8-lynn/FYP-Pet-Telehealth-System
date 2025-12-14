@@ -7,6 +7,7 @@ import VetNavbar from './components/vet-navbar';
 import ProfileNotification from "./components/ProfileNotification";
 import './styles/vetadmin-mypatients.css';
 import './styles/vet-appointments.css';
+import AppointmentDetailsModal from './components/AppointmentDetailsModal';
 
 const VetAppointments = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -121,6 +122,12 @@ const VetAppointments = () => {
     switch (type) {
       case 'Check-up':
         return 'appt-type-checkup';
+      case 'Follow-up':
+        return 'appt-type-follow-up';
+      case 'Behavioral Consultation':
+        return 'appt-type-behavioral-consultation';
+      case 'Nutrition & Diet':
+        return 'appt-type-nutrition-diet';
       case 'Vaccination':
         return 'appt-type-vaccination';
       case 'Dental':
@@ -343,105 +350,14 @@ const filteredAppointments = appointments.filter(appointment => {
 
       {/* View Appointment Details Modal */}
       {showViewModal && selectedAppointment && (
-        <div className="mypatients-modal-overlay" onClick={() => setShowViewModal(false)}>
-          <div className="mypatients-modal-content view-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="mypatients-modal-header">
-              <h2 className="mypatients-modal-title">Appointment Details</h2>
-              <button className="mypatients-modal-close" onClick={() => setShowViewModal(false)}>
-                <X size={24} />
-              </button>
-            </div>
-
-            <div className="view-modal-body">
-              <div className="view-section">
-                <h3>Appointment Information</h3>
-                <div className="view-grid">
-                  <div className="view-item">
-                    <strong>Appointment ID</strong>
-                    #{selectedAppointment.appt_id}
-                  </div>
-                  <div className="view-item">
-                    <strong>Date & Time</strong>
-                    {formatDate(selectedAppointment.appt_date)}
-                  </div>
-                  <div className="view-item">
-                    <strong>Appointment Type</strong>
-                    {selectedAppointment.appt_type}
-                  </div>
-                  <div className="view-item">
-                    <strong>Consultation Type</strong>
-                    {selectedAppointment.consultation_type === 'online' ? 'Online' : 'Physical'}
-                  </div>
-                  <div className="view-item">
-                    <strong>Status</strong>
-                    <span className={`vet-badge ${getStatusBadgeClass(selectedAppointment.appt_status)}`}>
-                      {selectedAppointment.appt_status}
-                    </span>
-                  </div>
-                  <div className="view-item">
-                    <strong>Created At</strong>
-                    {formatDate(selectedAppointment.created_at)}
-                  </div>
-                  <div className="view-item full-width">
-                    <strong>Description</strong>
-                    {selectedAppointment.appt_description || 'No description provided'}
-                  </div>
-                </div>
-              </div>
-
-              <div className="view-section">
-                <h3>Pet Information</h3>
-                <div className="view-grid">
-                  <div className="view-item">
-                    <strong>Pet Name</strong>
-                    {selectedAppointment.pet_name}
-                  </div>
-                  <div className="view-item">
-                    <strong>Species</strong>
-                    {selectedAppointment.pet_species}
-                  </div>
-                  <div className="view-item">
-                    <strong>Breed</strong>
-                    {selectedAppointment.pet_breed || 'Not specified'}
-                  </div>
-                  <div className="view-item">
-                    <strong>Age</strong>
-                    {selectedAppointment.pet_age} years
-                  </div>
-                  <div className="view-item">
-                    <strong>Gender</strong>
-                    {selectedAppointment.pet_gender === 'm' ? 'Male' : 'Female'}
-                  </div>
-                </div>
-              </div>
-
-              <div className="view-section">
-                <h3>Owner Information</h3>
-                <div className="view-grid">
-                  <div className="view-item">
-                    <strong>Owner Name</strong>
-                    {selectedAppointment.owner_firstName} {selectedAppointment.owner_lastName}
-                  </div>
-                  <div className="view-item">
-                    <strong>Email</strong>
-                    {selectedAppointment.owner_email}
-                  </div>
-                </div>
-              </div>
-
-              <div className="view-section">
-                <h3>Veterinarian Information</h3>
-                <div className="view-grid">
-                  <div className="view-item">
-                    <strong>Assigned Veterinarian</strong>
-                    {selectedAppointment.vet_name ? `Dr. ${selectedAppointment.vet_name}` : 'Not assigned yet'}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <AppointmentDetailsModal 
+        showModal={showViewModal}
+        appointmentDetails={selectedAppointment}
+        onClose={() => setShowViewModal(false)}
+        formatDate={formatDate}
+        userRole="vt"
+      />
+    )}
     </div>
   );
 };

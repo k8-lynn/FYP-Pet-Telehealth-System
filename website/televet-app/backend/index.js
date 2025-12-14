@@ -2579,9 +2579,12 @@ app.get('/api/appointment-details/:appt_id', (req, res) => {
       a.appt_date,
       a.appt_status,
       a.created_at,
-      pet.pet_name
+      pet.pet_name,
+      CONCAT(vu.usr_firstName, ' ', vu.usr_lastName) as vet_name
     FROM appointment_t a
     INNER JOIN pet_t pet ON a.pet_id = pet.pet_id
+    LEFT JOIN veterinarian_t vt ON a.vt_id = vt.vt_id
+    LEFT JOIN user_t vu ON vt.usr_id = vu.usr_id
     WHERE a.appt_id = ?
   `;
 
@@ -3323,9 +3326,12 @@ app.get('/api/scheduled-appointment/:pet_id', (req, res) => {
       a.appt_date,
       a.appt_status,
       a.created_at,
-      pet.pet_name
+      pet.pet_name,
+      CONCAT(vu.usr_firstName, ' ', vu.usr_lastName) as vet_name
     FROM appointment_t a
     INNER JOIN pet_t pet ON a.pet_id = pet.pet_id
+    LEFT JOIN veterinarian_t vt ON a.vt_id = vt.vt_id
+    LEFT JOIN user_t vu ON vt.usr_id = vu.usr_id
     WHERE a.pet_id = ? AND a.appt_status = 'scheduled'
     ORDER BY a.appt_date DESC
     LIMIT 1

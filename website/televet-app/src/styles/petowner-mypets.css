@@ -815,6 +815,27 @@
   border-color: #f87171;
 }
 
+/* Follow-up - Light Green */
+.exam-type.exam-follow-up {
+  background: linear-gradient(135deg, #d9f99d 0%, #bef264 100%);
+  color: #365314;
+  border-color: #a3e635;
+}
+
+/* Behavioral Consultation - Purple */
+.exam-type.exam-behavioral-consultation {
+  background: linear-gradient(135deg, #e9d5ff 0%, #d8b4fe 100%);
+  color: #581c87;
+  border-color: #c084fc;
+}
+
+/* Nutrition & Diet - Teal */
+.exam-type.exam-nutrition-diet {
+  background: linear-gradient(135deg, #ccfbf1 0%, #99f6e4 100%);
+  color: #0f766e;
+  border-color: #5eead4;
+}
+
 .exam-date {
   color: #64748b;
   font-weight: 700;
