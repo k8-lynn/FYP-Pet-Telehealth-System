@@ -3065,6 +3065,110 @@ app.get('/api/appointments/vet/:vt_id', (req, res) => {
   });
 });
 
+// POST /api/clinic-slots/generate-bulk/:clinic_id
+app.post('/api/clinic-slots/generate-bulk/:clinic_id', (req, res) => {
+  const { clinic_id } = req.params;
+  const { startDate, endDate, slotDuration, consultationTypes } = req.body;
+
+  if (!startDate || !endDate || !consultationTypes || consultationTypes.length === 0) {
+    return res.status(400).json({ error: 'Missing required fields' });
+  }
+
+  // Get clinic hours first
+  const hoursSQL = 'SELECT * FROM clinic_hours_t WHERE clinic_id = ?';
+  
+  db.query(hoursSQL, [clinic_id], (err, hoursResult) => {
+    if (err) {
+      console.error('❌ Error fetching clinic hours:', err);
+      return res.status(500).json({ error: 'Failed to fetch clinic hours' });
+    }
+
+    if (hoursResult.length === 0) {
+      return res.status(404).json({ error: 'Clinic hours not found. Please set clinic hours first.' });
+    }
+
+    const hoursData = hoursResult[0];
+    const daysOfWeek = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    
+    // Generate date range
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    const dates = [];
+    
+    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+      dates.push(new Date(d));
+    }
+
+    // Prepare bulk insert data
+    const slotsToInsert = [];
+    let datesGenerated = 0;
+
+    dates.forEach(date => {
+      const dayName = daysOfWeek[date.getDay()];
+      const dayHoursField = `${dayName}_hours`;
+      let dayHours = hoursData[dayHoursField];
+
+      // Parse if string
+      if (typeof dayHours === 'string') {
+        try {
+          dayHours = JSON.parse(dayHours);
+        } catch (e) {
+          dayHours = null;
+        }
+      }
+
+      // Skip if clinic is closed
+      if (!dayHours || dayHours.status === 'Closed' || !dayHours.opening || !dayHours.closing) {
+        return;
+      }
+
+      const dateKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+
+      // Generate slots for each consultation type
+      consultationTypes.forEach(consultationType => {
+        const slots = generateTimeSlotsWithInterval(dayHours.opening, dayHours.closing, slotDuration);
+        slotsToInsert.push({
+          clinic_id,
+          slot_date: dateKey,
+          consultation_type: consultationType,
+          slots: JSON.stringify(slots)
+        });
+        datesGenerated++;
+      });
+    });
+
+    if (slotsToInsert.length === 0) {
+      return res.status(400).json({ error: 'No slots could be generated. Clinic may be closed on all selected dates.' });
+    }
+
+    // Use INSERT ... ON DUPLICATE KEY UPDATE for upsert behavior
+    const insertSQL = `
+      INSERT INTO clinic_slots_t (clinic_id, slot_date, consultation_type, slots)
+      VALUES ?
+      ON DUPLICATE KEY UPDATE slots = VALUES(slots), last_updated = NOW()
+    `;
+
+    const values = slotsToInsert.map(s => [s.clinic_id, s.slot_date, s.consultation_type, s.slots]);
+
+    db.query(insertSQL, [values], (err2) => {
+      if (err2) {
+        console.error('❌ Error bulk inserting slots:', err2);
+        return res.status(500).json({ error: 'Failed to generate slots' });
+      }
+
+      const io = req.app.get('io');
+      io.emit('slotUpdated', { clinic_id, action: 'bulk_generated' });
+
+      console.log(`✅ Generated ${datesGenerated} slot sets for clinic ${clinic_id}`);
+      res.status(200).json({ 
+        message: 'Slots generated successfully',
+        datesGenerated: dates.length,
+        slotsGenerated: datesGenerated
+      });
+    });
+  });
+});
+
 // -------------------------------------------------------------
 // 🟢 GET USER NOTIFICATIONS
 // -------------------------------------------------------------

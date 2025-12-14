@@ -30,7 +30,17 @@ const VetAdminAppointments = () => {
   const [veterinarians, setVeterinarians] = useState([]);
   const [selectedVeterinarian, setSelectedVeterinarian] = useState(null);
   const [selectedAppointmentDetails, setSelectedAppointmentDetails] = useState(null);
+  const [showGenerateModal, setShowGenerateModal] = useState(false);
+  const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
+  const [generateConfig, setGenerateConfig] = useState({
+    startDate: '',
+    endDate: '',
+    slotDuration: 30,
+    consultationTypes: ['physical', 'online']
+  });
+
   const socketRef = useRef(null);
+  const [selectedSlotsForDeletion, setSelectedSlotsForDeletion] = useState([]);
 
   const [timeSlots, setTimeSlots] = useState({
     physical: {},
@@ -600,7 +610,12 @@ const VetAdminAppointments = () => {
     }
   };
 
-  const handleDeleteSlot = async (slotId) => {
+  const handleDeleteSlot = async () => {
+    if (selectedSlotsForDeletion.length === 0) {
+      alert('Please select at least one slot to delete');
+      return;
+    }
+  
     if (!clinic_id) {
       alert('Clinic not found');
       return;
@@ -610,7 +625,19 @@ const VetAdminAppointments = () => {
     const dateKey = formatDateKey(targetDate);
     const existingSlots = timeSlots[consultationType]?.[dateKey] || [];
     
-    const updatedSlots = existingSlots.filter(slot => slot.id !== slotId);
+    // Check if any selected slots are booked/pending
+    const nonAvailableSlots = selectedSlotsForDeletion.filter(slotId => {
+      const slot = existingSlots.find(s => s.id === slotId);
+      return slot && slot.status !== 'available';
+    });
+  
+    if (nonAvailableSlots.length > 0) {
+      alert('Cannot delete slots that are booked or pending. Please unselect them first.');
+      return;
+    }
+  
+    // Filter out selected slots
+    const updatedSlots = existingSlots.filter(slot => !selectedSlotsForDeletion.includes(slot.id));
   
     try {
       const res = await fetch(`http://localhost:5000/api/clinic-slots/${clinic_id}/date/${dateKey}/${consultationType}`, {
@@ -627,20 +654,32 @@ const VetAdminAppointments = () => {
             [dateKey]: updatedSlots
           }
         }));
-        setSlotToDelete(null);
-        alert('Time slot deleted successfully!');
+        setSelectedSlotsForDeletion([]);
+        setIsEditMode(false);
+        setShowDeleteConfirmModal(false);
+        alert(`${selectedSlotsForDeletion.length} time slot(s) deleted successfully!`);
       } else {
-        alert('Failed to delete time slot');
+        alert('Failed to delete time slots');
       }
     } catch (error) {
-      console.error('Error deleting slot:', error);
+      console.error('Error deleting slots:', error);
       alert('An error occurred');
     }
   };
 
   const handleCancelEdit = () => {
     setIsEditMode(false);
-    setSlotToDelete(null);
+    setSelectedSlotsForDeletion([]);
+  };
+
+  const toggleSlotSelection = (slotId) => {
+    setSelectedSlotsForDeletion(prev => {
+      if (prev.includes(slotId)) {
+        return prev.filter(id => id !== slotId);
+      } else {
+        return [...prev, slotId];
+      }
+    });
   };
 
   // Replace the handleApproveSlot function in vetadmin-appointments.jsx
@@ -716,6 +755,69 @@ const handleApproveSlot = async (slot) => {
     alert('An error occurred');
   }
 };
+
+const handleBulkGenerateSlots = async () => {
+  if (!clinic_id) {
+    alert("Clinic not found");
+    return;
+  }
+
+  const { startDate, endDate, slotDuration, consultationTypes } = generateConfig;
+
+  if (!startDate || !endDate || consultationTypes.length === 0) {
+    alert("Please fill in all fields");
+    return;
+  }
+
+  setSlotsLoading(true);
+  
+  try {
+    const res = await fetch(`http://localhost:5000/api/clinic-slots/generate-bulk/${clinic_id}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        startDate,
+        endDate,
+        slotDuration,
+        consultationTypes
+      })
+    });
+
+    const data = await res.json();
+    
+    if (res.ok) {
+      alert(`Successfully generated slots for ${data.datesGenerated} dates!`);
+      setShowGenerateModal(false);
+      
+      // Refresh the current view
+      if (viewMode === 'today') {
+        consultationTypes.forEach(type => {
+          fetchClinicSlotsByDate(clinic_id, currentDate, type);
+        });
+      } else if (viewMode === 'weekly') {
+        const weekDays = getWeekDays(currentDate);
+        consultationTypes.forEach(type => {
+          fetchClinicSlotsRange(clinic_id, weekDays[0], weekDays[6], type);
+        });
+      } else if (viewMode === 'monthly') {
+        const year = currentDate.getFullYear();
+        const month = currentDate.getMonth();
+        consultationTypes.forEach(type => {
+          fetchClinicSlotsRange(clinic_id, new Date(year, month, 1), new Date(year, month + 1, 0), type);
+        });
+      }
+    } else {
+      alert(data.error || "Failed to generate slots");
+    }
+  } catch (error) {
+    console.error("Error generating bulk slots:", error);
+    alert("An error occurred while generating slots");
+  } finally {
+    setSlotsLoading(false);
+  }
+};
+
+
 
   const todayKey = formatDateKey(currentDate);
   const todaySlots = timeSlots[consultationType]?.[todayKey] || [];
@@ -841,13 +943,12 @@ const handleApproveSlot = async (slot) => {
                   <div style={{ marginTop: '1.5rem', display: 'flex', gap: '1rem', justifyContent: 'center' }}>
                     {hasClinicHours && (
                       <button 
-                        className="schedule-hours-btn"
-                        onClick={handleGenerateDefaultSlots}
-                        disabled={slotsLoading}
-                      >
-                        <Clock size={18} />
-                        {slotsLoading ? 'Generating...' : 'Generate Default Slots'}
-                      </button>
+                      className="schedule-hours-btn"
+                      onClick={() => setShowGenerateModal(true)}
+                    >
+                      <Calendar size={18} />
+                      Generate Slots for Date Range
+                    </button>
                     )}
                     <button 
                       className="schedule-add-slot-btn"
@@ -877,12 +978,22 @@ const handleApproveSlot = async (slot) => {
                     </div>
                     <div className="schedule-slot-actions">
                       {isEditMode ? (
-                        <button 
-                          className="schedule-cancel-edit-btn"
-                          onClick={handleCancelEdit}
-                        >
-                          Cancel
-                        </button>
+                        <>
+                          <button 
+                            className="schedule-delete-selected-btn"
+                            onClick={() => setShowDeleteConfirmModal(true)}
+                            disabled={selectedSlotsForDeletion.length === 0}
+                          >
+                            <X size={18} />
+                            Delete Selected ({selectedSlotsForDeletion.length})
+                          </button>
+                          <button 
+                            className="schedule-cancel-edit-btn"
+                            onClick={handleCancelEdit}
+                          >
+                            Cancel
+                          </button>
+                        </>
                       ) : (
                         <button 
                           className="schedule-edit-slots-btn"
@@ -906,12 +1017,17 @@ const handleApproveSlot = async (slot) => {
                     {todaySlots.map(slot => (
                       <div 
                         key={slot.id}
-                        className={`schedule-time-slot ${slot.status} ${isEditMode ? 'edit-mode' : ''}`}
+                        className={`schedule-time-slot ${slot.status} ${isEditMode ? 'edit-mode' : ''} ${
+                          selectedSlotsForDeletion.includes(slot.id) ? 'selected-for-deletion' : ''
+                        }`}
                         onClick={async () => {
-                          if (slot.status === 'pending' && slot.petId) {
+                          if (isEditMode) {
+                            // In edit mode, toggle selection
+                            toggleSlotSelection(slot.id);
+                          } else if (slot.status === 'pending' && slot.petId) {
+                            // In normal mode, open pending appointment modal
                             setSelectedPendingSlot(slot);
                             
-                            // Fetch appointment details by petId instead
                             try {
                               const res = await fetch(`http://localhost:5000/api/appointment-by-pet/${slot.petId}`);
                               const data = await res.json();
@@ -925,12 +1041,15 @@ const handleApproveSlot = async (slot) => {
                         }}
                       >
                         {isEditMode && (
-                          <button 
-                            className="schedule-slot-delete-btn"
-                            onClick={() => setSlotToDelete(slot)}
-                          >
-                            <X size={16} />
-                          </button>
+                          <div className="schedule-slot-checkbox">
+                            <input
+                              type="checkbox"
+                              checked={selectedSlotsForDeletion.includes(slot.id)}
+                              onChange={() => toggleSlotSelection(slot.id)}
+                              disabled={slot.status !== 'available'}
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                          </div>
                         )}
                         <div className="schedule-slot-header">
                           <span className="schedule-slot-time">{slot.time}</span>
@@ -952,13 +1071,12 @@ const handleApproveSlot = async (slot) => {
           {viewMode === 'weekly' && (
             <div className="schedule-calendar-weekly">
               <div style={{ padding: '1rem', display: 'flex', justifyContent: 'center', marginBottom: '1rem' }}>
-                <button 
+              <button 
                   className="schedule-hours-btn"
-                  onClick={handleGenerateWeekSlots}
-                  disabled={slotsLoading}
+                  onClick={() => setShowGenerateModal(true)}
                 >
                   <Calendar size={18} />
-                  {slotsLoading ? 'Generating...' : 'Generate Slots for This Week'}
+                  Generate Slots for Date Range
                 </button>
               </div>
               <div className="schedule-calendar-grid">
@@ -1120,12 +1238,12 @@ const handleApproveSlot = async (slot) => {
                         <Clock size={48} />
                         <p>No time slots set for this date</p>
                         <div style={{ marginTop: '1.5rem', display: 'flex', gap: '1rem', justifyContent: 'center' }}>
-                          <button 
+                        <button 
                             className="schedule-hours-btn"
-                            onClick={() => handleGenerateDefaultSlotsForDate(selectedDate)}
+                            onClick={() => setShowGenerateModal(true)}
                           >
-                            <Clock size={18} />
-                            Generate Slots for This Day
+                            <Calendar size={18} />
+                            Generate Slots for Date Range
                           </button>
                           <button 
                             className="schedule-add-slot-btn"
@@ -1354,26 +1472,139 @@ const handleApproveSlot = async (slot) => {
           </div>
         )}
 
-        {slotToDelete && (
-          <div className="schedule-modal-overlay" onClick={() => setSlotToDelete(null)}>
-            <div className="schedule-delete-confirm-modal" onClick={(e) => e.stopPropagation()}>
-              <div className="schedule-delete-confirm-header">
-                <h3>Delete Time Slot</h3>
-                <p>Are you sure you want to delete time slot <strong>{slotToDelete.time}</strong>?</p>
+        
+
+        {showGenerateModal && (
+          <div className="schedule-modal-overlay" onClick={() => setShowGenerateModal(false)}>
+            <div className="schedule-modal-content" onClick={(e) => e.stopPropagation()}>
+              <button className="schedule-modal-close" onClick={() => setShowGenerateModal(false)}>
+                <X size={24} />
+              </button>
+
+              <div className="schedule-modal-header">
+                <Calendar size={48} />
+                <h2>Generate Time Slots</h2>
+                <p>Create slots for multiple dates at once</p>
               </div>
-              <div className="schedule-delete-confirm-actions">
+
+              <div className="schedule-modal-body">
+                <div style={{ marginBottom: '1.5rem' }}>
+                  <label className="schedule-day-label">Start Date</label>
+                  <input
+                    type="date"
+                    value={generateConfig.startDate}
+                    onChange={(e) => setGenerateConfig(prev => ({...prev, startDate: e.target.value}))}
+                    style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #e5e7eb' }}
+                  />
+                </div>
+
+                <div style={{ marginBottom: '1.5rem' }}>
+                  <label className="schedule-day-label">End Date</label>
+                  <input
+                    type="date"
+                    value={generateConfig.endDate}
+                    onChange={(e) => setGenerateConfig(prev => ({...prev, endDate: e.target.value}))}
+                    style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #e5e7eb' }}
+                  />
+                </div>
+
+                <div style={{ marginBottom: '1.5rem' }}>
+                  <label className="schedule-day-label">Slot Duration (minutes)</label>
+                  <select
+                    value={generateConfig.slotDuration}
+                    onChange={(e) => setGenerateConfig(prev => ({...prev, slotDuration: parseInt(e.target.value)}))}
+                    style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #e5e7eb' }}
+                  >
+                    <option value={15}>15 minutes</option>
+                    <option value={30}>30 minutes</option>
+                    <option value={60}>60 minutes</option>
+                  </select>
+                </div>
+
+                <div style={{ marginBottom: '1.5rem' }}>
+                  <label className="schedule-day-label">Consultation Types</label>
+                  <div style={{ display: 'flex', gap: '1rem' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <input
+                        type="checkbox"
+                        checked={generateConfig.consultationTypes.includes('physical')}
+                        onChange={(e) => {
+                          setGenerateConfig(prev => ({
+                            ...prev,
+                            consultationTypes: e.target.checked 
+                              ? [...prev.consultationTypes, 'physical']
+                              : prev.consultationTypes.filter(t => t !== 'physical')
+                          }));
+                        }}
+                      />
+                      Physical
+                    </label>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <input
+                        type="checkbox"
+                        checked={generateConfig.consultationTypes.includes('online')}
+                        onChange={(e) => {
+                          setGenerateConfig(prev => ({
+                            ...prev,
+                            consultationTypes: e.target.checked 
+                              ? [...prev.consultationTypes, 'online']
+                              : prev.consultationTypes.filter(t => t !== 'online')
+                          }));
+                        }}
+                      />
+                      Online
+                    </label>
+                  </div>
+                </div>
+
                 <button 
-                  className="schedule-delete-cancel-btn"
-                  onClick={() => setSlotToDelete(null)}
+                  className="schedule-save-btn" 
+                  onClick={handleBulkGenerateSlots}
+                  disabled={!generateConfig.startDate || !generateConfig.endDate || generateConfig.consultationTypes.length === 0}
                 >
-                  Cancel
+                  <Calendar size={20} />
+                  Generate Slots
                 </button>
-                <button 
-                  className="schedule-delete-confirm-btn"
-                  onClick={() => handleDeleteSlot(slotToDelete.id)}
-                >
-                  Yes, Delete
-                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {showDeleteConfirmModal && (
+          <div className="schedule-modal-overlay" onClick={() => setShowDeleteConfirmModal(false)}>
+            <div className="schedule-modal-content" onClick={(e) => e.stopPropagation()}>
+              <button className="schedule-modal-close" onClick={() => setShowDeleteConfirmModal(false)}>
+                <X size={24} />
+              </button>
+
+              <div className="schedule-modal-header">
+                <X size={48} style={{ color: '#ef4444' }} />
+                <h2>Confirm Deletion</h2>
+                <p>Are you sure you want to delete {selectedSlotsForDeletion.length} time slot{selectedSlotsForDeletion.length > 1 ? 's' : ''}?</p>
+              </div>
+
+              <div className="schedule-modal-body">
+                <p style={{ textAlign: 'center', color: '#6b7280', marginBottom: '1.5rem' }}>
+                  This action cannot be undone. The selected time slots will be permanently removed.
+                </p>
+                
+                <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
+                  <button 
+                    className="schedule-approval-cancel"
+                    onClick={() => setShowDeleteConfirmModal(false)}
+                    style={{ flex: 1 }}
+                  >
+                    Cancel
+                  </button>
+                  <button 
+                    className="schedule-delete-selected-btn"
+                    onClick={handleDeleteSlot}
+                    style={{ flex: 1 }}
+                  >
+                    <X size={18} />
+                    Yes, Delete
+                  </button>
+                </div>
               </div>
             </div>
           </div>

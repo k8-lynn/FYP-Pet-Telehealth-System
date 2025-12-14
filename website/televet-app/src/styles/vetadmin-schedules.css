@@ -1989,3 +1989,254 @@
 .schedule-consultation-toggle button:active {
   transform: scale(0.98);
 }
+
+/* ========================================
+   MULTI-SELECT DELETION STYLES
+   ======================================== */
+
+/* Edit mode styling */
+.schedule-time-slot.edit-mode {
+  cursor: pointer;
+  position: relative;
+  transition: all 0.3s ease;
+}
+
+.schedule-time-slot.edit-mode:hover {
+  transform: scale(1.02);
+  box-shadow: 0 8px 25px rgba(145, 190, 254, 0.2);
+}
+
+/* Selected for deletion state */
+.schedule-time-slot.selected-for-deletion {
+  border: 3px solid #ef4444;
+  background: linear-gradient(135deg, #fee2e2 0%, #fecaca 50%, #ffffff 100%);
+  box-shadow: 0 4px 15px rgba(239, 68, 68, 0.25);
+}
+
+/* Checkbox container */
+.schedule-slot-checkbox {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 10;
+  background: white;
+  padding: 4px;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Checkbox styling */
+.schedule-slot-checkbox input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+  accent-color: #ef4444;
+  border: 2px solid #e8f0f7;
+  border-radius: 6px;
+}
+
+.schedule-slot-checkbox input[type="checkbox"]:checked {
+  accent-color: #ef4444;
+  transform: scale(1.1);
+}
+
+.schedule-slot-checkbox input[type="checkbox"]:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+  accent-color: #9ca3af;
+}
+
+/* Delete Selected Button */
+.schedule-delete-selected-btn {
+  padding: 0.875rem 1.5rem;
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: white;
+  border: none;
+  border-radius: 14px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  font-family: inherit;
+  box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
+  letter-spacing: -0.01em;
+}
+
+.schedule-delete-selected-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(239, 68, 68, 0.4);
+}
+
+.schedule-delete-selected-btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.schedule-delete-selected-btn:disabled {
+  background: linear-gradient(135deg, #cbd5e1 0%, #94a3b8 100%);
+  cursor: not-allowed;
+  opacity: 0.6;
+  box-shadow: none;
+}
+
+/* Cancel Edit Button - Updated to match your theme */
+.schedule-cancel-edit-btn {
+  padding: 0.875rem 1.5rem;
+  background: #f8fafc;
+  color: #64748b;
+  border: 2px solid #e2e8f0;
+  border-radius: 14px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  font-family: inherit;
+  letter-spacing: -0.01em;
+}
+
+.schedule-cancel-edit-btn:hover {
+  background: #e8f4f8;
+  color: #1a2e35;
+  border-color: #cbd5e1;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(100, 116, 139, 0.15);
+}
+
+.schedule-cancel-edit-btn:active {
+  transform: translateY(0);
+}
+
+/* ========================================
+   CONSULTATION TYPE CHECKBOXES STYLING
+   ======================================== */
+
+/* Container styling - already exists, enhanced here */
+.schedule-modal-body label[style*="display: flex"] {
+  padding: 0.875rem 1.25rem;
+  background: #f8fbff;
+  border: 2px solid #e8f0f7;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-weight: 600;
+  color: #1a2e35;
+}
+
+.schedule-modal-body label[style*="display: flex"]:hover {
+  background: #e8f4f8;
+  border-color: #91befe;
+  transform: translateY(-1px);
+}
+
+/* Checkbox input styling */
+.schedule-modal-body input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+  accent-color: #91befe;
+  border: 2px solid #e8f0f7;
+  border-radius: 6px;
+  flex-shrink: 0;
+}
+
+.schedule-modal-body input[type="checkbox"]:checked {
+  accent-color: #91befe;
+  background: linear-gradient(135deg, #a8ceff 0%, #91befe 100%);
+}
+
+.schedule-modal-body input[type="checkbox"]:hover {
+  border-color: #91befe;
+  transform: scale(1.05);
+}
+
+/* Alternative: Custom checkbox styling (more control) */
+.schedule-consultation-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.875rem 1.25rem;
+  background: #f8fbff;
+  border: 2px solid #e8f0f7;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-weight: 600;
+  color: #1a2e35;
+  position: relative;
+}
+
+.schedule-consultation-checkbox:hover {
+  background: #e8f4f8;
+  border-color: #91befe;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(145, 190, 254, 0.15);
+}
+
+.schedule-consultation-checkbox input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+  accent-color: #91befe;
+  flex-shrink: 0;
+}
+
+.schedule-consultation-checkbox input[type="checkbox"]:checked {
+  accent-color: #10b981;
+}
+
+.schedule-consultation-checkbox:has(input:checked) {
+  background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 50%, #ffffff 100%);
+  border-color: #10b981;
+}
+
+/* Label text */
+.schedule-consultation-checkbox span {
+  font-size: 0.95rem;
+  letter-spacing: -0.01em;
+}
+
+/* ========================================
+   RESPONSIVE ADJUSTMENTS
+   ======================================== */
+
+@media (max-width: 768px) {
+  .schedule-delete-selected-btn,
+  .schedule-cancel-edit-btn {
+    padding: 0.75rem 1rem;
+    font-size: 0.9rem;
+    width: 100%;
+    justify-content: center;
+  }
+
+  .schedule-slot-checkbox {
+    top: 6px;
+    right: 6px;
+    padding: 3px;
+  }
+
+  .schedule-slot-checkbox input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+  }
+
+  .schedule-modal-body label[style*="display: flex"],
+  .schedule-consultation-checkbox {
+    padding: 0.75rem 1rem;
+    font-size: 0.9rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .schedule-slot-actions {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .schedule-delete-selected-btn,
+  .schedule-cancel-edit-btn {
+    width: 100%;
+  }
+}
