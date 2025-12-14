@@ -5,6 +5,7 @@ import { X, Activity, FileText, Scale, ChevronDown, Plus } from 'lucide-react';
 const PatientProfileModal = ({
   petId,  // Just pass pet_id
   vtId,   // And vet_id
+  viewMode = 'vet',
   onClose
 }) => {
   // All state management inside the component
@@ -672,57 +673,65 @@ const PatientProfileModal = ({
                       <FileText size={24} />
                       <h4>Documents</h4>
                       <p>{medicalHistory.documents?.length || 0} files</p>
-                      <button
-                        className="btn-add-card"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleOpenAddRecordModal('documents');
-                        }}
-                      >
-                        <Plus size={16} /> Add
-                      </button>
+                      {viewMode === 'vet' && (
+                        <button
+                          className="btn-add-card"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleOpenAddRecordModal('documents');
+                          }}
+                        >
+                          <Plus size={16} /> Add
+                        </button>
+                      )}
                     </div>
                     <div className="health-card clickable" onClick={() => setActiveHealthView('vaccinations')}>
                       <Activity size={24} />
                       <h4>Vaccinations</h4>
                       <p>{medicalHistory.vaccinations?.length || 0} vaccines</p>
-                      <button
-                        className="btn-add-card"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleOpenAddRecordModal('vaccinations');
-                        }}
-                      >
-                        <Plus size={16} /> Add
-                      </button>
+                      {viewMode === 'vet' && (
+                        <button
+                          className="btn-add-card"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleOpenAddRecordModal('vaccinations');
+                          }}
+                        >
+                          <Plus size={16} /> Add
+                        </button>
+                      )}
                     </div>
                     <div className="health-card clickable" onClick={() => setActiveHealthView('conditions')}>
                       <Activity size={24} />
                       <h4>Conditions</h4>
                       <p>{medicalHistory.conditions?.length || 0} conditions</p>
-                      <button
-                        className="btn-add-card"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleOpenAddRecordModal('conditions');
-                        }}
-                      >
-                        <Plus size={16} /> Add
-                      </button>
+                      {viewMode === 'vet' && (
+                        <button
+                          className="btn-add-card"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleOpenAddRecordModal('conditions');
+                          }}
+                        >
+                          <Plus size={16} /> Add
+                        </button>
+                      )}
                     </div>
                     <div className="health-card clickable" onClick={() => setActiveHealthView('surgeries')}>
                       <Activity size={24} />
                       <h4>Surgeries</h4>
                       <p>{medicalHistory?.surgeries?.length || 0} surgeries</p>
-                      <button
-                        className="btn-add-card"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleOpenAddRecordModal('surgeries');
-                        }}
-                      >
-                        <Plus size={16} /> Add
-                      </button>
+                      {viewMode === 'vet' && (
+                        <button
+                          className="btn-add-card"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleOpenAddRecordModal('surgeries');
+                          }}
+                        >
+                          <Plus size={16} /> Add
+                        </button>
+                      )}
                     </div>
                   </div>
                 ) : (

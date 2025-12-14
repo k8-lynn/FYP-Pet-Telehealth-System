@@ -688,7 +688,7 @@ const VetMyPatients = () => {
                 {filteredPatients.map((patient, index) => (
                   <div key={patient.pet_id} className="mypatients-table-row">
                     <div className="table-cell-number">{index + 1}</div>
-                    <div className="table-cell-pet-name">
+                    <div className="table-cell-mypatients-pet-name">
                       <strong>{patient.pet_name}</strong>
                     </div>
                     <div className="table-cell-species">
@@ -731,17 +731,10 @@ const VetMyPatients = () => {
                           <div className="menu-dropdown">
                             <button 
                               className="menu-item"
-                              onClick={() => handleView(patient)}
-                            >
-                              <Eye size={16} />
-                              View Details
-                            </button>
-                            <button 
-                              className="menu-item"
                               onClick={() => handleViewHealthRecords(patient)}
                             >
-                              <Activity size={16} />
-                              Health Records
+                              <Eye size={16} />
+                              View Health Records
                             </button>
                           </div>
                         )}

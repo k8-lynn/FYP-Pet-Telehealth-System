@@ -10,6 +10,7 @@ import { useChat } from './hooks/useChat';
 import { useNotification } from './components/NotificationProvider';
 import VideoCall from './components/VideoCall';
 import IncomingCallNotification from './components/IncomingCallNotification';
+import PatientProfileModal from './components/PatientProfileModal';
 
 const PetOwnerChat = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -35,6 +36,18 @@ const PetOwnerChat = () => {
   const fileInputRef = React.useRef(null);
   const shouldAutoScroll = React.useRef(true);
   const [showVideoCall, setShowVideoCall] = useState(false);
+  const [showHealthModal, setShowHealthModal] = useState(false);
+  const [showCreateReminderModal, setShowCreateReminderModal] = useState(false);
+  const [newReminder, setNewReminder] = useState({
+    title: '',
+    pet_id: '',
+    date: '',
+    time: '',
+    description: '',
+    recurring: false,
+    recurringPeriod: 'day'
+  });
+  const [userPets, setUserPets] = useState([]);
 
 
   const [chatId, setChatId] = useState(null);
@@ -754,6 +767,90 @@ React.useEffect(() => {
     }
   };
 
+  // Fetch user's pets for reminder dropdown
+const fetchUserPetsForReminder = async () => {
+  try {
+    const response = await fetch(`http://localhost:5000/api/user-pets/${userid}`);
+    const data = await response.json();
+    setUserPets(data);
+  } catch (error) {
+    console.error('❌ Error fetching pets:', error);
+  }
+};
+
+// Handle reminder input change
+const handleReminderInputChange = (field, value) => {
+  setNewReminder(prev => ({
+    ...prev,
+    [field]: value
+  }));
+};
+
+// Create new reminder
+const handleCreateReminder = async () => {
+  if (!newReminder.title || !newReminder.date || !newReminder.time) {
+    alert('Please fill in all required fields');
+    return;
+  }
+
+  try {
+    const response = await fetch('http://localhost:5000/api/reminders', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        pp_id: ppId,
+        pet_id: newReminder.pet_id || null,
+        rmd_title: newReminder.title,
+        rmd_desc: newReminder.description,
+        rmd_date: newReminder.date,
+        rmd_time: newReminder.time,
+        rmd_repeat: newReminder.recurring ? 'yes' : 'no',
+        rmd_repeat_period: newReminder.recurring ? newReminder.recurringPeriod : ''
+      })
+    });
+
+    if (response.ok) {
+      alert('Reminder created successfully!');
+      setShowCreateReminderModal(false);
+      setNewReminder({
+        title: '',
+        pet_id: '',
+        date: '',
+        time: '',
+        description: '',
+        recurring: false,
+        recurringPeriod: 'day'
+      });
+    } else {
+      alert('Failed to create reminder');
+    }
+  } catch (error) {
+    console.error('❌ Error creating reminder:', error);
+    alert('Failed to create reminder');
+  }
+};
+
+// Close reminder modal
+const handleCloseReminderModal = () => {
+  setShowCreateReminderModal(false);
+  setNewReminder({
+    title: '',
+    pet_id: '',
+    date: '',
+    time: '',
+    description: '',
+    recurring: false,
+    recurringPeriod: 'day'
+  });
+};
+
+// Fetch pets when reminder modal opens
+React.useEffect(() => {
+  if (showCreateReminderModal && userid) {
+    fetchUserPetsForReminder();
+  }
+}, [showCreateReminderModal, userid]);
+
   return (
     <div className="petowner-dashboard-container">
       <PawPattern count={35} />
@@ -1002,11 +1099,17 @@ React.useEffect(() => {
                 <Calendar size={14} />
                 {loadingAppointment ? 'Loading...' : 'View Appointment Details'}
               </button>
-              <button className="quick-action-chip">
+              <button 
+                className="quick-action-chip"
+                onClick={() => setShowHealthModal(true)}
+              >
                 <FileText size={14} />
                 View Medical Records
               </button>
-              <button className="quick-action-chip">
+              <button 
+                className="quick-action-chip"
+                onClick={() => setShowCreateReminderModal(true)}
+              >
                 <Clock size={14} />
                 Set Reminder
               </button>
@@ -1256,14 +1359,14 @@ React.useEffect(() => {
                 ))}
               </div>
 
-              <button className="view-records-btn">
+              <button 
+                className="view-records-btn"
+                onClick={() => setShowHealthModal(true)}
+              >
                 <FileText size={16} />
                 View Full Medical Records
               </button>
 
-              <button className="update-info-btn">
-                Update Pet Information
-              </button>
             </div>
           )}
 
@@ -1297,7 +1400,124 @@ React.useEffect(() => {
       />
     )}
 
+    {showHealthModal && currentChat?.petData?.pet_id && (
+      <PatientProfileModal
+        petId={currentChat.petData.pet_id}
+        vtId={null}
+        onClose={() => setShowHealthModal(false)}
+        viewMode="petowner"
+      />
+    )}
   
+  {/* Create Reminder Modal */}
+  {showCreateReminderModal && (
+    <div className="modal-overlay" onClick={handleCloseReminderModal}>
+      <div className="modal-container" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-header">
+          <h2 className="modal-title">Create New Reminder</h2>
+          <button className="modal-close" onClick={handleCloseReminderModal}>×</button>
+        </div>
+        <div className="modal-body">
+          <div className="form-group">
+            <label className="form-label">Reminder Title *</label>
+            <input
+              type="text"
+              className="form-input"
+              placeholder="Enter reminder title"
+              value={newReminder.title}
+              onChange={(e) => handleReminderInputChange('title', e.target.value)}
+            />
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Assign to Pet</label>
+            <select
+              className="form-select"
+              value={newReminder.pet_id}
+              onChange={(e) => handleReminderInputChange('pet_id', e.target.value)}
+            >
+              <option value="">None</option>
+              {userPets.map(pet => (
+                <option key={pet.pet_id} value={pet.pet_id}>
+                  {pet.pet_name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="form-row">
+            <div className="form-group">
+              <label className="form-label">Remind me on... *</label>
+              <input
+                type="date"
+                className="form-input"
+                value={newReminder.date}
+                onChange={(e) => handleReminderInputChange('date', e.target.value)}
+              />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Select Time *</label>
+              <input
+                type="time"
+                className="form-input"
+                value={newReminder.time}
+                onChange={(e) => handleReminderInputChange('time', e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Add a Description (Optional)</label>
+            <textarea
+              className="form-textarea"
+              placeholder="Enter description"
+              rows="3"
+              value={newReminder.description}
+              onChange={(e) => handleReminderInputChange('description', e.target.value)}
+            />
+          </div>
+
+          <div className="form-group">
+            <label className="form-checkbox-label">
+              <input
+                type="checkbox"
+                className="form-checkbox-input"
+                checked={newReminder.recurring}
+                onChange={(e) => handleReminderInputChange('recurring', e.target.checked)}
+              />
+              <span className="form-checkbox-text">Recurring</span>
+            </label>
+          </div>
+
+          {newReminder.recurring && (
+            <div className="form-group">
+              <label className="form-label">Remind every...</label>
+              <select
+                className="form-select"
+                value={newReminder.recurringPeriod}
+                onChange={(e) => handleReminderInputChange('recurringPeriod', e.target.value)}
+              >
+                <option value="day">Day</option>
+                <option value="week">Week</option>
+                <option value="month">Month</option>
+                <option value="year">Year</option>
+              </select>
+            </div>
+          )}
+
+          <div className="modal-actions">
+            <button className="modal-button-cancel" onClick={handleCloseReminderModal}>
+              Cancel
+            </button>
+            <button className="modal-button-save" onClick={handleCreateReminder}>
+              Create Reminder
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )}
 
     </div>
   );

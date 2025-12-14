@@ -10,6 +10,7 @@ import { useChat } from './hooks/useChat';
 import { useNotification } from './components/NotificationProvider';
 import VideoCall from './components/VideoCall';
 import IncomingCallNotification from './components/IncomingCallNotification';
+import PatientProfileModal from './components/PatientProfileModal';
 
 const VetChat = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -36,6 +37,7 @@ const VetChat = () => {
   const fileInputRef = React.useRef(null);
   const shouldAutoScroll = React.useRef(true);
   const [showVideoCall, setShowVideoCall] = useState(false);
+  const [showHealthModal, setShowHealthModal] = useState(false);
 
   const [chatId, setChatId] = useState(null);
   const { messages, isTyping, otherUserOnline, fetchMessages, sendMessage, sendTyping, markAsRead } = useChat(
@@ -1002,13 +1004,12 @@ React.useEffect(() => {
                 <Calendar size={14} />
                 {loadingAppointment ? 'Loading...' : 'View Appointment Details'}
               </button>
-              <button className="quick-action-chip">
+              <button 
+                className="quick-action-chip"
+                onClick={() => setShowHealthModal(true)}
+              >
                 <FileText size={14} />
                 Add to Medical Records
-              </button>
-              <button className="quick-action-chip">
-                <Clock size={14} />
-                Schedule Follow-up
               </button>
             </div>
 
@@ -1250,14 +1251,14 @@ React.useEffect(() => {
                 ))}
               </div>
 
-              <button className="view-records-btn">
+              <button 
+                className="view-records-btn"
+                onClick={() => setShowHealthModal(true)}
+              >
                 <FileText size={16} />
-                View Full Medical History
-              </button>
-
-              <button className="update-info-btn">
                 Update Patient Records
               </button>
+
             </div>
           )}
 
@@ -1290,7 +1291,14 @@ React.useEffect(() => {
       />
     )}
 
-      
+    {showHealthModal && currentChat?.petData?.pet_id && (
+      <PatientProfileModal
+        petId={currentChat.petData.pet_id}
+        vtId={vtId}
+        onClose={() => setShowHealthModal(false)}
+      />
+    )}
+    
     </div>
   );
 };

@@ -137,13 +137,13 @@
     font-weight: 700;
   }
   
-  .table-cell-pet-name {
+  .table-cell-mypatients-pet-name {
     font-size: 0.95rem;
     color: #1a2e35;
     font-weight: 600;
   }
   
-  .table-cell-pet-name strong {
+  .table-cell-mypatients-pet-name strong {
     font-weight: 700;
     color: #1a2e35;
   }
