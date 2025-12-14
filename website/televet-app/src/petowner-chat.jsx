@@ -597,7 +597,8 @@ React.useEffect(() => {
     gender: currentChat.petData.pet_gender === 'm' ? 'Male' : 'Female',
     weight: `${currentChat.petData.pet_weight} kg`,
     dietType: currentChat.petData.pet_dietType || 'Not specified',
-    image: currentChat.petData.pet_species?.toLowerCase().includes('dog') ? '🐕' : '🐱',
+    image: currentChat.petData.pet_image || null,  // Changed to use pet_image
+    imageEmoji: currentChat.petData.pet_species?.toLowerCase().includes('dog') ? '🐕' : '🐱',  // Keep emoji as fallback
     veterinarian: currentChat.name,
     vetSpecialty: currentChat.specialty,
     clinic: currentChat.petData.vet_clinicName || 'PawCare Clinic',
@@ -1272,7 +1273,22 @@ React.useEffect(() => {
               </div>
 
               <div className="pet-profile-card">
-                <div className="pet-image-large">{currentPet.image}</div>
+                <div className="pet-image-large">
+                  {currentPet.image ? (
+                    <img 
+                      src={`http://localhost:5000${currentPet.image}`} 
+                      alt={currentPet.name}
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'cover',
+                        borderRadius: '12px'
+                      }}
+                    />
+                  ) : (
+                    <span>{currentPet.imageEmoji}</span>
+                  )}
+                </div>
                 <h2>{currentPet.name}</h2>
                 <p className="pet-species">{currentPet.species}</p>
                 

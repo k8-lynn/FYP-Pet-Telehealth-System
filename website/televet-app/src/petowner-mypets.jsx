@@ -26,6 +26,8 @@ const PetOwnerMyPets = () => {
   const [trackingModalType, setTrackingModalType] = useState(null); // 'weight', 'activity', 'symptoms', 'behavior'
   const [allTreatments, setAllTreatments] = useState([]);
   const [allPrescriptions, setAllPrescriptions] = useState([]);
+  const [selectedImage, setSelectedImage] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
   const [newTrackingEntry, setNewTrackingEntry] = useState({
     date: '',
     weight: '',
@@ -199,6 +201,7 @@ const toggleSection = (section) => {
         weight: p.pet_weight,
         behavioralNotes: p.pet_behavioralNotes,
         updatedAt: p.pet_lastUpdated,
+        petImage: p.pet_image,
       }));
 
       setPets(formattedPets);
@@ -1165,7 +1168,84 @@ const [isEditing, setIsEditing] = useState(false);
       }
     };
 
+  const handleImageSelect = (e) => {
+  const file = e.target.files[0];
+  if (file) {
+    setSelectedImage(file);
+    setImagePreview(URL.createObjectURL(file));
+  }
+};
 
+const handleImageUpload = async () => {
+  if (!selectedImage || !selectedPet) return;
+
+  const formData = new FormData();
+  formData.append('image', selectedImage);
+
+  try {
+    const response = await axios.post(
+      `http://localhost:5000/api/pets/${selectedPet.id}/upload-image`,
+      formData,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      }
+    );
+
+    setMessage({
+      type: 'success',
+      text: 'Pet image uploaded successfully!',
+    });
+
+    // Update local state
+    setSelectedPet(prev => ({
+      ...prev,
+      petImage: response.data.imageUrl
+    }));
+
+    setSelectedImage(null);
+    setImagePreview(null);
+    fetchPets();
+
+    setTimeout(() => setMessage(null), 2000);
+  } catch (error) {
+    console.error('Error uploading image:', error);
+    setMessage({
+      type: 'error',
+      text: 'Failed to upload image. Please try again.',
+    });
+  }
+};
+
+const handleImageDelete = async () => {
+  if (!selectedPet) return;
+
+  try {
+    await axios.delete(`http://localhost:5000/api/pets/${selectedPet.id}/delete-image`);
+
+    setMessage({
+      type: 'success',
+      text: 'Pet image deleted successfully!',
+    });
+
+    setSelectedPet(prev => ({
+      ...prev,
+      petImage: null
+    }));
+
+    setImagePreview(null);
+    fetchPets();
+
+    setTimeout(() => setMessage(null), 2000);
+  } catch (error) {
+    console.error('Error deleting image:', error);
+    setMessage({
+      type: 'error',
+      text: 'Failed to delete image. Please try again.',
+    });
+  }
+};
 
   return (
     
@@ -1214,7 +1294,11 @@ const [isEditing, setIsEditing] = useState(false);
                 onClick={() => handlePetClick(pet)}
               >
                 <div className="pet-card-image">
-                  <PawPrint size={64} color="#888" />
+                  {pet.petImage ? (
+                    <img src={`http://localhost:5000${pet.petImage}`} alt={pet.name} />
+                  ) : (
+                    <PawPrint size={64} color="#888" />
+                  )}
                 </div>
                 <div className="pet-card-name">{pet.name}</div>
                 <div className="pet-card-details">
@@ -2100,8 +2184,41 @@ const [isEditing, setIsEditing] = useState(false);
               <div className="section-box pet-info-box">
                 {/* Keep all existing pet info structure */}
                 <div className="pet-info-image">
+                {imagePreview ? (
+                  <img src={imagePreview} alt={selectedPet.name} />
+                ) : selectedPet.petImage ? (
+                  <img src={`http://localhost:5000${selectedPet.petImage}`} alt={selectedPet.name} />
+                ) : (
                   <PawPrint size={64} color="#888" />
-                </div>
+                )}
+                
+                {isEditing && (
+                  <div className="image-upload-controls">
+                    <input
+                      type="file"
+                      id="pet-image-upload"
+                      accept="image/*"
+                      onChange={handleImageSelect}
+                      style={{ display: 'none' }}
+                    />
+                    <label htmlFor="pet-image-upload" className="btn-upload-image">
+                      {selectedPet.petImage ? 'Change Photo' : 'Upload Photo'}
+                    </label>
+                    
+                    {(selectedImage || imagePreview) && (
+                      <button className="btn-upload-confirm" onClick={handleImageUpload}>
+                        Save Photo
+                      </button>
+                    )}
+                    
+                    {selectedPet.petImage && !selectedImage && (
+                      <button className="btn-delete-image" onClick={handleImageDelete}>
+                        Remove Photo
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
                 <div className="pet-info-details">
                   {/* All existing info-row elements */}
                   <div className="info-row">

@@ -300,7 +300,8 @@ app.get('/api/pets/:usr_id', (req, res) => {
     SELECT p.pet_id, p.pet_name, p.pet_species, p.pet_breed, p.pet_age, p.pet_gender,
            p.pet_hasVaccination, p.pet_vaccinationDate, p.pet_hasMedication,
            p.pet_medicationDetails, p.pet_hasAllergies, p.pet_allergyDetails,
-           p.pet_dietType, p.pet_weight, p.pet_behavioralNotes, p.pet_lastUpdated
+           p.pet_dietType, p.pet_weight, p.pet_behavioralNotes, p.pet_lastUpdated,
+           p.pet_image
     FROM pet_t p
     JOIN pet_parent_t pp ON p.pp_id = pp.pp_id
     WHERE pp.usr_id = ?
@@ -3265,6 +3266,7 @@ app.get('/api/vet-patients/:vt_id', (req, res) => {
       pet.pet_dietType,
       pet.pet_behavioralNotes,
       pet.pet_lastUpdated,
+      pet.pet_image,
       pp.pp_id,
       pp.pp_assignedClinic,
       pp.createdAt as pp_createdAt,
@@ -3868,6 +3870,100 @@ const upload = multer({
 
 // Serve uploaded files
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+// Pet image storage
+const petImageStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const petUploadDir = path.join(__dirname, 'uploads', 'pets');
+    if (!fs.existsSync(petUploadDir)) {
+      fs.mkdirSync(petUploadDir, { recursive: true });
+    }
+    cb(null, petUploadDir);
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, 'pet-' + uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+const petImageFilter = (req, file, cb) => {
+  const allowedTypes = /jpeg|jpg|png|gif/;
+  const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+  const mimetype = allowedTypes.test(file.mimetype);
+
+  if (mimetype && extname) {
+    return cb(null, true);
+  } else {
+    cb(new Error('Only image files are allowed (jpeg, jpg, png, gif)'));
+  }
+};
+
+const uploadPetImage = multer({
+  storage: petImageStorage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+  fileFilter: petImageFilter
+});
+
+// Upload pet image
+app.post('/api/pets/:pet_id/upload-image', uploadPetImage.single('image'), (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ error: 'No image uploaded' });
+  }
+
+  const { pet_id } = req.params;
+  const imageUrl = `/uploads/pets/${req.file.filename}`;
+
+  // Update pet with image URL
+  const sql = 'UPDATE pet_t SET pet_image = ?, pet_lastUpdated = NOW() WHERE pet_id = ?';
+  
+  db.query(sql, [imageUrl, pet_id], (err, result) => {
+    if (err) {
+      console.error('Error updating pet image:', err);
+      return res.status(500).json({ error: 'Failed to update pet image' });
+    }
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'Pet not found' });
+    }
+
+    console.log(`✅ Pet ${pet_id} image updated: ${imageUrl}`);
+    res.status(200).json({ 
+      message: 'Pet image uploaded successfully',
+      imageUrl: imageUrl
+    });
+  });
+});
+
+// Delete pet image
+app.delete('/api/pets/:pet_id/delete-image', (req, res) => {
+  const { pet_id } = req.params;
+
+  // Get current image path
+  db.query('SELECT pet_image FROM pet_t WHERE pet_id = ?', [pet_id], (err, result) => {
+    if (err || result.length === 0) {
+      return res.status(500).json({ error: 'Failed to find pet' });
+    }
+
+    const imagePath = result[0].pet_image;
+    
+    // Delete from database
+    db.query('UPDATE pet_t SET pet_image = NULL WHERE pet_id = ?', [pet_id], (err2) => {
+      if (err2) {
+        return res.status(500).json({ error: 'Failed to delete image' });
+      }
+
+      // Delete file from disk if exists
+      if (imagePath) {
+        const fullPath = path.join(__dirname, imagePath);
+        fs.unlink(fullPath, (unlinkErr) => {
+          if (unlinkErr) console.error('Error deleting file:', unlinkErr);
+        });
+      }
+
+      res.status(200).json({ message: 'Pet image deleted successfully' });
+    });
+  });
+});
 
 // =============== FILE UPLOAD ENDPOINT ===============
 app.post('/api/chat/upload-file', upload.single('file'), (req, res) => {

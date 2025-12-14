@@ -1814,3 +1814,140 @@
   transform: none;
   background: linear-gradient(135deg, #a8ceff 0%, #91befe 100%);
 }
+
+/* Pet Image Styles */
+.pet-info-image {
+  position: relative;
+  width: 100%;
+  height: 200px;
+  background: linear-gradient(135deg, #f8fbff 0%, #f1f5f9 100%);
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 20px;
+  border: 3px solid #e8f0f7;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.pet-info-image:hover {
+  border-color: #a8ceff;
+}
+
+.pet-info-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 14px;
+}
+
+/* Pet Card Image */
+.pet-card-image {
+  position: relative;
+  overflow: hidden;
+}
+
+.pet-card-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 14px;
+  transition: transform 0.3s ease;
+}
+
+.pet-card:hover .pet-card-image img {
+  transform: scale(1.05);
+}
+
+/* Image Upload Controls */
+.image-upload-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 2px solid #f1f5f9;
+}
+
+.btn-upload-image,
+.btn-upload-confirm,
+.btn-delete-image {
+  padding: 0.75rem 1.25rem;
+  border-radius: 12px;
+  border: 2px solid;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 700;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  text-align: center;
+  letter-spacing: -0.01em;
+}
+
+.btn-upload-image {
+  background: linear-gradient(135deg, #a8ceff 0%, #91befe 100%);
+  color: white;
+  border-color: #91befe;
+}
+
+.btn-upload-image:hover {
+  background: linear-gradient(135deg, #91befe 0%, #7aabf5 100%);
+  transform: translateY(-3px) scale(1.02);
+  box-shadow: 0 6px 20px rgba(145, 190, 254, 0.3);
+}
+
+.btn-upload-confirm {
+  background: linear-gradient(135deg, #bae8d0 0%, #a8e6cf 100%);
+  color: #065f46;
+  border-color: #a8e6cf;
+}
+
+.btn-upload-confirm:hover {
+  background: linear-gradient(135deg, #a8e6cf 0%, #98ddc0 100%);
+  transform: translateY(-3px) scale(1.02);
+  box-shadow: 0 6px 20px rgba(168, 230, 207, 0.3);
+}
+
+.btn-delete-image {
+  background: linear-gradient(135deg, #ffb3ba 0%, #ffa3a8 100%);
+  color: #7f1d1d;
+  border-color: #ffa3a8;
+}
+
+.btn-delete-image:hover {
+  background: linear-gradient(135deg, #ffa3a8 0%, #ff9399 100%);
+  transform: translateY(-3px) scale(1.02);
+  box-shadow: 0 6px 20px rgba(255, 179, 186, 0.3);
+}
+
+/* Loading state for image upload */
+.btn-upload-confirm:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn-upload-confirm:disabled:hover {
+  transform: none;
+  box-shadow: none;
+}
+
+/* Image preview indicator */
+.pet-info-image.has-preview {
+  border-color: #a8ceff;
+  box-shadow: 0 4px 16px rgba(168, 206, 255, 0.2);
+}
+
+/* Responsive adjustments */
+@media (max-width: 576px) {
+  .image-upload-controls {
+    gap: 0.5rem;
+  }
+  
+  .btn-upload-image,
+  .btn-upload-confirm,
+  .btn-delete-image {
+    padding: 0.6rem 1rem;
+    font-size: 0.85rem;
+  }
+}
