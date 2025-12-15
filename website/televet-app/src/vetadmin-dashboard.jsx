@@ -1,34 +1,262 @@
 import React, { useState, useEffect } from 'react';
-import { PawPrint, Plus, Trash2, ChevronDown, X, Bell, MapPin, Calendar, Users, Stethoscope, Clock, Eye } from 'lucide-react';
+import { MapPin, Calendar, Users, Stethoscope, Clock, Eye } from 'lucide-react';
 import PawPattern from "./components/PawPattern";
 import VetAdminNavbar from './components/vetadmin-navbar';
 import ProfileNotification from "./components/ProfileNotification";
+import AppointmentDetailsModal from './components/AppointmentDetailsModal';
 import './styles/vetadmin-dashboard.css';
+import axios from 'axios';
 
 const VetAdminDashboard = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [firstName, setFirstName] = useState('');
+  const [clinicId, setClinicId] = useState(null);
+  const [vaId, setVaId] = useState(null);
+  const [clinicInfo, setClinicInfo] = useState(null);
+  
+  
+  // Stats state
+  const [appointmentCounts, setAppointmentCounts] = useState({
+    today: 0,
+    thisWeek: 0,
+    thisMonth: 0
+  });
+  const [totalPatients, setTotalPatients] = useState(0);
+  const [activeVets, setActiveVets] = useState(0);
+  const [pendingAppointments, setPendingAppointments] = useState(0);
+  
+  // Data state
+  const [todaysAppointments, setTodaysAppointments] = useState([]);
+  const [recentActivities, setRecentActivities] = useState([]);
+  
+  // Modal state
+  const [showModal, setShowModal] = useState(false);
+  const [selectedAppointment, setSelectedAppointment] = useState(null);
 
   useEffect(() => {
     const storedName = sessionStorage.getItem('firstName');
-    if (storedName) {
-      setFirstName(storedName);
+    const storedUserId = sessionStorage.getItem('userid'); // Get userid instead of va_id
+    const storedVaId = sessionStorage.getItem('va_id');
+    
+    if (storedName) setFirstName(storedName);
+    
+    if (storedVaId) {
+      setVaId(storedVaId);
+      fetchClinicData(storedVaId);
+    } else if (storedUserId) {
+      // Fallback: fetch profile to get va_id
+      fetchUserProfile(storedUserId);
     }
   }, []);
+
+  useEffect(() => {
+    if (clinicId) {
+      fetchDashboardData();
+    }
+  }, [clinicId]);
+
+  useEffect(() => {
+    console.log('📊 State update:', {
+      vaId,
+      clinicId,
+      clinicInfo,
+      appointmentCounts,
+      totalPatients,
+      activeVets
+    });
+  }, [vaId, clinicId, clinicInfo, appointmentCounts, totalPatients, activeVets]);
+
+  const fetchUserProfile = async (userId) => {
+    try {
+      const response = await axios.get(`http://localhost:5000/api/profile/${userId}`);
+      const userData = response.data;
+      
+      console.log('✅ User profile data:', userData);
+      
+      if (userData.va_id) {
+        setVaId(userData.va_id);
+        setClinicInfo({
+          clinic_name: userData.va_clinicName,
+          clinic_location: userData.va_vetLocation,
+          clinic_phone: userData.va_clinicPhone,
+          clinic_email: userData.va_clinicEmail
+        });
+        
+        // Fetch full clinic data with clinic_id
+        fetchClinicData(userData.va_id);
+      }
+    } catch (error) {
+      console.error('❌ Error fetching user profile:', error);
+    }
+  };
+  
+  const fetchClinicData = async (vaId) => {
+    try {
+      const response = await axios.get(`http://localhost:5000/api/clinic/${vaId}`);
+      const clinicData = response.data;
+      
+      setClinicId(clinicData.clinic_id);
+      console.log('✅ Clinic ID set:', clinicData.clinic_id);
+    } catch (error) {
+      console.error('❌ Error fetching clinic data:', error);
+    }
+  };
+
+  const fetchClinicInfo = async (vaId) => {
+    try {
+      const response = await axios.get(`http://localhost:5000/api/clinic/${vaId}`);
+      const clinicData = response.data;
+      
+      console.log('✅ Clinic data retrieved:', clinicData); // Debug log
+      
+      setClinicInfo(clinicData);
+      setClinicId(clinicData.clinic_id);
+    } catch (error) {
+      console.error('❌ Error fetching clinic info:', error);
+    }
+  };
+
+  const fetchDashboardData = async () => {
+    try {
+      // Fetch appointment counts
+      const countsResponse = await axios.get(`http://localhost:5000/api/clinic-appointments-count/${clinicId}`);
+      setAppointmentCounts(countsResponse.data);
+
+      // Fetch all appointments for clinic
+      const appointmentsResponse = await axios.get(`http://localhost:5000/api/appointments/clinic/${clinicId}`);
+      const allAppointments = appointmentsResponse.data;
+
+      // Filter today's appointments
+      const today = new Date();
+      const todayStr = today.toISOString().split('T')[0];
+      
+      const todayAppts = allAppointments.filter(appt => {
+        const apptDate = new Date(appt.appt_date).toISOString().split('T')[0];
+        return apptDate === todayStr && appt.appt_status === 'scheduled';
+      });
+      setTodaysAppointments(todayAppts);
+
+      // Count pending appointments
+      const pending = allAppointments.filter(appt => appt.appt_status === 'pending').length;
+      setPendingAppointments(pending);
+
+      // Fetch patients count
+      if (clinicInfo && clinicInfo.clinic_name) {
+        const patientsResponse = await axios.get(
+          `http://localhost:5000/api/patients/clinic/${encodeURIComponent(clinicInfo.clinic_name)}`
+        );
+        setTotalPatients(patientsResponse.data.length);
+        
+        console.log('✅ Patients count:', patientsResponse.data.length);
+      }
+
+      // Fetch veterinarians
+      const vetsResponse = await axios.get(`http://localhost:5000/api/veterinarians/${vaId}`);
+      const onDutyVets = vetsResponse.data.filter(vet => vet.vt_onDutyToday === 'yes').length;
+      setActiveVets(onDutyVets);
+
+      // Generate recent activities from appointments
+      generateRecentActivities(allAppointments);
+
+    } catch (error) {
+      console.error('Error fetching dashboard data:', error);
+    }
+  };
+
+  const generateRecentActivities = (appointments) => {
+    const activities = [];
+    const sortedAppointments = [...appointments].sort((a, b) => 
+      new Date(b.created_at) - new Date(a.created_at)
+    );
+
+    sortedAppointments.slice(0, 6).forEach(appt => {
+      let action = '';
+      let details = `${appt.pet_name} - ${appt.appt_type}`;
+      
+      if (appt.vet_name) {
+        details += ` with ${appt.vet_name}`;
+      }
+
+      switch (appt.appt_status) {
+        case 'pending':
+          action = 'New appointment booked';
+          break;
+        case 'scheduled':
+          action = 'Appointment scheduled';
+          break;
+        case 'completed':
+          action = 'Appointment completed';
+          break;
+        case 'cancelled':
+          action = 'Appointment cancelled';
+          break;
+        default:
+          action = 'Appointment updated';
+      }
+
+      const time = getTimeAgo(new Date(appt.created_at));
+
+      activities.push({
+        id: appt.appt_id,
+        action,
+        details,
+        time
+      });
+    });
+
+    setRecentActivities(activities);
+  };
+
+  const getTimeAgo = (date) => {
+    const now = new Date();
+    const diff = Math.floor((now - date) / 1000); // seconds
+
+    if (diff < 60) return `${diff} secs ago`;
+    if (diff < 3600) return `${Math.floor(diff / 60)} mins ago`;
+    if (diff < 86400) return `${Math.floor(diff / 3600)} hours ago`;
+    return `${Math.floor(diff / 86400)} days ago`;
+  };
+
+  const formatTime = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleTimeString('en-US', { 
+      hour: 'numeric', 
+      minute: '2-digit',
+      hour12: true 
+    });
+  };
+
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      weekday: 'long',
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true
+    });
+  };
+
+  const handleViewAppointment = (appointment) => {
+    setSelectedAppointment(appointment);
+    setShowModal(true);
+  };
 
   const stats = [
     {
       id: 1,
-      title: 'Upcoming Appointments',
-      value: '24',
-      subtitle: 'For all vet doctors',
+      title: 'Today\'s Appointments',
+      value: appointmentCounts.today.toString(),
+      subtitle: 'Scheduled for today',
       icon: Calendar,
       color: '#a8ceff'
     },
     {
       id: 2,
       title: 'All Patients',
-      value: '342',
+      value: totalPatients.toString(),
       subtitle: 'Total registered',
       icon: Users,
       color: '#91befe'
@@ -36,7 +264,7 @@ const VetAdminDashboard = () => {
     {
       id: 3,
       title: 'Active Veterinarians',
-      value: '8',
+      value: activeVets.toString(),
       subtitle: 'On duty today',
       icon: Stethoscope,
       color: '#ffd666'
@@ -44,106 +272,19 @@ const VetAdminDashboard = () => {
     {
       id: 4,
       title: 'Pending Requests',
-      value: '12',
+      value: pendingAppointments.toString(),
       subtitle: 'Awaiting approval',
       icon: Clock,
       color: '#ffb088'
     }
   ];
 
-  const todaysAppointments = [
-    {
-      id: 1,
-      time: '9:00 AM',
-      petName: 'Buddy',
-      ownerName: 'John Smith',
-      type: 'Check-up',
-      vetDoctor: 'Dr. Emily Chen'
-    },
-    {
-      id: 2,
-      time: '9:30 AM',
-      petName: 'Luna',
-      ownerName: 'Sarah Johnson',
-      type: 'Vaccination',
-      vetDoctor: 'Dr. Michael Brown'
-    },
-    {
-      id: 3,
-      time: '10:00 AM',
-      petName: 'Max',
-      ownerName: 'David Lee',
-      type: 'Dental',
-      vetDoctor: 'Dr. Emily Chen'
-    },
-    {
-      id: 4,
-      time: '10:30 AM',
-      petName: 'Charlie',
-      ownerName: 'Emma Wilson',
-      type: 'Surgery',
-      vetDoctor: 'Dr. James Rodriguez'
-    },
-    {
-      id: 5,
-      time: '11:00 AM',
-      petName: 'Bella',
-      ownerName: 'Michael Chen',
-      type: 'Check-up',
-      vetDoctor: 'Dr. Michael Brown'
-    },
-    {
-      id: 6,
-      time: '2:00 PM',
-      petName: 'Rocky',
-      ownerName: 'Lisa Martinez',
-      type: 'Vaccination',
-      vetDoctor: 'Dr. Emily Chen'
-    }
-  ];
-
-  const recentActivities = [
-    {
-      id: 1,
-      action: 'New appointment booked',
-      details: 'Buddy - Check-up with Dr. Emily Chen',
-      time: '5 mins ago'
-    },
-    {
-      id: 2,
-      action: 'Appointment completed',
-      details: 'Max - Dental cleaning by Dr. Brown',
-      time: '15 mins ago'
-    },
-    {
-      id: 3,
-      action: 'New patient registered',
-      details: 'Luna - Owner: Sarah Johnson',
-      time: '30 mins ago'
-    },
-    {
-      id: 4,
-      action: 'Appointment rescheduled',
-      details: 'Charlie - Surgery moved to 2:00 PM',
-      time: '1 hour ago'
-    },
-    {
-      id: 5,
-      action: 'Prescription issued',
-      details: 'Bella - Medication prescribed',
-      time: '2 hours ago'
-    },
-    {
-      id: 6,
-      action: 'Lab results uploaded',
-      details: 'Rocky - Blood test results available',
-      time: '3 hours ago'
-    }
-  ];
-
   const getTypeColor = (type) => {
     const colors = {
       'Check-up': '#a8ceff',
+      'Follow-up': '#91befe',
+      'Behavioral Consultation': '#ffd666',
+      'Nutrition & Diet': '#a8e6cf',
       'Vaccination': '#91befe',
       'Dental': '#ffd666',
       'Surgery': '#ffb088',
@@ -162,7 +303,9 @@ const VetAdminDashboard = () => {
         <div className="vetadmin-header">
           <div className="location-info">
             <MapPin size={20} className="location-icon" />
-            <span className="location-text">PawCare Veterinary Clinic</span>
+            <span className="location-text">
+              {clinicInfo ? clinicInfo.clinic_name : 'Loading...'}
+            </span>
           </div>
           <ProfileNotification firstName={firstName} />
         </div>
@@ -192,53 +335,66 @@ const VetAdminDashboard = () => {
               <span className="appointment-count">{todaysAppointments.length}</span>
             </div>
 
-            <div className="appointments-table">
-              <div className="table-header">
-                <div className="table-cell">Time</div>
-                <div className="table-cell">Pet Name</div>
-                <div className="table-cell">Owner Name</div>
-                <div className="table-cell">Type</div>
-                <div className="table-cell">Assigned To</div>
-                <div className="table-cell">Action</div>
+            {todaysAppointments.length === 0 ? (
+              <div className="empty-state">
+                <p>No appointments scheduled for today</p>
               </div>
+            ) : (
+              <div className="appointments-table">
+                <div className="table-header">
+                  <div className="table-cell">Time</div>
+                  <div className="table-cell">Pet Name</div>
+                  <div className="table-cell">Owner Name</div>
+                  <div className="table-cell">Type</div>
+                  <div className="table-cell">Assigned To</div>
+                  <div className="table-cell">Action</div>
+                </div>
 
-              <div className="table-body">
-                {todaysAppointments.map(appointment => (
-                  <div key={appointment.id} className="table-row">
-                    <div className="table-cell">
-                      <span className="appointment-time">{appointment.time}</span>
+                <div className="table-body">
+                  {todaysAppointments.map(appointment => (
+                    <div key={appointment.appt_id} className="table-row">
+                      <div className="table-cell">
+                        <span className="appointment-time">{formatTime(appointment.appt_date)}</span>
+                      </div>
+                      <div className="table-cell">
+                        <span className="pet-name">{appointment.pet_name}</span>
+                      </div>
+                      <div className="table-cell">
+                        <span className="owner-name">
+                          {appointment.owner_firstName} {appointment.owner_lastName}
+                        </span>
+                      </div>
+                      <div className="table-cell">
+                        <span 
+                          className="appointment-type"
+                          style={{ 
+                            background: `${getTypeColor(appointment.appt_type)}20`,
+                            color: getTypeColor(appointment.appt_type),
+                            border: `2px solid ${getTypeColor(appointment.appt_type)}40`
+                          }}
+                        >
+                          {appointment.appt_type}
+                        </span>
+                      </div>
+                      <div className="table-cell">
+                        <span className="vet-name">
+                          {appointment.vet_name || 'Not assigned'}
+                        </span>
+                      </div>
+                      <div className="table-cell">
+                        <button 
+                          className="view-button"
+                          onClick={() => handleViewAppointment(appointment)}
+                        >
+                          <Eye size={16} />
+                          View
+                        </button>
+                      </div>
                     </div>
-                    <div className="table-cell">
-                      <span className="pet-name">{appointment.petName}</span>
-                    </div>
-                    <div className="table-cell">
-                      <span className="owner-name">{appointment.ownerName}</span>
-                    </div>
-                    <div className="table-cell">
-                      <span 
-                        className="appointment-type"
-                        style={{ 
-                          background: `${getTypeColor(appointment.type)}20`,
-                          color: getTypeColor(appointment.type),
-                          border: `2px solid ${getTypeColor(appointment.type)}40`
-                        }}
-                      >
-                        {appointment.type}
-                      </span>
-                    </div>
-                    <div className="table-cell">
-                      <span className="vet-name">{appointment.vetDoctor}</span>
-                    </div>
-                    <div className="table-cell">
-                      <button className="view-button">
-                        <Eye size={16} />
-                        View
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
           </div>
 
           {/* Recent Activity */}
@@ -247,21 +403,36 @@ const VetAdminDashboard = () => {
               <h3 className="section-title">Recent Activity</h3>
             </div>
 
-            <div className="activity-list">
-              {recentActivities.map(activity => (
-                <div key={activity.id} className="activity-item">
-                  <div className="activity-dot"></div>
-                  <div className="activity-content">
-                    <p className="activity-action">{activity.action}</p>
-                    <p className="activity-details">{activity.details}</p>
-                    <span className="activity-time">{activity.time}</span>
+            {recentActivities.length === 0 ? (
+              <div className="empty-state">
+                <p>No recent activities</p>
+              </div>
+            ) : (
+              <div className="activity-list">
+                {recentActivities.map(activity => (
+                  <div key={activity.id} className="activity-item">
+                    <div className="activity-dot"></div>
+                    <div className="activity-content">
+                      <p className="activity-action">{activity.action}</p>
+                      <p className="activity-details">{activity.details}</p>
+                      <span className="activity-time">{activity.time}</span>
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>
+
+      {/* Appointment Details Modal */}
+      <AppointmentDetailsModal
+        showModal={showModal}
+        appointmentDetails={selectedAppointment}
+        onClose={() => setShowModal(false)}
+        formatDate={formatDate}
+        userRole="vetAdmin"
+      />
     </div>
   );
 };

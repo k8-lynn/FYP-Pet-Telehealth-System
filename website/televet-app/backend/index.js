@@ -511,6 +511,37 @@ app.post('/api/register', (req, res) => {
   });
 });
 
+// GET /api/clinic-by-vet/:vt_id - Get clinic info for a veterinarian
+app.get('/api/clinic-by-vet/:vt_id', (req, res) => {
+  const { vt_id } = req.params;
+
+  const sql = `
+    SELECT 
+      c.clinic_id,
+      c.clinic_name,
+      c.clinic_location,
+      c.clinic_phone,
+      c.clinic_email
+    FROM clinic_t c
+    INNER JOIN veterinarian_t vt ON c.va_id = vt.va_id
+    WHERE vt.vt_id = ?
+  `;
+
+  db.query(sql, [vt_id], (err, result) => {
+    if (err) {
+      console.error('❌ Error fetching clinic for vet:', err);
+      return res.status(500).json({ error: 'Failed to fetch clinic data' });
+    }
+
+    if (result.length === 0) {
+      console.warn('⚠️ No clinic found for vt_id:', vt_id);
+      return res.status(404).json({ error: 'Clinic not found' });
+    }
+
+    console.log('✅ Clinic data retrieved for vt_id:', vt_id);
+    res.status(200).json(result[0]);
+  });
+});
 
 
 // -------------------------------------------------------------
@@ -3929,6 +3960,47 @@ app.get('/api/chat/search-messages', (req, res) => {
       return res.status(500).json({ error: err.message });
     }
     res.json(results);
+  });
+});
+
+// GET /api/vet-unread-messages/:vt_id - Get total unread messages for a vet
+app.get('/api/vet-unread-messages/:vt_id', (req, res) => {
+  const { vt_id } = req.params;
+
+  // First get the vet's usr_id
+  const getUserIdSql = 'SELECT usr_id FROM veterinarian_t WHERE vt_id = ?';
+  
+  db.query(getUserIdSql, [vt_id], (err, vetResult) => {
+    if (err) {
+      console.error('❌ Error fetching vet usr_id:', err);
+      return res.status(500).json({ error: 'Failed to fetch vet info' });
+    }
+    
+    if (vetResult.length === 0) {
+      return res.status(404).json({ error: 'Veterinarian not found' });
+    }
+    
+    const vet_usr_id = vetResult[0].usr_id;
+
+    // Count unread messages across all chats for this vet
+    const sql = `
+      SELECT COUNT(*) as unread_count
+      FROM chat_msg_t cm
+      INNER JOIN chat_t c ON cm.chat_id = c.chat_id
+      WHERE c.vt_id = ? 
+      AND cm.sender_id != ?
+      AND cm.is_read = 'no'
+    `;
+
+    db.query(sql, [vt_id, vet_usr_id], (err, result) => {
+      if (err) {
+        console.error('❌ Error counting unread messages:', err);
+        return res.status(500).json({ error: 'Failed to count unread messages' });
+      }
+
+      console.log(`✅ Unread messages for vet ${vt_id}: ${result[0].unread_count}`);
+      res.status(200).json({ unread_count: result[0].unread_count });
+    });
   });
 });
 

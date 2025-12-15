@@ -63,10 +63,10 @@ const AppointmentDetailsModal = ({
           <div className="view-section">
             <h3>Assigned Veterinarian</h3>
             <div className="view-grid">
-              <div className="view-item" style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                <div style={{ flex: 1 }}>
+            <div className="view-item vet-info-row">
+                <div className="vet-info-content">
                   <strong>Veterinarian</strong>
-                  <div style={{ marginTop: '0.5rem', fontSize: '1.05rem', color: '#1a2e35' }}>
+                  <div className={`vet-name-display ${!appointmentDetails.vet_name ? 'not-assigned' : ''}`}>
                     {appointmentDetails.vet_name || 'Not assigned yet'}
                   </div>
                 </div>
