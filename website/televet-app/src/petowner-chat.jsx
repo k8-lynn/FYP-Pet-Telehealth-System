@@ -620,6 +620,7 @@ React.useEffect(() => {
 
   
   const currentPet = currentChat ? {
+    pet_id: currentChat.petData.pet_id, 
     name: currentChat.petData.pet_name,
     species: currentChat.petData.pet_species,
     breed: currentChat.petData.pet_breed,
@@ -1445,16 +1446,13 @@ React.useEffect(() => {
         chatId={chatId}
         currentUserId={String(userid)}
         currentUserName={`${firstName} ${sessionStorage.getItem('lastName') || ''}`}
-        otherUserId={String(currentChat?.petData?.vet_usr_id)}  // or owner_usr_id for vet
+        otherUserId={String(currentChat?.petData?.vet_usr_id)} // or owner_usr_id for vet
         otherUserName={currentChat?.name}
-        userRole="pp"  // or "vt" for vet
-        petInfo={currentPet}
-        // ❌ REMOVE THIS LINE:
-        // incomingCall={incomingCall}
+        userRole="pp" // or "vt" for vet
+        petInfo={currentPet}  // ✅ Just pass currentPet directly, pet_id is already in it
+        petId={currentChat?.petData?.pet_id}
         onClose={() => {
           setShowVideoCall(false);
-          // ❌ REMOVE THIS LINE:
-          // setIncomingCall(null);
         }}
       />
     )}

@@ -529,6 +529,7 @@ React.useEffect(() => {
   }, [socket, userid]);
 
   const currentPet = currentChat ? {
+    pet_id: currentChat.petData.pet_id, 
     name: currentChat.petData.pet_name,
     species: currentChat.petData.pet_species,
     breed: currentChat.petData.pet_breed,
@@ -1294,16 +1295,14 @@ React.useEffect(() => {
         chatId={chatId}
         currentUserId={String(userid)}
         currentUserName={`${firstName} ${sessionStorage.getItem('lastName') || ''}`}
-        otherUserId={String(currentChat?.petData?.owner_usr_id)}
+        otherUserId={String(currentChat?.petData?.owner_usr_id)} // or owner_usr_id for vet
         otherUserName={currentChat?.name}
-        userRole="vt"  // or "vt" for vet
-        petInfo={currentPet}
-        // ❌ REMOVE THIS LINE:
-        // incomingCall={incomingCall}
+        userRole="vt" // or "vt" for vet
+        petInfo={currentPet}  // ✅ Just pass currentPet directly, pet_id is already in it
+        petId={currentChat?.petData?.pet_id}
+        vtId={vtId} // only for vet-chat.jsx
         onClose={() => {
           setShowVideoCall(false);
-          // ❌ REMOVE THIS LINE:
-          // setIncomingCall(null);
         }}
       />
     )}

@@ -1162,6 +1162,12 @@ const handleBulkGenerateSlots = async () => {
                               <span className="booked-dot"></span>
                               <span>{dayCounts.booked}</span>
                             </div>
+                            {dayCounts.pending > 0 && (
+                              <div className="schedule-month-stat-mini">
+                                <span className="pending-dot"></span>
+                                <span>{dayCounts.pending}</span>
+                              </div>
+                            )}
                           </div>
                         )}
                       </div>

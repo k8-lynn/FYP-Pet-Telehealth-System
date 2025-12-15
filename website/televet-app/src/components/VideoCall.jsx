@@ -1,19 +1,10 @@
-// REWRITTEN VideoCall.jsx — Clean, Correct Call Flow
+// VideoCall.jsx — Clean, Modern Design with Dropdown Menu
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import Peer from "simple-peer/simplepeer.min.js";
-import { Video, VideoOff, Mic, MicOff, PhoneOff, Monitor, X, Maximize2, Minimize2 } from 'lucide-react';
-import '../styles/VideoCall.css';
+import { Video, VideoOff, Mic, MicOff, PhoneOff, X, Maximize2, Minimize2, FileText, ChevronDown, User } from 'lucide-react';
+import PatientProfileModal from './PatientProfileModal';
 
-/**
- * NEW FLOW IMPLEMENTED:
- * Caller clicks Start Call → UI shows "Calling… Waiting for answer"
- * Receiver gets notification with Accept / Decline
- * Receiver clicks Accept → emits answer but CALL DOES NOT START YET
- * Caller sees "Incoming Call… receiver is accepting"
- * When receiver accepts, then caller peer connects → video loads → call starts
- */
-
-const VideoCall = ({ socket, currentUserId, currentUserName, otherUserId, otherUserName, petInfo, incomingCall, onClose }) => {
+const VideoCall = ({ socket, currentUserId, currentUserName, otherUserId, otherUserName, petInfo, petId, vtId, incomingCall, onClose, userRole }) => {
   const [stream, setStream] = useState(null);
   const [receivingCall, setReceivingCall] = useState(false);
   const [caller, setCaller] = useState('');
@@ -24,53 +15,36 @@ const VideoCall = ({ socket, currentUserId, currentUserName, otherUserId, otherU
   const [isMuted, setIsMuted] = useState(false);
   const [isVideoOff, setIsVideoOff] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [showPetInfo, setShowPetInfo] = useState(true);
-  const [endingMessage, setEndingMessage] = useState(''); // ✅ NEW
-  const [showEndingScreen, setShowEndingScreen] = useState(false); // ✅ NEW
+  const [endingMessage, setEndingMessage] = useState('');
+  const [showEndingScreen, setShowEndingScreen] = useState(false);
+  const [showPatientDropdown, setShowPatientDropdown] = useState(false);
+  const [showHealthModal, setShowHealthModal] = useState(false);
   const actualPetInfo = petInfo || incomingCall?.petInfo;
 
   const myVideo = useRef();
   const userVideo = useRef();
   const connectionRef = useRef();
 
-/** ---------------------- LEAVE CALL ---------------------- */
-const leaveCall = useCallback((reason = 'ended') => {
-  // ✅ Notify other user FIRST
-  socket.emit('endCall', { to: otherUserId, reason });
+  const leaveCall = useCallback((reason = 'ended') => {
+    socket.emit('endCall', { to: otherUserId, reason });
+    if (connectionRef.current) connectionRef.current.destroy();
+    if (stream) stream.getTracks().forEach(track => track.stop());
+    
+    const message = reason === 'cancelled' ? 'Call Cancelled' : reason === 'declined' ? 'Call Declined' : 'Call Ended';
+    setEndingMessage(message);
+    setShowEndingScreen(true);
+    
+    setTimeout(() => {
+      setCallEnded(true);
+      onClose();
+    }, 1500);
+  }, [socket, otherUserId, stream, onClose]);
 
-  // ✅ Clean up peer connection
-  if (connectionRef.current) {
-    connectionRef.current.destroy();
-  }
-
-  // ✅ Stop all media tracks
-  if (stream) {
-    stream.getTracks().forEach(track => track.stop());
-  }
-
-  // ✅ Show ending message based on reason
-  const message = reason === 'cancelled' 
-    ? 'Call Cancelled' 
-    : reason === 'declined'
-    ? 'Call Declined'
-    : 'Call Ended';
-  
-  setEndingMessage(message);
-  setShowEndingScreen(true);
-
-  // ✅ Wait 1.5 seconds before closing (reduced from 2)
-  setTimeout(() => {
-    setCallEnded(true);
-    onClose();
-  }, 1500);
-}, [socket, otherUserId, stream, onClose]);
-
-  /** ---------------------- ANSWER CALL ---------------------- */
   const answerCall = useCallback(async () => {
     setReceivingCall(false);
     setCallAccepted(true);
-    setCallStarted(true); // ✅ ADD THIS - start call immediately when accepting
-  
+    setCallStarted(true);
+    
     let mediaStream = null;
     try {
       mediaStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
@@ -79,145 +53,132 @@ const leaveCall = useCallback((reason = 'ended') => {
     } catch (err) {
       console.warn('Media stream error:', err);
     }
-  
+    
     const peer = new Peer({ initiator: false, trickle: false, stream: mediaStream });
-  
-    peer.on('signal', data => {
-      socket.emit('answerCall', { signal: data, to: caller });
-    });
-  
-    peer.on('stream', remoteStream => {
-      if (userVideo.current) userVideo.current.srcObject = remoteStream;
-    });
-  
+    peer.on('signal', data => socket.emit('answerCall', { signal: data, to: caller }));
+    peer.on('stream', remoteStream => { if (userVideo.current) userVideo.current.srcObject = remoteStream; });
     peer.signal(callerSignal);
-  
     connectionRef.current = peer;
   }, [socket, caller, callerSignal]);
 
-  /** ---------------------- CALL USER (INITIATOR) ---------------------- */
-const callUser = useCallback(async () => {
-  setCallStarted(true);
-
-  let mediaStream = null;
-  try {
-    mediaStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-    setStream(mediaStream);
-    if (myVideo.current) myVideo.current.srcObject = mediaStream;
-  } catch (err) {
-    console.warn('Media stream error:', err);
-  }
-
-  const peer = new Peer({ initiator: true, trickle: false, stream: mediaStream });
-
-  peer.on('signal', data => {
-    socket.emit('callUser', {
-      userToCall: String(otherUserId),
-      from: String(currentUserId),
-      name: currentUserName,
-      signalData: data,
-      petInfo: petInfo  // ✅ ADD THIS LINE
-    });
-  });
-
-  peer.on('stream', remoteStream => {
-    if (userVideo.current) userVideo.current.srcObject = remoteStream;
-  });
-
-  connectionRef.current = peer;
-}, [socket, otherUserId, currentUserId, currentUserName, petInfo]); // ✅ ADD petInfo to dependencies
-
-/** ---------------------- SOCKET LISTENERS ---------------------- */
-useEffect(() => {
-  if (!socket) return;
-
-  // ✅ Update this section to handle petInfo
-  if (incomingCall) {
-    setReceivingCall(true);
-    setCaller(incomingCall.from);
-    setCallerSignal(incomingCall.signal);
-    // ✅ If petInfo was passed, you could store it here if needed
-  }
-
-  const incomingCallHandler = ({ from, name, signal, petInfo: incomingPetInfo }) => { // ✅ ADD petInfo parameter
-    setReceivingCall(true);
-    setCaller(from);
-    setCallerSignal(signal);
-    // ✅ If you need to use the incoming petInfo, you can store it in state
-    // For now, the parent component should pass it via props
-  };
-
-  const callAcceptedHandler = ({ signal }) => {
-    setCallAccepted(true);
-    if (connectionRef.current) connectionRef.current.signal(signal);
-  };
-
-  const callEndedHandler = ({ reason }) => {
-    const message = reason === 'cancelled' 
-      ? 'Call Cancelled' 
-      : reason === 'declined'
-      ? 'Call Declined'
-      : 'Call Ended';
+  const callUser = useCallback(async () => {
+    setCallStarted(true);
+    let mediaStream = null;
+    try {
+      mediaStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      setStream(mediaStream);
+      if (myVideo.current) myVideo.current.srcObject = mediaStream;
+    } catch (err) {
+      console.warn('Media stream error:', err);
+    }
     
-    setEndingMessage(message);
-    setShowEndingScreen(true);
+    const peer = new Peer({ initiator: true, trickle: false, stream: mediaStream });
+    peer.on('signal', data => {
+      socket.emit('callUser', {
+        userToCall: String(otherUserId),
+        from: String(currentUserId),
+        name: currentUserName,
+        signalData: data,
+        petInfo: petInfo
+      });
+    });
+    peer.on('stream', remoteStream => { if (userVideo.current) userVideo.current.srcObject = remoteStream; });
+    connectionRef.current = peer;
+  }, [socket, otherUserId, currentUserId, currentUserName, petInfo]);
 
-    if (connectionRef.current) {
-      connectionRef.current.destroy();
+  useEffect(() => {
+    if (!socket) return;
+    
+    if (incomingCall) {
+      setReceivingCall(true);
+      setCaller(incomingCall.from);
+      setCallerSignal(incomingCall.signal);
+      // ✅ Store petInfo from incoming call
+      if (incomingCall.petInfo && !petInfo) {
+        // This ensures petInfo is available for the receiver
+        console.log('📞 Storing petInfo from incoming call:', incomingCall.petInfo);
+      }
     }
-    if (stream) {
-      stream.getTracks().forEach(track => track.stop());
-    }
+    
+    const incomingCallHandler = ({ from, name, signal, petInfo: incomingPetInfo }) => {
+      setReceivingCall(true);
+      setCaller(from);
+      setCallerSignal(signal);
+      // ✅ petInfo is already handled by actualPetInfo
+    };
 
-    setTimeout(() => {
-      setCallEnded(true);
-      onClose();
-    }, 2000);
-  };
+    const callAcceptedHandler = ({ signal }) => {
+      setCallAccepted(true);
+      if (connectionRef.current) connectionRef.current.signal(signal);
+    };
 
-  socket.on('callUser', incomingCallHandler);
-  socket.on('callAccepted', callAcceptedHandler);
-  socket.on('callEnded', callEndedHandler);
+    const callEndedHandler = ({ reason }) => {
+      const message = reason === 'cancelled' ? 'Call Cancelled' : reason === 'declined' ? 'Call Declined' : 'Call Ended';
+      setEndingMessage(message);
+      setShowEndingScreen(true);
+      if (connectionRef.current) connectionRef.current.destroy();
+      if (stream) stream.getTracks().forEach(track => track.stop());
+      setTimeout(() => {
+        setCallEnded(true);
+        onClose();
+      }, 2000);
+    };
 
-  return () => {
-    socket.off('callUser', incomingCallHandler);
-    socket.off('callAccepted', callAcceptedHandler);
-    socket.off('callEnded', callEndedHandler);
-  };
-}, [socket, leaveCall, incomingCall, stream, onClose]);
+    socket.on('callUser', incomingCallHandler);
+    socket.on('callAccepted', callAcceptedHandler);
+    socket.on('callEnded', callEndedHandler);
 
-  /** ---------------------- TOGGLE AUDIO/VIDEO ---------------------- */
+    return () => {
+      socket.off('callUser', incomingCallHandler);
+      socket.off('callAccepted', callAcceptedHandler);
+      socket.off('callEnded', callEndedHandler);
+    };
+  }, [socket, leaveCall, incomingCall, stream, onClose]);
+
   const toggleMute = () => {
     if (!stream) return;
-    
     const audioTrack = stream.getAudioTracks()[0];
     if (!audioTrack) return;
-    
     const newMutedState = !isMuted;
     audioTrack.enabled = !newMutedState;
     setIsMuted(newMutedState);
-    
-    console.log('🎤 Audio', newMutedState ? 'MUTED' : 'UNMUTED');
   };
   
   const toggleVideo = () => {
     if (!stream) return;
-    
     const videoTrack = stream.getVideoTracks()[0];
     if (!videoTrack) return;
-    
     const newVideoOffState = !isVideoOff;
     videoTrack.enabled = !newVideoOffState;
     setIsVideoOff(newVideoOffState);
-    
-    console.log('📹 Video', newVideoOffState ? 'OFF' : 'ON');
   };
-  /** ---------------------- UI ---------------------- */
+
   return (
-    <div className={`video-call-overlay ${isFullscreen ? 'fullscreen' : ''}`}>
-      <div className="video-call-container">
-  
-        {/* ✅ ENDING SCREEN */}
+    <div style={{
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      background: 'rgba(0, 0, 0, 0.95)',
+      zIndex: 10000,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center'
+    }}>
+      <div style={{
+        width: isFullscreen ? '100%' : '90%',
+        maxWidth: isFullscreen ? 'none' : '1400px',
+        height: isFullscreen ? '100vh' : '90vh',
+        background: '#1a1a1a',
+        borderRadius: isFullscreen ? 0 : '16px',
+        overflow: 'hidden',
+        display: 'flex',
+        flexDirection: 'column',
+        boxShadow: '0 20px 60px rgba(0, 0, 0, 0.5)'
+      }}>
+        
+        {/* Ending Screen */}
         {showEndingScreen && (
           <div style={{
             position: 'absolute',
@@ -234,190 +195,482 @@ useEffect(() => {
             color: 'white'
           }}>
             <PhoneOff size={64} style={{ marginBottom: '20px', opacity: 0.7 }} />
-            <h2 style={{ fontSize: '32px', fontWeight: '600', margin: 0 }}>
-              {endingMessage}
-            </h2>
-            <p style={{ fontSize: '16px', opacity: 0.7, marginTop: '10px' }}>
-              Closing...
-            </p>
+            <h2 style={{ fontSize: '32px', fontWeight: '600', margin: 0 }}>{endingMessage}</h2>
+            <p style={{ fontSize: '16px', opacity: 0.7, marginTop: '10px' }}>Closing...</p>
           </div>
         )}
 
-        {/* HEADER */}
-        <div className="video-call-header">
-          <div className="call-info">
-            <h3>
-              {callAccepted && callStarted
-                ? `In call with ${otherUserName}`
-                : receivingCall
-                ? `Incoming call from ${otherUserName}`
-                : callStarted
-                ? `Calling ${otherUserName}... Waiting for answer`
-                : `Ready to Start`}
+        {/* Header */}
+        <div style={{
+          background: 'rgba(0, 0, 0, 0.5)',
+          padding: '20px',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          backdropFilter: 'blur(10px)'
+        }}>
+          <div>
+            <h3 style={{ color: 'white', margin: 0, fontSize: '18px' }}>
+              {callAccepted && callStarted ? `In call with ${otherUserName}` :
+               receivingCall ? `Incoming call from ${otherUserName}` :
+               callStarted ? `Calling ${otherUserName}... Waiting for answer` :
+               'Ready to Start'}
             </h3>
-            <p>{actualPetInfo?.name ? `Patient: ${actualPetInfo.name}` : 'Telehealth Session'}</p>
+            <p style={{ color: 'rgba(255, 255, 255, 0.7)', margin: '4px 0 0', fontSize: '14px' }}>
+              {actualPetInfo?.name ? `Patient: ${actualPetInfo.name}` : 'Telehealth Session'}
+            </p>
           </div>
 
-          <div className="header-actions">
-            <button onClick={() => setShowPetInfo(!showPetInfo)} className="icon-btn"><Monitor size={20} /></button>
-            <button onClick={() => setIsFullscreen(!isFullscreen)} className="icon-btn">
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button onClick={() => setIsFullscreen(!isFullscreen)} style={{
+              background: 'rgba(255, 255, 255, 0.1)',
+              border: 'none',
+              color: 'white',
+              padding: '8px',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              transition: 'all 0.2s'
+            }}>
               {isFullscreen ? <Minimize2 size={20} /> : <Maximize2 size={20} />}
             </button>
-            {/* ✅ UPDATED: Call leaveCall only if in active call, otherwise just close */}
-            <button 
-              onClick={() => {
-                if (callStarted || receivingCall) {
-                  leaveCall('ended');
-                } else {
-                  // Just close without showing ending screen
-                  if (stream) {
-                    stream.getTracks().forEach(track => track.stop());
-                  }
-                  onClose();
-                }
-              }} 
-              className="icon-btn close-btn"
-            >
+            <button onClick={() => {
+              if (callStarted || receivingCall) {
+                leaveCall('ended');
+              } else {
+                if (stream) stream.getTracks().forEach(track => track.stop());
+                onClose();
+              }
+            }} style={{
+              background: 'rgba(239, 68, 68, 0.3)',
+              border: 'none',
+              color: 'white',
+              padding: '8px',
+              borderRadius: '8px',
+              cursor: 'pointer'
+            }}>
               <X size={20} />
             </button>
           </div>
         </div>
 
-        {/* VIDEO GRID */}
-        <div className="video-grid">
+        {/* Video Area */}
+        <div style={{ flex: 1, position: 'relative', background: '#000' }}>
+          {/* Remote Video */}
+          {callAccepted && !callEnded ? (
+            <video ref={userVideo} autoPlay playsInline style={{
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover'
+            }} />
+          ) : (
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              height: '100%',
+              color: 'white'
+            }}>
+              <div style={{
+                width: '120px',
+                height: '120px',
+                borderRadius: '50%',
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '48px',
+                fontWeight: 'bold',
+                marginBottom: '20px'
+              }}>
+                {otherUserName?.charAt(0)}
+              </div>
+              <h3 style={{ margin: '0 0 8px', fontSize: '24px' }}>
+                {receivingCall ? 'Incoming Call...' :
+                 callStarted && !callAccepted ? 'Calling... Waiting for answer' :
+                 callStarted && callAccepted ? 'Connecting...' :
+                 'Ready to Start'}
+              </h3>
+              <p style={{ margin: 0, color: 'rgba(255, 255, 255, 0.7)' }}>
+                {receivingCall ? `${otherUserName} is calling you` :
+                 callStarted ? '' :
+                 'Click "Start Call" below'}
+              </p>
+            </div>
+          )}
 
-          {/* REMOTE VIDEO */}
-          <div className="video-container main-video">
-            {callAccepted && !callEnded ? (
-              <video ref={userVideo} autoPlay playsInline className="video-element" />
-            ) : (
-              <div className="waiting-screen">
-                <div className="avatar-large">{otherUserName?.charAt(0)}</div>
-                <h3>
-                  {receivingCall
-                    ? 'Incoming Call...'
-                    : callStarted && !callAccepted
-                    ? 'Calling... Waiting for answer'
-                    : callStarted && callAccepted
-                    ? 'Connecting...'
-                    : 'Ready to Start'}
-                </h3>
-                <p>
-                  {receivingCall
-                    ? `${otherUserName} is calling you`
-                    : callStarted
-                    ? ''
-                    : 'Click "Start Call" below'}
-                </p>
+          {/* Local Video */}
+          <div style={{
+            width: '240px',
+            height: '180px',
+            position: 'absolute',
+            bottom: '20px',
+            right: '20px',
+            background: '#000',
+            borderRadius: '12px',
+            overflow: 'hidden',
+            border: '2px solid rgba(255, 255, 255, 0.2)'
+          }}>
+            <video ref={myVideo} autoPlay playsInline muted style={{
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+              display: isVideoOff ? 'none' : 'block'
+            }} />
+            {(isVideoOff || !stream) && (
+              <div style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                background: '#1a1a1a'
+              }}>
+                <VideoOff size={32} style={{ opacity: 0.5, color: 'white' }} />
+              </div>
+            )}
+            <div style={{
+              position: 'absolute',
+              bottom: '12px',
+              left: '12px',
+              background: 'rgba(0, 0, 0, 0.7)',
+              color: 'white',
+              padding: '6px 12px',
+              borderRadius: '6px',
+              fontSize: '14px',
+              backdropFilter: 'blur(10px)'
+            }}>You</div>
+            {isMuted && (
+              <div style={{
+                position: 'absolute',
+                top: '10px',
+                left: '10px',
+                backgroundColor: 'rgba(239, 68, 68, 0.9)',
+                padding: '4px 8px',
+                borderRadius: '4px',
+                fontSize: '12px',
+                fontWeight: '600',
+                color: 'white',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px'
+              }}>
+                <MicOff size={14} /> Muted
               </div>
             )}
           </div>
 
-          {/* LOCAL VIDEO */}
-          <div className="video-container local-video">
-          <video 
-            ref={myVideo} 
-            autoPlay 
-            playsInline 
-            muted 
-            className={`video-element ${isVideoOff ? 'hidden' : ''}`} 
-          />
-          {(isVideoOff || !stream) && (
-            <div className="video-placeholder" style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              backgroundColor: '#1a1a1a'
-            }}>
-              <VideoOff size={32} style={{ opacity: 0.5 }} />
-            </div>
-          )}
-          <div className="video-label">You</div>
-          {/* ✅ Add visual indicators */}
-          {isMuted && (
+          {/* Patient Info Dropdown */}
+          {actualPetInfo && (
             <div style={{
               position: 'absolute',
-              top: '10px',
-              left: '10px',
-              backgroundColor: 'rgba(239, 68, 68, 0.9)',
-              padding: '4px 8px',
-              borderRadius: '4px',
-              fontSize: '12px',
-              fontWeight: '600'
+              top: '20px',
+              left: '20px',
+              zIndex: 100
             }}>
-              <MicOff size={14} style={{ verticalAlign: 'middle' }} /> Muted
-            </div>
-          )}
-        </div>
+              <button onClick={() => setShowPatientDropdown(!showPatientDropdown)} style={{
+                background: 'rgba(0, 0, 0, 0.7)',
+                backdropFilter: 'blur(10px)',
+                border: '1px solid rgba(255, 255, 255, 0.2)',
+                color: 'white',
+                padding: '12px 16px',
+                borderRadius: '12px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                fontSize: '14px',
+                fontWeight: '600',
+                transition: 'all 0.2s'
+              }}>
+                <User size={18} />
+                Patient Info
+                <ChevronDown size={16} style={{
+                  transform: showPatientDropdown ? 'rotate(180deg)' : 'rotate(0deg)',
+                  transition: 'transform 0.2s'
+                }} />
+              </button>
 
-          {/* PET INFO */}
-          {showPetInfo && actualPetInfo && (
-            <div className="video-pet-info">
-              <h4>Patient Info</h4>
-              <div className="pet-info-item">
-                <span className="pet-emoji">{actualPetInfo.image || '🐾'}</span>
-                <div>
-                  <p className="pet-name">{actualPetInfo.name}</p>
-                  <p className="pet-details">{actualPetInfo.species} • {actualPetInfo.breed}</p>
+              {showPatientDropdown && (
+                <div style={{
+                  position: 'absolute',
+                  top: '100%',
+                  left: 0,
+                  marginTop: '8px',
+                  background: 'rgba(0, 0, 0, 0.9)',
+                  backdropFilter: 'blur(10px)',
+                  border: '1px solid rgba(255, 255, 255, 0.2)',
+                  borderRadius: '12px',
+                  padding: '16px',
+                  minWidth: '320px',
+                  maxWidth: '400px',
+                  maxHeight: '500px',
+                  overflowY: 'auto',
+                  color: 'white'
+                }}>
+                  {/* Pet Header */}
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                    marginBottom: '16px',
+                    paddingBottom: '16px',
+                    borderBottom: '1px solid rgba(255, 255, 255, 0.1)'
+                  }}>
+                    {actualPetInfo.image ? (
+                      <img src={`http://localhost:5000${actualPetInfo.image}`} alt={actualPetInfo.name} style={{
+                        width: '64px',
+                        height: '64px',
+                        borderRadius: '50%',
+                        objectFit: 'cover'
+                      }} />
+                    ) : (
+                      <div style={{
+                        width: '64px',
+                        height: '64px',
+                        borderRadius: '50%',
+                        background: 'rgba(255, 255, 255, 0.1)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '32px'
+                      }}>
+                        {actualPetInfo.species?.toLowerCase().includes('dog') ? '🐕' : '🐱'}
+                      </div>
+                    )}
+                    <div>
+                      <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600' }}>{actualPetInfo.name}</h3>
+                      <p style={{ margin: '4px 0 0', fontSize: '14px', color: 'rgba(255, 255, 255, 0.7)' }}>
+                        {actualPetInfo.species} • {actualPetInfo.breed}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Quick Stats Grid */}
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: '1fr 1fr',
+                    gap: '8px',
+                    marginBottom: '16px'
+                  }}>
+                    {[
+                      { label: 'Gender', value: actualPetInfo.gender },
+                      { label: 'Age', value: actualPetInfo.age },
+                      { label: 'Weight', value: actualPetInfo.weight },
+                      { label: 'Diet', value: actualPetInfo.dietType || 'N/A' }
+                    ].map((item, idx) => (
+                      <div key={idx} style={{
+                        background: 'rgba(255, 255, 255, 0.05)',
+                        padding: '12px',
+                        borderRadius: '8px',
+                        textAlign: 'center'
+                      }}>
+                        <div style={{ fontSize: '11px', color: 'rgba(255, 255, 255, 0.6)', marginBottom: '4px', textTransform: 'uppercase', fontWeight: '600' }}>
+                          {item.label}
+                        </div>
+                        <div style={{ fontSize: '14px', fontWeight: '500' }}>{item.value}</div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Medical Badges */}
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: '1fr 1fr 1fr',
+                    gap: '8px',
+                    marginBottom: '16px'
+                  }}>
+                    {[
+                      { icon: '💉', label: 'Vacc', status: actualPetInfo.vaccinations?.[0] !== 'No vaccination records' },
+                      { icon: '💊', label: 'Meds', status: actualPetInfo.medications?.[0] !== 'No active medications' },
+                      { icon: '⚠️', label: 'Allergy', status: actualPetInfo.allergies?.[0] !== 'No known allergies' }
+                    ].map((item, idx) => (
+                      <div key={idx} style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        padding: '12px',
+                        background: item.status ? 'rgba(251, 191, 36, 0.2)' : 'rgba(255, 255, 255, 0.05)',
+                        borderRadius: '8px'
+                      }}>
+                        <div style={{ fontSize: '24px', marginBottom: '4px' }}>{item.icon}</div>
+                        <div style={{ fontSize: '11px', color: 'rgba(255, 255, 255, 0.6)', fontWeight: '600' }}>{item.label}</div>
+                        <div style={{ fontSize: '12px', fontWeight: '500' }}>{item.status ? 'Yes' : 'No'}</div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Behavioral Notes */}
+                  {actualPetInfo.behavioralNotes && (
+                    <div style={{
+                      background: 'rgba(255, 255, 255, 0.05)',
+                      padding: '12px',
+                      borderRadius: '8px',
+                      marginBottom: '16px'
+                    }}>
+                      <div style={{ fontSize: '11px', fontWeight: '600', color: 'rgba(255, 255, 255, 0.6)', textTransform: 'uppercase', marginBottom: '8px' }}>
+                        Behavioral Notes
+                      </div>
+                      <div style={{ fontSize: '13px', lineHeight: '1.5' }}>{actualPetInfo.behavioralNotes}</div>
+                    </div>
+                  )}
+
+                  {/* View Complete Records Button */}
+                  <button onClick={() => {
+                    setShowPatientDropdown(false);
+                    setShowHealthModal(true);
+                  }} style={{
+                    width: '100%',
+                    padding: '12px',
+                    background: 'rgba(59, 130, 246, 0.2)',
+                    border: '1px solid rgba(59, 130, 246, 0.3)',
+                    borderRadius: '8px',
+                    color: '#60a5fa',
+                    fontWeight: '600',
+                    fontSize: '14px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                    transition: 'all 0.2s'
+                  }}>
+                    <FileText size={16} />
+                    View Complete Records
+                  </button>
                 </div>
-              </div>
-              <div className="pet-vitals">
-                <div className="vital-item"><span>Age</span><span>{actualPetInfo.age}</span></div>
-                <div className="vital-item"><span>Weight</span><span>{actualPetInfo.weight}</span></div>
-              </div>
+              )}
             </div>
           )}
         </div>
 
-        {/* CONTROLS */}
-        <div className="video-call-controls">
+        {/* Controls */}
+        <div style={{
+          background: 'rgba(0, 0, 0, 0.5)',
+          padding: '24px',
+          display: 'flex',
+          justifyContent: 'center',
+          gap: '16px',
+          backdropFilter: 'blur(10px)'
+        }}>
           {receivingCall && !callAccepted ? (
-            <div className="incoming-call-actions">
-              <button onClick={answerCall} className="accept-btn">
+            <>
+              <button onClick={answerCall} style={{
+                padding: '16px 32px',
+                borderRadius: '50px',
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: '16px',
+                fontWeight: '600',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                background: '#10b981',
+                color: 'white'
+              }}>
                 <Video size={24} /> Accept
               </button>
-              <button onClick={() => leaveCall('declined')} className="decline-btn">
+              <button onClick={() => leaveCall('declined')} style={{
+                padding: '16px 32px',
+                borderRadius: '50px',
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: '16px',
+                fontWeight: '600',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                background: '#ef4444',
+                color: 'white'
+              }}>
                 <PhoneOff size={24} /> Decline
               </button>
-            </div>
+            </>
           ) : !callStarted ? (
-            <button onClick={callUser} className="start-call-btn">
+            <button onClick={callUser} style={{
+              padding: '16px 32px',
+              borderRadius: '50px',
+              border: 'none',
+              cursor: 'pointer',
+              fontSize: '16px',
+              fontWeight: '600',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              background: '#3b82f6',
+              color: 'white'
+            }}>
               <Video size={24} /> Start Call
             </button>
           ) : callStarted && callAccepted ? (
-            <div className="active-call-controls">
-              <button 
-                onClick={toggleMute} 
-                className={`control-btn ${isMuted ? 'active' : ''}`}
-                title={isMuted ? 'Unmute' : 'Mute'}
-              >
+            <>
+              <button onClick={toggleMute} style={{
+                background: isMuted ? 'rgba(239, 68, 68, 0.3)' : 'rgba(255, 255, 255, 0.1)',
+                border: 'none',
+                color: 'white',
+                padding: '16px',
+                borderRadius: '50%',
+                cursor: 'pointer'
+              }} title={isMuted ? 'Unmute' : 'Mute'}>
                 {isMuted ? <MicOff size={24} /> : <Mic size={24} />}
               </button>
-              <button 
-                onClick={toggleVideo} 
-                className={`control-btn ${isVideoOff ? 'active' : ''}`}
-                title={isVideoOff ? 'Turn on camera' : 'Turn off camera'}
-              >
+              <button onClick={toggleVideo} style={{
+                background: isVideoOff ? 'rgba(239, 68, 68, 0.3)' : 'rgba(255, 255, 255, 0.1)',
+                border: 'none',
+                color: 'white',
+                padding: '16px',
+                borderRadius: '50%',
+                cursor: 'pointer'
+              }} title={isVideoOff ? 'Turn on camera' : 'Turn off camera'}>
                 {isVideoOff ? <VideoOff size={24} /> : <Video size={24} />}
               </button>
-              <button onClick={() => leaveCall('ended')} className="end-call-btn">
+              <button onClick={() => leaveCall('ended')} style={{
+                padding: '16px 32px',
+                borderRadius: '50px',
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: '16px',
+                fontWeight: '600',
+                background: '#ef4444',
+                color: 'white'
+              }}>
                 <PhoneOff size={24} />
               </button>
-            </div>
+            </>
           ) : (
-            <div className="waiting-controls">
-              <button onClick={() => leaveCall('cancelled')} className="end-call-btn">
-                <PhoneOff size={24} /> Cancel
-              </button>
-            </div>
+            <button onClick={() => leaveCall('cancelled')} style={{
+              padding: '16px 32px',
+              borderRadius: '50px',
+              border: 'none',
+              cursor: 'pointer',
+              fontSize: '16px',
+              fontWeight: '600',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              background: '#ef4444',
+              color: 'white'
+            }}>
+              <PhoneOff size={24} /> Cancel
+            </button>
           )}
         </div>
       </div>
+
+      {/* Patient Profile Modal */}
+      {showHealthModal && actualPetInfo && (
+        <div style={{ position: 'fixed', zIndex: 10001 }}>
+          <PatientProfileModal
+            petId={actualPetInfo.pet_id || petId}
+            vtId={vtId || null}
+            onClose={() => setShowHealthModal(false)}
+            viewMode={userRole === 'pp' ? 'petowner' : 'vet'}
+          />
+        </div>
+      )}
     </div>
   );
 };

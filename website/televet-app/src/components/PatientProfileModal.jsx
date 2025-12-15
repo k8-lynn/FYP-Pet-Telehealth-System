@@ -752,7 +752,7 @@ const PatientProfileModal = ({
                               <div key={exam.appt_id} className="examination-card">
                                 <div className="exam-header" onClick={() => setExpandedExam(expandedExam === exam.appt_id ? null : exam.appt_id)}>
                                   <div className="exam-header-left">
-                                    <span className={`exam-type exam-${exam.appt_type.toLowerCase().replace(/\s+/g, '-')}`}>
+                                    <span className={`exam-type exam-${exam.appt_type.toLowerCase().replace(/\s*&\s*/g, '-').replace(/\s+/g, '-')}`}>
                                       {exam.appt_type}
                                     </span>
                                     <span className="exam-date">

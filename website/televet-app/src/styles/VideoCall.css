@@ -168,47 +168,87 @@
     max-height: 100%;
     overflow-y: auto;
   }
-  
+
   .video-pet-info h4 {
     margin: 0 0 16px;
     font-size: 16px;
     color: rgba(255, 255, 255, 0.9);
   }
-  
+
   .pet-info-item {
     display: flex;
+    align-items: center;
     gap: 12px;
     margin-bottom: 16px;
   }
-  
-  .pet-emoji {
-    font-size: 36px;
+
+  .pet-info-item > div {
+    color: white; /* ✅ Force white for container */
   }
-  
+
+  .pet-emoji {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    background: rgba(255, 255, 255, 0.1);
+    flex-shrink: 0;
+  }
+
+  .pet-avatar-img {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+    border: 2px solid rgba(255, 255, 255, 0.1);
+  }
+
   .pet-name {
     margin: 0;
     font-size: 18px;
     font-weight: 600;
+    color: white !important; /* ✅ Always white with !important */
   }
-  
+
   .pet-details {
     margin: 4px 0 0;
     font-size: 14px;
-    color: rgba(255, 255, 255, 0.7);
+    color: rgba(255, 255, 255, 0.7) !important; /* ✅ Slightly dimmed for contrast */
   }
-  
+
   .pet-vitals {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 12px;
     margin: 16px 0;
   }
-  
+
   .vital-item {
     background: rgba(255, 255, 255, 0.05);
     padding: 12px;
     border-radius: 8px;
     text-align: center;
+    color: white; /* ✅ Ensure white text */
+  }
+
+  .vital-item span {
+    display: block;
+    color: white !important; /* ✅ Force white for both spans */
+  }
+
+  .vital-item span:first-child {
+    font-size: 12px;
+    opacity: 0.7;
+    margin-bottom: 4px;
+  }
+
+  .vital-item span:last-child {
+    font-size: 16px;
+    font-weight: 600;
   }
   
   .vital-label {
@@ -360,3 +400,71 @@
   .video-element.hidden {
     display: none !important;
   }
+
+  .video-pet-info {
+    background: rgba(0, 0, 0, 0.5);
+    border-radius: 12px;
+    padding: 20px;
+    color: white;
+    backdrop-filter: blur(10px);
+    max-height: calc(100vh - 280px);
+    overflow-y: auto;
+    overflow-x: hidden;
+    position: relative;
+    z-index: 5; /* Below modal but above videos */
+  }
+  
+  .video-pet-info::-webkit-scrollbar {
+    width: 6px;
+  }
+  
+  .video-pet-info::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 3px;
+  }
+  
+  .video-pet-info::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 3px;
+  }
+  
+  .video-pet-info::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.3);
+  }
+  
+  .vital-item {
+    background: rgba(255, 255, 255, 0.05);
+    padding: 12px;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  /* Ensure modal appears above everything */
+.mypatients-modal-overlay {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  z-index: 10001 !important; /* Above video call overlay */
+  background: rgba(0, 0, 0, 0.75) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  overflow-y: auto !important;
+}
+
+.mypatients-modal-content {
+  position: relative !important;
+  z-index: 10002 !important;
+  max-height: 90vh !important;
+  overflow-y: auto !important;
+  margin: 2rem !important;
+}
+
+/* Make video call overlay lower than modal */
+.video-call-overlay {
+  z-index: 10000;
+}
