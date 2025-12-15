@@ -1,8 +1,10 @@
+//myprofile.jsx
 import React, { useState, useEffect } from 'react';
 import ProfileNotification from './components/ProfileNotification';
 import { User, Mail, Lock, MapPin, Phone, FileText, Award, Building, Calendar, Save, X } from 'lucide-react';
 import PetOwnerNavbar from './components/petowner-navbar';
 import VetAdminNavbar from './components/vetadmin-navbar';
+import VetNavbar from './components/vet-navbar';
 import './styles/myprofile.css';
 
 const MyProfile = () => {
@@ -52,20 +54,25 @@ const MyProfile = () => {
   const handleSave = async () => {
     setSaving(true);
     setMessage({ type: '', text: '' });
-
+  
     try {
-      const endpoint = userType === 'petParent'
-        ? `http://localhost:5000/api/profile/petparent/${userId}`
-        : `http://localhost:5000/api/profile/vetadmin/${userId}`;
-
+      let endpoint;
+      if (userType === 'petParent') {
+        endpoint = `http://localhost:5000/api/profile/petparent/${userId}`;
+      } else if (userType === 'vetAdmin') {
+        endpoint = `http://localhost:5000/api/profile/vetadmin/${userId}`;
+      } else if (userType === 'veterinarian') {
+        endpoint = `http://localhost:5000/api/profile/veterinarian/${userId}`;
+      }
+  
       const response = await fetch(endpoint, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData)
       });
-
+  
       const data = await response.json();
-
+  
       if (response.ok) {
         setUserData(formData);
         setIsEditing(false);
@@ -123,15 +130,21 @@ const MyProfile = () => {
           sidebarOpen={sidebarOpen} 
           setSidebarOpen={setSidebarOpen} 
         />
-      ) : (
+      ) : userType === 'vetAdmin' ? (
         <VetAdminNavbar 
+          userType={userType} 
+          sidebarOpen={sidebarOpen} 
+          setSidebarOpen={setSidebarOpen} 
+        />
+      ) : (
+        <VetNavbar 
           userType={userType} 
           sidebarOpen={sidebarOpen} 
           setSidebarOpen={setSidebarOpen} 
         />
       )}
       
-      <div className={userType === 'vetAdmin' ? 'vetadmin-main-content' : 'main-content'}>
+      <div className={userType === 'vetAdmin' || userType === 'veterinarian' ? 'vetadmin-main-content' : 'main-content'}>
         <ProfileNotification firstName={userData?.usr_firstName} />
         
         <div className="content-area">
@@ -501,6 +514,233 @@ const MyProfile = () => {
                             ) : (
                               <span>{userData?.va_clinicEmail}</span>
                             )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {/* Veterinarian Profile */}
+                {userType === 'veterinarian' && (
+                  <>
+                    <div className="profile-section">
+                      <h3 className="section-heading">Account Information</h3>
+                      <div className="profile-grid">
+                        <div className="profile-field readonly">
+                          <label>Veterinarian ID</label>
+                          <div className="field-content">
+                            <FileText size={20} />
+                            <span>{userData?.vt_id}</span>
+                          </div>
+                        </div>
+
+                        <div className="profile-field readonly">
+                          <label>Account Type</label>
+                          <div className="field-content">
+                            <Award size={20} />
+                            <span>Veterinarian</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="profile-section">
+                      <h3 className="section-heading">Personal Information</h3>
+                      <div className="profile-grid">
+                        <div className="profile-field">
+                          <label>First Name</label>
+                          <div className="field-content">
+                            <User size={20} />
+                            {isEditing ? (
+                              <input
+                                type="text"
+                                name="usr_firstName"
+                                value={formData.usr_firstName || ''}
+                                onChange={handleInputChange}
+                              />
+                            ) : (
+                              <span>{userData?.usr_firstName}</span>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="profile-field">
+                          <label>Last Name</label>
+                          <div className="field-content">
+                            <User size={20} />
+                            {isEditing ? (
+                              <input
+                                type="text"
+                                name="usr_lastName"
+                                value={formData.usr_lastName || ''}
+                                onChange={handleInputChange}
+                              />
+                            ) : (
+                              <span>{userData?.usr_lastName}</span>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="profile-field">
+                          <label>Email</label>
+                          <div className="field-content">
+                            <Mail size={20} />
+                            {isEditing ? (
+                              <input
+                                type="email"
+                                name="usr_email"
+                                value={formData.usr_email || ''}
+                                onChange={handleInputChange}
+                              />
+                            ) : (
+                              <span>{userData?.usr_email}</span>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="profile-field">
+                          <label>Password</label>
+                          <div className="field-content">
+                            <Lock size={20} />
+                            {isEditing ? (
+                              <input
+                                type="password"
+                                name="usr_password"
+                                value={formData.usr_password || ''}
+                                onChange={handleInputChange}
+                              />
+                            ) : (
+                              <span>••••••••</span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="profile-section">
+                      <h3 className="section-heading">Professional Information</h3>
+                      <div className="profile-grid">
+                        <div className="profile-field">
+                          <label>License Number</label>
+                          <div className="field-content">
+                            <Award size={20} />
+                            {isEditing ? (
+                              <input
+                                type="text"
+                                name="vt_licenseNumber"
+                                value={formData.vt_licenseNumber || ''}
+                                onChange={handleInputChange}
+                              />
+                            ) : (
+                              <span>{userData?.vt_licenseNumber}</span>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="profile-field">
+                          <label>Licensing Authority</label>
+                          <div className="field-content">
+                            <Building size={20} />
+                            {isEditing ? (
+                              <input
+                                type="text"
+                                name="vt_licensingAuthority"
+                                value={formData.vt_licensingAuthority || ''}
+                                onChange={handleInputChange}
+                              />
+                            ) : (
+                              <span>{userData?.vt_licensingAuthority}</span>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="profile-field">
+                          <label>Years of Practice</label>
+                          <div className="field-content">
+                            <Calendar size={20} />
+                            {isEditing ? (
+                              <input
+                                type="number"
+                                name="vt_yearsOfPractice"
+                                value={formData.vt_yearsOfPractice || ''}
+                                onChange={handleInputChange}
+                              />
+                            ) : (
+                              <span>{userData?.vt_yearsOfPractice} years</span>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="profile-field">
+                          <label>Specialization</label>
+                          <div className="field-content">
+                            <Award size={20} />
+                            {isEditing ? (
+                              <input
+                                type="text"
+                                name="vt_specialization"
+                                value={formData.vt_specialization || ''}
+                                onChange={handleInputChange}
+                              />
+                            ) : (
+                              <span>{userData?.vt_specialization || 'Not specified'}</span>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="profile-field">
+                          <label>Patients Assigned</label>
+                          <div className="field-content">
+                            <User size={20} />
+                            <span>{userData?.vt_patientsAssigned || 0}</span>
+                          </div>
+                        </div>
+
+                        <div className="profile-field">
+                          <label>On Duty Status</label>
+                          <div className="field-content">
+                            <Calendar size={20} />
+                            <span className={userData?.vt_onDutyToday === 'yes' ? 'status-active' : 'status-inactive'}>
+                              {userData?.vt_onDutyToday === 'yes' ? 'On Duty' : 'Off Duty'}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="profile-section">
+                      <h3 className="section-heading">Clinic Information</h3>
+                      <div className="profile-grid">
+                        <div className="profile-field">
+                          <label>Clinic Name</label>
+                          <div className="field-content">
+                            <Building size={20} />
+                            <span>{userData?.vt_clinicName}</span>
+                          </div>
+                        </div>
+
+                        <div className="profile-field">
+                          <label>Location</label>
+                          <div className="field-content">
+                            <MapPin size={20} />
+                            <span>{userData?.vt_vetLocation}</span>
+                          </div>
+                        </div>
+
+                        <div className="profile-field">
+                          <label>Clinic Phone</label>
+                          <div className="field-content">
+                            <Phone size={20} />
+                            <span>{userData?.vt_clinicPhone}</span>
+                          </div>
+                        </div>
+
+                        <div className="profile-field">
+                          <label>Clinic Email</label>
+                          <div className="field-content">
+                            <Mail size={20} />
+                            <span>{userData?.vt_clinicEmail}</span>
                           </div>
                         </div>
                       </div>

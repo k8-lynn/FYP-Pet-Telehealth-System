@@ -165,7 +165,7 @@ function AppWrapper() {
         <Route
           path="/myprofile"
           element={
-            <ProtectedRoute allowedType={["petParent", "vetAdmin"]}>
+            <ProtectedRoute allowedType={["petParent", "vetAdmin", "veterinarian"]}>
               <MyProfile />
             </ProtectedRoute>
           }

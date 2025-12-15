@@ -149,41 +149,50 @@ const VetDashboard = () => {
 
       // 4. Generate recent activities
       const recentAppts = appointments
-        .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
-        .slice(0, 6)
-        .map(appt => {
-          let action = '';
-          let details = '';
-          
-          if (appt.appt_status === 'scheduled') {
-            action = 'Appointment scheduled';
-            details = `${appt.pet_name} - ${appt.appt_type}`;
-          } else if (appt.appt_status === 'completed') {
-            action = 'Appointment completed';
-            details = `${appt.pet_name} - ${appt.appt_type}`;
-          } else if (appt.appt_status === 'pending') {
-            action = 'New appointment request';
-            details = `${appt.pet_name} - ${appt.appt_type}`;
-          }
+      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+      .slice(0, 6)
+      .map(appt => {
+        let action = '';
+        let details = '';
+        
+        // Handle all possible statuses
+        if (appt.appt_status === 'scheduled') {
+          action = 'Appointment scheduled';
+          details = `${appt.pet_name} - ${appt.appt_type}`;
+        } else if (appt.appt_status === 'completed') {
+          action = 'Appointment completed';
+          details = `${appt.pet_name} - ${appt.appt_type}`;
+        } else if (appt.appt_status === 'pending') {
+          action = 'New appointment request';
+          details = `${appt.pet_name} - ${appt.appt_type}`;
+        } else if (appt.appt_status === 'cancelled') {
+          action = 'Appointment cancelled';
+          details = `${appt.pet_name} - ${appt.appt_type}`;
+        } else {
+          // Fallback for any other status
+          action = `Appointment ${appt.appt_status}`;
+          details = `${appt.pet_name} - ${appt.appt_type}`;
+        }
 
-          const timeDiff = Date.now() - new Date(appt.created_at).getTime();
-          const minutes = Math.floor(timeDiff / 60000);
-          const hours = Math.floor(minutes / 60);
-          const days = Math.floor(hours / 24);
+        const timeDiff = Date.now() - new Date(appt.created_at).getTime();
+        const minutes = Math.floor(timeDiff / 60000);
+        const hours = Math.floor(minutes / 60);
+        const days = Math.floor(hours / 24);
 
-          let timeText = '';
-          if (days > 0) timeText = `${days} day${days > 1 ? 's' : ''} ago`;
-          else if (hours > 0) timeText = `${hours} hour${hours > 1 ? 's' : ''} ago`;
-          else if (minutes > 0) timeText = `${minutes} min${minutes > 1 ? 's' : ''} ago`;
-          else timeText = 'Just now';
+        let timeText = '';
+        if (days > 0) timeText = `${days} day${days > 1 ? 's' : ''} ago`;
+        else if (hours > 0) timeText = `${hours} hour${hours > 1 ? 's' : ''} ago`;
+        else if (minutes > 0) timeText = `${minutes} min${minutes > 1 ? 's' : ''} ago`;
+        else timeText = 'Just now';
 
-          return {
-            id: appt.appt_id,
-            action,
-            details,
-            time: timeText
-          };
-        });
+        return {
+          id: appt.appt_id,
+          action,
+          details,
+          time: timeText
+        };
+      })
+      .filter(activity => activity.action && activity.details); // Filter out empty activities
 
       console.log('✅ Recent activities generated:', recentAppts);
       setRecentActivities(recentAppts);

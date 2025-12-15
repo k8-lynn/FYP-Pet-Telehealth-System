@@ -907,7 +907,60 @@ app.put('/api/profile/petparent/:usr_id', (req, res) => {
   });
 });
 
+// 🟢 UPDATE USER PROFILE (Veterinarian)
+app.put('/api/profile/veterinarian/:usr_id', (req, res) => {
+  const { usr_id } = req.params;
+  const {
+    usr_firstName,
+    usr_lastName,
+    usr_email,
+    usr_password,
+    vt_licenseNumber,
+    vt_licensingAuthority,
+    vt_yearsOfPractice,
+    vt_specialization
+  } = req.body;
 
+  // Update user_t table
+  const updateUserSQL = `
+    UPDATE user_t 
+    SET usr_firstName = ?, usr_lastName = ?, usr_email = ?, usr_password = ?
+    WHERE usr_id = ?
+  `;
+
+  db.query(updateUserSQL, [usr_firstName, usr_lastName, usr_email, usr_password, usr_id], (err, result) => {
+    if (err) {
+      console.error('❌ Error updating user:', err);
+      return res.status(500).json({ error: 'Failed to update user data' });
+    }
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Update veterinarian_t table
+    const updateVetSQL = `
+      UPDATE veterinarian_t 
+      SET vt_licenseNumber = ?, vt_licensingAuthority = ?, vt_yearsOfPractice = ?, vt_specialization = ?
+      WHERE usr_id = ?
+    `;
+
+    db.query(updateVetSQL, [
+      vt_licenseNumber,
+      vt_licensingAuthority,
+      vt_yearsOfPractice,
+      vt_specialization,
+      usr_id
+    ], (err2) => {
+      if (err2) {
+        console.error('❌ Error updating veterinarian:', err2);
+        return res.status(500).json({ error: 'Failed to update veterinarian data' });
+      }
+
+      res.status(200).json({ message: 'Profile updated successfully' });
+    });
+  });
+});
 
 // -------------------------------------------------------------
 // 🟢 REGISTER NEW VETERINARIAN
