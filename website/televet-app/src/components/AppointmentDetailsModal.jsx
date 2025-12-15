@@ -1,6 +1,6 @@
 //AppointmentDetailsModal.jsx
-import React from 'react';
-import { X, MessageCircle } from 'lucide-react';
+import React, { useState } from 'react';
+import { X, MessageCircle, Calendar, XCircle } from 'lucide-react';
 
 const AppointmentDetailsModal = ({ 
   showModal, 
@@ -8,87 +8,342 @@ const AppointmentDetailsModal = ({
   onClose, 
   formatDate,
   userRole, // 'pp' or 'vt'
-  onContactVet // Callback function for pet owners to contact vet
+  onContactVet, // Callback function for pet owners to contact vet
+  onCancelAppointment, // New callback for cancellation
+  onRescheduleRequest // New callback for reschedule request
 }) => {
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [showRescheduleModal, setShowRescheduleModal] = useState(false);
+  const [cancelReason, setCancelReason] = useState('');
+  const [rescheduleReason, setRescheduleReason] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   if (!showModal || !appointmentDetails) return null;
 
-  return (
-    <div className="mypatients-modal-overlay" onClick={onClose}>
-      <div className="mypatients-modal-content view-modal" onClick={(e) => e.stopPropagation()}>
-        <div className="mypatients-modal-header">
-          <h2 className="mypatients-modal-title">Appointment Details</h2>
-          <button className="mypatients-modal-close" onClick={onClose}>
-            <X size={24} />
-          </button>
-        </div>
+  const canCancel = (appointmentDetails.appt_status === 'pending' || 
+    appointmentDetails.appt_status === 'scheduled') &&
+    appointmentDetails.resched_flag !== 'yes';
 
-        <div className="view-modal-body">
-          <div className="view-section">
-            <h3>Appointment Information</h3>
-            <div className="view-grid">
-              <div className="view-item">
-                <strong>Appointment ID</strong>
-                #{appointmentDetails.appt_id}
-              </div>
-              <div className="view-item">
-                <strong>Date & Time</strong>
-                {formatDate(appointmentDetails.appt_date)}
-              </div>
-              <div className="view-item">
-                <strong>Appointment Type</strong>
-                {appointmentDetails.appt_type}
-              </div>
-              <div className="view-item">
-                <strong>Consultation Type</strong>
-                {appointmentDetails.consultation_type === 'online' ? 'Online' : 'Physical'}
-              </div>
-              <div className="view-item">
-                <strong>Status</strong>
-                <span className={`vet-badge status-${appointmentDetails.appt_status}`}>
-                  {appointmentDetails.appt_status}
-                </span>
-              </div>
-              <div className="view-item">
-                <strong>Created At</strong>
-                {formatDate(appointmentDetails.created_at)}
-              </div>
-              <div className="view-item full-width">
-                <strong>Description</strong>
-                {appointmentDetails.appt_description || 'No description provided'}
-              </div>
-            </div>
+  const handleCancelSubmit = async () => {
+    // Vets MUST provide a reason, pet owners it's optional
+    if (userRole === 'vt' && !cancelReason.trim()) {
+      alert('Please provide a reason for cancellation');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      await onCancelAppointment(appointmentDetails.appt_id, cancelReason);
+      setShowCancelModal(false);
+      setCancelReason('');
+      onClose();
+    } catch (error) {
+      console.error('Error cancelling appointment:', error);
+      alert('Failed to cancel appointment');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const displayStatus =
+  appointmentDetails.resched_flag === 'yes'
+    ? 'rescheduled'
+    : appointmentDetails.appt_status;
+
+
+  const handleRescheduleSubmit = async () => {
+    if (!rescheduleReason.trim()) {
+      alert('Please provide a reason for rescheduling');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      await onRescheduleRequest(appointmentDetails.appt_id, rescheduleReason);
+      setShowRescheduleModal(false);
+      setRescheduleReason('');
+      onClose();
+    } catch (error) {
+      console.error('Error requesting reschedule:', error);
+      alert('Failed to request reschedule');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <>
+      <div className="mypatients-modal-overlay" onClick={onClose}>
+        <div className="mypatients-modal-content view-modal" onClick={(e) => e.stopPropagation()}>
+          <div className="mypatients-modal-header">
+            <h2 className="mypatients-modal-title">Appointment Details</h2>
+            <button className="mypatients-modal-close" onClick={onClose}>
+              <X size={24} />
+            </button>
           </div>
 
-          {/* Veterinarian Section - shown for both pet owners and vets */}
-          <div className="view-section">
-            <h3>Assigned Veterinarian</h3>
-            <div className="view-grid">
-            <div className="view-item vet-info-row">
-                <div className="vet-info-content">
-                  <strong>Veterinarian</strong>
-                  <div className={`vet-name-display ${!appointmentDetails.vet_name ? 'not-assigned' : ''}`}>
-                    {appointmentDetails.vet_name || 'Not assigned yet'}
-                  </div>
+          <div className="view-modal-body">
+            <div className="view-section">
+              <h3>Appointment Information</h3>
+              <div className="view-grid">
+                <div className="view-item">
+                  <strong>Appointment ID</strong>
+                  #{appointmentDetails.appt_id}
                 </div>
-                {/* Contact button - only for pet owners when vet is assigned */}
-                {userRole === 'pp' && appointmentDetails.vet_name && (
-                  <button 
-                    className="contact-vet-btn"
-                    onClick={() => {
-                      onContactVet();
-                      onClose();
-                    }}
-                  >
-                    <MessageCircle size={16} />
-                    Contact
-                  </button>
+                <div className="view-item">
+                  <strong>Date & Time</strong>
+                  {formatDate(appointmentDetails.appt_date)}
+                </div>
+                <div className="view-item">
+                  <strong>Appointment Type</strong>
+                  {appointmentDetails.appt_type}
+                </div>
+                <div className="view-item">
+                  <strong>Consultation Type</strong>
+                  {appointmentDetails.consultation_type === 'online' ? 'Online' : 'Physical'}
+                </div>
+                <div className="view-item">
+                  <strong>Status</strong>
+                  <span className={`vet-badge status-${displayStatus}`}>
+                    {displayStatus}
+                  </span>
+                </div>
+                <div className="view-item">
+                  <strong>Created At</strong>
+                  {formatDate(appointmentDetails.created_at)}
+                </div>
+                <div className="view-item full-width">
+                  <strong>Description</strong>
+                  {appointmentDetails.appt_description || 'No description provided'}
+                </div>
+                
+                {/* Show cancellation details if cancelled */}
+                {appointmentDetails.appt_status === 'cancelled' && (
+                  <>
+                    {appointmentDetails.cancel_reason && (
+                      <div className="view-item full-width">
+                        <strong>Cancellation Reason</strong>
+                        <div className="cancel-reason-box">
+                          {appointmentDetails.cancel_reason}
+                        </div>
+                      </div>
+                    )}
+                    {appointmentDetails.cancelled_by && (
+                      <div className="view-item">
+                        <strong>Cancelled By</strong>
+                        {appointmentDetails.cancelled_by === 'petParent' ? 'Pet Owner' : 'Veterinarian'}
+                      </div>
+                    )}
+                    {appointmentDetails.cancelled_at && (
+                      <div className="view-item">
+                        <strong>Cancelled At</strong>
+                        {formatDate(appointmentDetails.cancelled_at)}
+                      </div>
+                    )}
+                  </>
+                )}
+
+                {/* Show reschedule request if exists */}
+                {appointmentDetails.resched_flag === 'yes' && (
+                  <div className="view-item full-width">
+                    <strong>Reschedule Request</strong>
+                    <div className="reschedule-request-box">
+                      {appointmentDetails.resched_reason || 'No reason provided'}
+                    </div>
+                  </div>
                 )}
               </div>
             </div>
+
+            {/* Patient/Veterinarian Section */}
+            <div className="view-section">
+              <h3>{userRole === 'vt' ? 'Assigned Patient' : 'Assigned Veterinarian'}</h3>
+              <div className="view-grid">
+                <div className="view-item vet-info-row">
+                  <div className="vet-info-content">
+                    <strong>{userRole === 'vt' ? 'Patient' : 'Veterinarian'}</strong>
+                    <div className={`vet-name-display ${!appointmentDetails.vet_name && !appointmentDetails.pet_name ? 'not-assigned' : ''}`}>
+                      {userRole === 'vt' 
+                        ? (appointmentDetails.pet_name || 'Not assigned yet')
+                        : (appointmentDetails.vet_name || 'Not assigned yet')
+                      }
+                    </div>
+                  </div>
+                  {/* Contact button - show for both vets and pet owners when other party is assigned */}
+                  {((userRole === 'pp' && appointmentDetails.vet_name) || 
+                    (userRole === 'vt' && appointmentDetails.pet_name)) && onContactVet && (
+                    <button 
+                      className="contact-vet-btn"
+                      onClick={() => {
+                        onContactVet();
+                      }}
+                    >
+                      <MessageCircle size={16} />
+                      Contact {userRole === 'vt' ? 'Patient' : 'Vet'}
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            {canCancel && (
+              <div className="appointment-actions">
+                <button 
+                  className="btn-reschedule-request"
+                  onClick={() => setShowRescheduleModal(true)}
+                >
+                  <Calendar size={16} />
+                  Request Reschedule
+                </button>
+                <button 
+                  className="btn-cancel-appointment"
+                  onClick={() => setShowCancelModal(true)}
+                >
+                  <XCircle size={16} />
+                  Cancel Appointment
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>
-    </div>
+
+      {/* Cancel Confirmation Modal */}
+      {showCancelModal && (
+        <div className="mypatients-modal-overlay" onClick={() => setShowCancelModal(false)}>
+          <div className="mypatients-modal-content cancel-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="mypatients-modal-header">
+              <h2 className="mypatients-modal-title">Cancel Appointment</h2>
+              <button className="mypatients-modal-close" onClick={() => setShowCancelModal(false)}>
+                <X size={24} />
+              </button>
+            </div>
+
+            <div className="view-modal-body">
+              <p className="cancel-warning">
+                Are you sure you want to cancel this appointment?
+                {userRole === 'pp' && ' This action cannot be undone.'}
+              </p>
+
+              {userRole === 'vt' && (
+                <div className="form-group">
+                  <label>Reason for Cancellation *</label>
+                  <textarea
+                    value={cancelReason}
+                    onChange={(e) => setCancelReason(e.target.value)}
+                    placeholder="Please provide a reason for cancelling this appointment..."
+                    rows="4"
+                    style={{
+                      width: '100%',
+                      padding: '0.75rem',
+                      border: '2px solid #e8f0f7',
+                      borderRadius: '12px',
+                      fontSize: '0.9rem',
+                      fontFamily: 'inherit'
+                    }}
+                  />
+                </div>
+              )}
+
+              {userRole === 'pp' && (
+                <div className="form-group">
+                  <label>Reason (Optional)</label>
+                  <textarea
+                    value={cancelReason}
+                    onChange={(e) => setCancelReason(e.target.value)}
+                    placeholder="You may provide a reason (optional)..."
+                    rows="3"
+                    style={{
+                      width: '100%',
+                      padding: '0.75rem',
+                      border: '2px solid #e8f0f7',
+                      borderRadius: '12px',
+                      fontSize: '0.9rem',
+                      fontFamily: 'inherit'
+                    }}
+                  />
+                </div>
+              )}
+
+              <div className="modal-actions">
+                <button 
+                  className="mypatients-cancel-button"
+                  onClick={() => setShowCancelModal(false)}
+                  disabled={isSubmitting}
+                >
+                  Keep Appointment
+                </button>
+                <button 
+                  className="btn-confirm-cancel"
+                  onClick={handleCancelSubmit}
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? 'Cancelling...' : 'Yes, Cancel'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Reschedule Request Modal */}
+      {showRescheduleModal && (
+        <div className="mypatients-modal-overlay" onClick={() => setShowRescheduleModal(false)}>
+          <div className="mypatients-modal-content reschedule-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="mypatients-modal-header">
+              <h2 className="mypatients-modal-title">Request to Reschedule</h2>
+              <button className="mypatients-modal-close" onClick={() => setShowRescheduleModal(false)}>
+                <X size={24} />
+              </button>
+            </div>
+
+            <div className="view-modal-body">
+              <p className="reschedule-info">
+                {userRole === 'pp' 
+                  ? 'Your reschedule request will be sent to the veterinarian. They will contact you to arrange a new appointment time.'
+                  : 'Please provide a reason for rescheduling. The pet owner will be notified and you can arrange a new time.'}
+              </p>
+
+              <div className="form-group">
+                <label>Reason for Rescheduling *</label>
+                <textarea
+                  value={rescheduleReason}
+                  onChange={(e) => setRescheduleReason(e.target.value)}
+                  placeholder="Please explain why you need to reschedule..."
+                  rows="4"
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem',
+                    border: '2px solid #e8f0f7',
+                    borderRadius: '12px',
+                    fontSize: '0.9rem',
+                    fontFamily: 'inherit'
+                  }}
+                />
+              </div>
+
+              <div className="modal-actions">
+                <button 
+                  className="mypatients-cancel-button"
+                  onClick={() => setShowRescheduleModal(false)}
+                  disabled={isSubmitting}
+                >
+                  Cancel
+                </button>
+                <button 
+                  className="mypatients-submit-button"
+                  onClick={handleRescheduleSubmit}
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? 'Sending...' : 'Send Request'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 };
 

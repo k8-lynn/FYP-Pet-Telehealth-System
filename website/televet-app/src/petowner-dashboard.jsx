@@ -369,6 +369,83 @@ const PetOwnerDashboard = () => {
     setSelectedDate(new Date(selectedDate.getFullYear(), selectedDate.getMonth(), day));
   };
 
+  // Add this function in your parent component
+  const handleCancelAppointment = async (apptId, cancelReason) => {
+    const cancelledBy = 'petParent';
+    
+    try {
+      const response = await fetch(`http://localhost:5000/api/appointments/${apptId}/cancel`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          cancelReason: cancelReason || null,
+          cancelledBy: cancelledBy
+        })
+      });
+  
+      if (!response.ok) {
+        throw new Error('Failed to cancel appointment');
+      }
+  
+      const data = await response.json();
+      alert('Appointment cancelled successfully');
+      
+      // Close the modal and refresh appointments
+      setShowAppointmentModal(false);
+      setSelectedAppointmentDetails(null);
+      
+      // Refresh appointments list
+      if (userId) {
+        fetchUpcomingAppointments(userId);
+      }
+      
+      return data;
+    } catch (error) {
+      console.error('Error cancelling appointment:', error);
+      throw error;
+    }
+  };
+
+const handleRescheduleRequest = async (apptId, rescheduleReason) => {
+  const requestedBy = 'petParent'; // Fixed: hardcode it since this is petowner-chat
+  
+  try {
+    const response = await fetch(`http://localhost:5000/api/appointments/${apptId}/reschedule-request`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        rescheduleReason,
+        requestedBy: requestedBy
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to request reschedule');
+    }
+
+    const data = await response.json();
+    alert('Reschedule request sent successfully');
+    
+    // Refresh appointment details
+    setShowAppointmentModal(false);
+    setSelectedAppointmentDetails(null);
+
+    // Refresh appointments list
+    if (userId) {
+      fetchUpcomingAppointments(userId);
+    }
+    
+    return data;
+  } catch (error) {
+    console.error('Error requesting reschedule:', error);
+    throw error;
+  }
+};
+
   return (
     <div className="petowner-dashboard-container">
       <PawPattern count={35} />
@@ -421,9 +498,15 @@ const PetOwnerDashboard = () => {
                           onClick={() => fetchAppointmentDetailsById(appt.appt_id)}
                         >
                           <div className="appointment-title">
-                            {appt.appt_type} - {appt.pet_name} <span className={`consultation-badge ${appt.consultation_type === 'online' ? 'online' : 'physical'}`}>
+                            {appt.appt_type} - {appt.pet_name} 
+                            <span className={`consultation-badge ${appt.consultation_type === 'online' ? 'online' : 'physical'}`}>
                               {appt.consultation_type === 'online' ? 'Online' : 'Physical'}
                             </span>
+                            {appt.resched_flag === 'yes' && (
+                              <span className="vet-badge status-rescheduled" style={{ marginLeft: '8px', fontSize: '0.75rem' }}>
+                                Rescheduled
+                              </span>
+                            )}
                           </div>
                           <div className="appointment-time">
                             {appt.appt_datetime.toLocaleTimeString('en-US', { 
@@ -567,6 +650,8 @@ const PetOwnerDashboard = () => {
           showModal={showAppointmentModal}
           appointmentDetails={selectedAppointmentDetails}
           loading={loadingAppointmentDetails}
+          onCancelAppointment={handleCancelAppointment}  // Add this
+          onRescheduleRequest={handleRescheduleRequest}  // Add this
           onClose={() => {
             setShowAppointmentModal(false);
             setSelectedAppointmentDetails(null);

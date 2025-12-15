@@ -1,6 +1,6 @@
 //vet-appointments.jsx
 import React, { useState, useEffect } from 'react';
-import { X, MapPin, Eye, MoreVertical, Search } from 'lucide-react';
+import { X, MapPin, Eye, MoreVertical, Search, MessageCircle } from 'lucide-react';
 
 import PawPattern from "./components/PawPattern";
 import VetNavbar from './components/vet-navbar';
@@ -108,6 +108,37 @@ const VetAppointments = () => {
       console.error('Error updating appointment:', error);
     }
   };
+  
+  const handleRemoveAppointment = async (appt_id) => {
+    if (!window.confirm('Are you sure you want to remove this cancelled appointment?')) {
+      return;
+    }
+  
+    try {
+      const response = await fetch(`http://localhost:5000/api/appointments/${appt_id}`, {
+        method: 'DELETE'
+      });
+  
+      if (response.ok) {
+        // Remove from local state
+        setAppointments(prev => prev.filter(appt => appt.appt_id !== appt_id));
+        setOpenMenuId(null);
+        alert('Appointment removed successfully');
+      } else {
+        console.error('Failed to remove appointment');
+        alert('Failed to remove appointment');
+      }
+    } catch (error) {
+      console.error('Error removing appointment:', error);
+      alert('Failed to remove appointment');
+    }
+  };
+  
+  const handleContactPatient = (appointment) => {
+    // Navigate to vet-chat with pet_id
+    window.location.href = `/vet-chat?pet_id=${appointment.pet_id}`;
+    setOpenMenuId(null);
+  };
 
   const handleNavigateToChat = (appointment) => {
     // Navigate to vet-chat with pet_id
@@ -141,7 +172,10 @@ const VetAppointments = () => {
     }
   };
 
-  const getStatusBadgeClass = (status) => {
+  const getStatusBadgeClass = (status, reschedFlag) => {
+    if (reschedFlag === 'yes') {
+      return 'status-reschedule-requested';
+    }
     switch (status) {
       case 'scheduled':
         return 'status-scheduled';
@@ -183,6 +217,78 @@ const filteredAppointments = appointments.filter(appointment => {
     appointment.appt_status?.toLowerCase().includes(search)
   );
 });
+
+// Add this function in your parent component
+const handleCancelAppointment = async (apptId, cancelReason) => {
+  const cancelledBy = 'veterinarian';
+  
+  try {
+    const response = await fetch(`http://localhost:5000/api/appointments/${apptId}/cancel`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        cancelReason: cancelReason || null,
+        cancelledBy: cancelledBy
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to cancel appointment');
+    }
+
+    const data = await response.json();
+    alert('Appointment cancelled successfully');
+    
+    // Close the modal and refresh appointments
+    setShowAppointmentModal(false);
+    setSelectedAppointmentDetails(null);
+    
+    // Refresh appointments list
+    if (userId) {
+      fetchUpcomingAppointments(userId);
+    }
+    
+    return data;
+  } catch (error) {
+    console.error('Error cancelling appointment:', error);
+    throw error;
+  }
+};
+
+const handleRescheduleRequest = async (apptId, rescheduleReason) => {
+  const requestedBy = 'veterinarian'; // Fixed: this is vet-dashboard
+  
+  try {
+    const response = await fetch(`http://localhost:5000/api/appointments/${apptId}/reschedule-request`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        rescheduleReason,
+        requestedBy: requestedBy
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to request reschedule');
+    }
+
+    const data = await response.json();
+    alert('Reschedule request sent successfully');
+    
+    // Refresh dashboard data after reschedule request
+    fetchDashboardData();
+    
+    return data;
+  } catch (error) {
+    console.error('Error requesting reschedule:', error);
+    alert('Failed to request reschedule');
+    throw error;
+  }
+};
 
   return (
     <div className="vetadmin-dashboard-container">
@@ -297,9 +403,9 @@ const filteredAppointments = appointments.filter(appointment => {
                       {formatDate(appointment.appt_date)}
                     </div>
                     <div className="table-cell-vet">
-                      <span className={`vet-badge ${getStatusBadgeClass(appointment.appt_status)}`}>
-                        {appointment.appt_status}
-                      </span>
+                    <span className={`vet-badge ${getStatusBadgeClass(appointment.appt_status, appointment.resched_flag)}`}>
+                      {appointment.resched_flag === 'yes' ? 'rescheduled' : appointment.appt_status}
+                    </span>
                     </div>
                     <div className="table-cell-actions">
                       <div className="menu-wrapper">
@@ -318,7 +424,37 @@ const filteredAppointments = appointments.filter(appointment => {
                               <Eye size={16} />
                               View Details
                             </button>
-                            {appointment.appt_status !== 'completed' && (
+                            {appointment.appt_status === 'cancelled' && (
+                              <button 
+                                className="menu-item"
+                                onClick={() => handleRemoveAppointment(appointment.appt_id)}
+                              >
+                                <svg 
+                                  width="16" 
+                                  height="16" 
+                                  viewBox="0 0 24 24" 
+                                  fill="none" 
+                                  stroke="currentColor" 
+                                  strokeWidth="2"
+                                >
+                                  <polyline points="3 6 5 6 21 6"></polyline>
+                                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                                </svg>
+                                Remove
+                              </button>
+                            )}
+                            {appointment.resched_flag === 'yes' && appointment.appt_status !== 'cancelled' && (
+                              <button 
+                                className="menu-item"
+                                onClick={() => handleContactPatient(appointment)}
+                              >
+                                <MessageCircle size={16} />
+                                Contact Patient
+                              </button>
+                            )}
+                            {appointment.appt_status !== 'completed' && 
+                            appointment.appt_status !== 'cancelled' && 
+                            appointment.resched_flag !== 'yes' && (
                               <button 
                                 className="menu-item"
                                 onClick={() => handleMarkCompleted(appointment.appt_id)}
@@ -350,14 +486,17 @@ const filteredAppointments = appointments.filter(appointment => {
 
       {/* View Appointment Details Modal */}
       {showViewModal && selectedAppointment && (
-      <AppointmentDetailsModal 
-        showModal={showViewModal}
-        appointmentDetails={selectedAppointment}
-        onClose={() => setShowViewModal(false)}
-        formatDate={formatDate}
-        userRole="vt"
-      />
-    )}
+        <AppointmentDetailsModal 
+          showModal={showViewModal}
+          appointmentDetails={selectedAppointment}
+          onClose={() => setShowViewModal(false)}
+          formatDate={formatDate}
+          userRole="vt"
+          onContactVet={() => handleNavigateToChat(selectedAppointment)}
+          onCancelAppointment={handleCancelAppointment}
+          onRescheduleRequest={handleRescheduleRequest}
+        />
+      )}
     </div>
   );
 };

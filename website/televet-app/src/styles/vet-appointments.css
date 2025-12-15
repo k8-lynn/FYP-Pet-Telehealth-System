@@ -220,3 +220,15 @@
     min-width: 1200px;
   }
 }
+
+.status-reschedule-requested {
+  background: #fef3c7;
+  color: #b45309;
+  border: 2px solid #f59e0b40;
+}
+
+.status-rescheduled {
+  background: #fef3c7;
+  color: #b45309;
+  border: 2px solid #f59e0b40;
+}

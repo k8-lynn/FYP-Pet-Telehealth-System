@@ -2242,6 +2242,8 @@ app.get('/api/user-appointments/:usr_id', (req, res) => {
       a.appt_description,
       a.appt_date,
       a.appt_status,
+      a.resched_flag,
+      a.resched_reason,
       a.created_at,
       pet.pet_id,
       pet.pet_name
@@ -2610,6 +2612,11 @@ app.get('/api/appointment-details/:appt_id', (req, res) => {
       a.appt_date,
       a.appt_status,
       a.created_at,
+      a.cancel_reason,
+      a.cancel_by as cancelled_by,
+      a.cancel_dt as cancelled_at,
+      a.resched_flag,
+      a.resched_reason,
       pet.pet_name,
       CONCAT(vu.usr_firstName, ' ', vu.usr_lastName) as vet_name
     FROM appointment_t a
@@ -2955,6 +2962,202 @@ app.put('/api/appointments/:appt_id/status', (req, res) => {
   });
 });
 
+// Cancel appointment endpoint
+app.put('/api/appointments/:apptId/cancel', (req, res) => {
+  const { apptId } = req.params;
+  const { cancelReason, cancelledBy } = req.body;
+  const io = req.app.get('io');
+
+  db.query(
+    `UPDATE appointment_t 
+     SET appt_status = 'cancelled', 
+         cancel_reason = ?, 
+         cancel_by = ?,
+         cancel_dt = NOW()
+     WHERE appt_id = ?`,
+    [cancelReason || null, cancelledBy, apptId],
+    (err, result) => {
+      if (err) {
+        console.error('❌ Error cancelling appointment:', err);
+        return res.status(500).json({ error: 'Failed to cancel appointment' });
+      }
+
+      if (result.affectedRows === 0) {
+        return res.status(404).json({ error: 'Appointment not found' });
+      }
+
+      // Get appointment details for notification
+      const getApptSQL = `
+        SELECT a.*, p.pet_name, u.usr_firstName, u.usr_lastName, pp.usr_id as owner_usr_id
+        FROM appointment_t a
+        JOIN pet_t p ON a.pet_id = p.pet_id
+        JOIN pet_parent_t pp ON a.pp_id = pp.pp_id
+        JOIN user_t u ON pp.usr_id = u.usr_id
+        WHERE a.appt_id = ?
+      `;
+
+      db.query(getApptSQL, [apptId], (err2, apptResult) => {
+        if (err2 || apptResult.length === 0) {
+          console.error('⚠️ Error fetching appointment details:', err2);
+          return res.json({ message: 'Appointment cancelled successfully' });
+        }
+
+        const apptData = apptResult[0];
+        const formattedApptDate = new Date(apptData.appt_date).toLocaleDateString('en-US', {
+          weekday: 'long',
+          month: 'long',
+          day: 'numeric',
+          year: 'numeric',
+          hour: 'numeric',
+          minute: '2-digit',
+          hour12: true
+        });
+        
+        // Send notification to the other party
+        if (cancelledBy === 'petParent' && apptData.vt_id) {
+          // Notify vet
+          const getVetSQL = 'SELECT usr_id FROM veterinarian_t WHERE vt_id = ?';
+          db.query(getVetSQL, [apptData.vt_id], (err3, vetResult) => {
+            if (!err3 && vetResult.length > 0) {
+              const notifMsg = `Appointment for ${apptData.pet_name} on ${formattedApptDate} has been cancelled by the pet owner.${cancelReason ? ` Reason: ${cancelReason}` : ''}`;
+              createNotification(vetResult[0].usr_id, apptData.pet_id, apptId, 'cancelled', notifMsg, apptData.appt_date);
+            }
+          });
+        } else if (cancelledBy === 'veterinarian') {
+          // Notify pet owner
+          const notifMsg = `Your appointment for ${apptData.pet_name} on ${formattedApptDate} has been cancelled by the veterinarian.${cancelReason ? ` Reason: ${cancelReason}` : ''}`;
+          createNotification(apptData.owner_usr_id, apptData.pet_id, apptId, 'cancelled', notifMsg, apptData.appt_date);
+        }
+
+        // Update slot status
+        const slotDate = new Date(apptData.appt_date);
+        const dateKey = `${slotDate.getFullYear()}-${String(slotDate.getMonth() + 1).padStart(2, '0')}-${String(slotDate.getDate()).padStart(2, '0')}`;
+        
+        const getSlotsSQL = 'SELECT slots FROM clinic_slots_t WHERE clinic_id = ? AND slot_date = ? AND consultation_type = ?';
+        db.query(getSlotsSQL, [apptData.clinic_id, dateKey, apptData.consultation_type], (err4, slotsResult) => {
+          if (!err4 && slotsResult.length > 0) {
+            let slots = slotsResult[0].slots;
+            if (typeof slots === 'string') {
+              try {
+                slots = JSON.parse(slots);
+              } catch (e) {
+                console.error('⚠️ Error parsing slots:', e);
+                return;
+              }
+            }
+
+            const updatedSlots = slots.map(slot => {
+              if (slot.petId == apptData.pet_id) {
+                return {
+                  ...slot,
+                  status: 'available',
+                  patient: null,
+                  petId: null,
+                  veterinarian: null,
+                  vt_id: null
+                };
+              }
+              return slot;
+            });
+
+            const updateSlotsSQL = 'UPDATE clinic_slots_t SET slots = ?, last_updated = NOW() WHERE clinic_id = ? AND slot_date = ? AND consultation_type = ?';
+            db.query(updateSlotsSQL, [JSON.stringify(updatedSlots), apptData.clinic_id, dateKey, apptData.consultation_type], (err5) => {
+              if (!err5) {
+                io.emit('slotUpdated', { clinic_id: apptData.clinic_id, date: dateKey, consultation_type: apptData.consultation_type, action: 'cancelled' });
+              }
+            });
+          }
+        });
+
+        res.json({ message: 'Appointment cancelled successfully' });
+      });
+    }
+  );
+});
+
+// Request reschedule endpoint
+// Request reschedule endpoint
+app.put('/api/appointments/:apptId/reschedule-request', (req, res) => {
+  const { apptId } = req.params;
+  const { rescheduleReason, requestedBy } = req.body;
+
+  db.query(
+    `UPDATE appointment_t 
+     SET resched_flag = 'yes',
+         resched_reason = ?
+     WHERE appt_id = ?`,
+    [rescheduleReason, apptId],
+    (err, result) => {
+      if (err) {
+        console.error('❌ Error requesting reschedule:', err);
+        return res.status(500).json({ error: 'Failed to request reschedule' });
+      }
+
+      if (result.affectedRows === 0) {
+        return res.status(404).json({ error: 'Appointment not found' });
+      }
+
+      // Get appointment details
+      const getApptSQL = `
+        SELECT a.*, p.pet_name, u.usr_firstName, u.usr_lastName, pp.usr_id as owner_usr_id
+        FROM appointment_t a
+        JOIN pet_t p ON a.pet_id = p.pet_id
+        JOIN pet_parent_t pp ON a.pp_id = pp.pp_id
+        JOIN user_t u ON pp.usr_id = u.usr_id
+        WHERE a.appt_id = ?
+      `;
+
+      db.query(getApptSQL, [apptId], (err2, apptResult) => {
+        if (err2 || apptResult.length === 0) {
+          console.error('⚠️ Error fetching appointment details:', err2);
+          return res.json({ message: 'Reschedule request sent successfully' });
+        }
+
+        const apptData = apptResult[0];
+        
+        // Send notification to the other party
+        if (requestedBy === 'petParent' && apptData.vt_id) {
+          // Notify vet
+          const getVetSQL = 'SELECT usr_id FROM veterinarian_t WHERE vt_id = ?';
+          db.query(getVetSQL, [apptData.vt_id], (err3, vetResult) => {
+            if (!err3 && vetResult.length > 0) {
+              const notifMsg = `${apptData.usr_firstName} ${apptData.usr_lastName} has requested to reschedule the appointment for ${apptData.pet_name}. Reason: ${rescheduleReason}`;
+              createNotification(vetResult[0].usr_id, apptData.pet_id, apptId, 'message', notifMsg, apptData.appt_date);
+            }
+          });
+        } else if (requestedBy === 'veterinarian') {
+          // Notify pet owner
+          const notifMsg = `The veterinarian has requested to reschedule your appointment for ${apptData.pet_name}. Reason: ${rescheduleReason}`;
+          createNotification(apptData.owner_usr_id, apptData.pet_id, apptId, 'message', notifMsg, apptData.appt_date);
+        }
+
+        res.json({ message: 'Reschedule request sent successfully' });
+      });
+    }
+  );
+});
+
+// DELETE /api/appointments/:appt_id - Remove appointment from database
+app.delete('/api/appointments/:appt_id', (req, res) => {
+  const { appt_id } = req.params;
+
+  const sql = 'DELETE FROM appointment_t WHERE appt_id = ?';
+
+  db.query(sql, [appt_id], (err, result) => {
+    if (err) {
+      console.error('❌ Error deleting appointment:', err);
+      return res.status(500).json({ error: 'Failed to delete appointment' });
+    }
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'Appointment not found' });
+    }
+
+    console.log(`✅ Appointment ${appt_id} deleted successfully`);
+    res.status(200).json({ message: 'Appointment deleted successfully' });
+  });
+});
+
 // -------------------------------------------------------------
 // 🟢 ASSIGN VET TO APPOINTMENT
 // -------------------------------------------------------------
@@ -3058,32 +3261,48 @@ app.get('/api/appointments/vet/:vt_id', (req, res) => {
   const sql = `
     SELECT 
       a.appt_id,
+      a.clinic_id,
       a.appt_type,
       a.consultation_type,
       a.appt_description,
       a.appt_date,
       a.appt_status,
+      a.resched_flag,
+
+      a.cancel_reason,
+      a.cancel_by,
+      a.cancel_dt,
+
+      a.resched_flag,
+      a.resched_reason,
+
       a.created_at,
+
       pet.pet_id,
       pet.pet_name,
       pet.pet_species,
       pet.pet_breed,
       pet.pet_age,
       pet.pet_gender,
+
       u.usr_id,
-      u.usr_firstName as owner_firstName,
-      u.usr_lastName as owner_lastName,
-      u.usr_email as owner_email,
-      CONCAT(vu.usr_firstName, ' ', vu.usr_lastName) as vet_name
+      u.usr_firstName AS owner_firstName,
+      u.usr_lastName  AS owner_lastName,
+      u.usr_email     AS owner_email,
+
+      CONCAT(vu.usr_firstName, ' ', vu.usr_lastName) AS vet_name
+
     FROM appointment_t a
     INNER JOIN pet_t pet ON a.pet_id = pet.pet_id
     INNER JOIN pet_parent_t pp ON a.pp_id = pp.pp_id
     INNER JOIN user_t u ON pp.usr_id = u.usr_id
     LEFT JOIN veterinarian_t vt ON a.vt_id = vt.vt_id
     LEFT JOIN user_t vu ON vt.usr_id = vu.usr_id
+
     WHERE a.vt_id = ?
     ORDER BY a.appt_date ASC
   `;
+
 
   db.query(sql, [vt_id], (err, result) => {
     if (err) {
