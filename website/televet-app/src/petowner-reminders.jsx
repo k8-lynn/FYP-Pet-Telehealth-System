@@ -25,6 +25,7 @@ const RemindersPage = () => {
   const [ppId, setPpId] = useState(null);
   const [showAppointmentModal, setShowAppointmentModal] = useState(false);
   const [selectedAppointmentDetails, setSelectedAppointmentDetails] = useState(null);
+  const [userid] = useState(null);
   
   const [newReminder, setNewReminder] = useState({
     title: '',
@@ -481,8 +482,8 @@ const RemindersPage = () => {
       setSelectedAppointmentDetails(null);
       
       // Refresh appointments list
-      if (userId) {
-        fetchUpcomingAppointments(userId);
+      if (userid) {
+        fetchUpcomingAppointments(userid);
       }
       
       return data;
@@ -519,8 +520,8 @@ const handleRescheduleRequest = async (apptId, rescheduleReason) => {
     setSelectedAppointmentDetails(null);
 
     // Refresh appointments list
-    if (userId) {
-      fetchUpcomingAppointments(userId);
+    if (userid) {
+      fetchUpcomingAppointments(userid);
     }
     
     return data;

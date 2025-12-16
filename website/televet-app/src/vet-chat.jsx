@@ -777,11 +777,11 @@ React.useEffect(() => {
       
       // Close the modal and refresh appointments
       setShowAppointmentModal(false);
-      setSelectedAppointmentDetails(null);
-      
-      // Refresh appointments list
-      if (userId) {
-        fetchUpcomingAppointments(userId);
+      setAppointmentDetails(null);
+
+      // Refresh appointment details for this pet
+      if (currentChat?.petData?.pet_id) {
+        fetchAppointmentDetails(currentChat.petData.pet_id);
       }
       
       return data;

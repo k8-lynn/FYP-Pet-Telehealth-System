@@ -242,12 +242,14 @@ const handleCancelAppointment = async (apptId, cancelReason) => {
     alert('Appointment cancelled successfully');
     
     // Close the modal and refresh appointments
-    setShowAppointmentModal(false);
-    setSelectedAppointmentDetails(null);
-    
-    // Refresh appointments list
-    if (userId) {
-      fetchUpcomingAppointments(userId);
+    setShowViewModal(false);
+    setSelectedAppointment(null);
+
+    // Refresh appointments for this vet
+    if (vtId) {
+      const res = await fetch(`http://localhost:5000/api/appointments/vet/${vtId}`);
+      const data = await res.json();
+      setAppointments(data);
     }
     
     return data;
@@ -280,7 +282,11 @@ const handleRescheduleRequest = async (apptId, rescheduleReason) => {
     alert('Reschedule request sent successfully');
     
     // Refresh dashboard data after reschedule request
-    fetchDashboardData();
+    if (vtId) {
+      const res = await fetch(`http://localhost:5000/api/appointments/vet/${vtId}`);
+      const data = await res.json();
+      setAppointments(data);
+    }
     
     return data;
   } catch (error) {

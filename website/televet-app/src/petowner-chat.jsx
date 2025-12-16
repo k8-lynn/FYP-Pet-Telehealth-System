@@ -109,12 +109,9 @@ const handleCancelAppointment = async (apptId, cancelReason) => {
     
     // Close the modal and refresh appointments
     setShowAppointmentModal(false);
-    setSelectedAppointmentDetails(null);
+    setAppointmentDetails(null);
     
     // Refresh appointments list
-    if (userId) {
-      fetchUpcomingAppointments(userId);
-    }
     
     return data;
   } catch (error) {
@@ -147,12 +144,9 @@ const handleRescheduleRequest = async (apptId, rescheduleReason) => {
     
     // Refresh appointment details
     setShowAppointmentModal(false);
-    setSelectedAppointmentDetails(null);
+    setAppointmentDetails(null);
 
     // Refresh appointments list
-    if (userId) {
-      fetchUpcomingAppointments(userId);
-    }
     
     return data;
   } catch (error) {
@@ -875,7 +869,7 @@ React.useEffect(() => {
   };
 
   // Fetch user's pets for reminder dropdown
-const fetchUserPetsForReminder = async () => {
+const fetchUserPetsForReminder = React.useCallback(async () => {
   try {
     const response = await fetch(`http://localhost:5000/api/user-pets/${userid}`);
     const data = await response.json();
@@ -883,7 +877,8 @@ const fetchUserPetsForReminder = async () => {
   } catch (error) {
     console.error('❌ Error fetching pets:', error);
   }
-};
+}, [userid]);
+
 
 // Handle reminder input change
 const handleReminderInputChange = (field, value) => {
@@ -956,7 +951,7 @@ React.useEffect(() => {
   if (showCreateReminderModal && userid) {
     fetchUserPetsForReminder();
   }
-}, [showCreateReminderModal, userid]);
+}, [showCreateReminderModal, userid, fetchUserPetsForReminder]);
 
   return (
     <div className="petowner-dashboard-container">

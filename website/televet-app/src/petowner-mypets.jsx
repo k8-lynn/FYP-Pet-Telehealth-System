@@ -7,7 +7,6 @@ import PawPattern from "./components/PawPattern";
 import PetOwnerNavbar from './components/petowner-navbar';
 import ProfileNotification from "./components/ProfileNotification";
 import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
 
 
 const PetOwnerMyPets = () => {
@@ -152,21 +151,9 @@ const fetchAllPrescriptions = async (petId) => {
 
 const [expandedExam, setExpandedExam] = useState(null);
 
-const [expandedSections, setExpandedSections] = useState({
-  documents: true,
-  vaccinations: true,
-  conditions: true,
-  medications: true,
-  weight: true,
-  surgeries: true
-});
 
-const toggleSection = (section) => {
-  setExpandedSections(prev => ({
-    ...prev,
-    [section]: !prev[section]
-  }));
-};
+
+
 
   useEffect(() => {
     fetchPets();
@@ -565,16 +552,7 @@ const handleSubmitSoapNote = async () => {
 const [isEditing, setIsEditing] = useState(false);
 
   // ✅ Add this right before your `return`
-  const formattedDate = selectedPet?.updatedAt
-    ? new Date(selectedPet.updatedAt).toLocaleString('en-GB', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-        hour: 'numeric',
-        minute: '2-digit',
-        hour12: true,
-      })
-    : 'N/A';
+  
 
     const [showExportModal, setShowExportModal] = useState(false);
     const [exportOptions, setExportOptions] = useState({

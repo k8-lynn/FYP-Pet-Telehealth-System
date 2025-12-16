@@ -100,7 +100,7 @@ const VideoCall = ({ socket, currentUserId, currentUserName, otherUserId, otherU
       }
     }
     
-    const incomingCallHandler = ({ from, name, signal, petInfo: incomingPetInfo }) => {
+    const incomingCallHandler = ({ from, signal }) => {
       setReceivingCall(true);
       setCaller(from);
       setCallerSignal(signal);
@@ -133,7 +133,7 @@ const VideoCall = ({ socket, currentUserId, currentUserName, otherUserId, otherU
       socket.off('callAccepted', callAcceptedHandler);
       socket.off('callEnded', callEndedHandler);
     };
-  }, [socket, leaveCall, incomingCall, stream, onClose]);
+  }, [socket, leaveCall, incomingCall, stream, onClose, petInfo]);
 
   const toggleMute = () => {
     if (!stream) return;

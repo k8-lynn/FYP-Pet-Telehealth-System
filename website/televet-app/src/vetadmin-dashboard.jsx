@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { MapPin, Calendar, Users, Stethoscope, Clock, Eye } from 'lucide-react';
 import PawPattern from "./components/PawPattern";
 import VetAdminNavbar from './components/vetadmin-navbar';
@@ -13,7 +13,6 @@ const VetAdminDashboard = () => {
   const [clinicId, setClinicId] = useState(null);
   const [vaId, setVaId] = useState(null);
   const [clinicInfo, setClinicInfo] = useState(null);
-  
   
   // Stats state
   const [appointmentCounts, setAppointmentCounts] = useState({
@@ -33,90 +32,53 @@ const VetAdminDashboard = () => {
   const [showModal, setShowModal] = useState(false);
   const [selectedAppointment, setSelectedAppointment] = useState(null);
 
-  useEffect(() => {
-    const storedName = sessionStorage.getItem('firstName');
-    const storedUserId = sessionStorage.getItem('userid'); // Get userid instead of va_id
-    const storedVaId = sessionStorage.getItem('va_id');
-    
-    if (storedName) setFirstName(storedName);
-    
-    if (storedVaId) {
-      setVaId(storedVaId);
-      fetchClinicData(storedVaId);
-    } else if (storedUserId) {
-      // Fallback: fetch profile to get va_id
-      fetchUserProfile(storedUserId);
-    }
+  const generateRecentActivities = useCallback((appointments) => {
+    const activities = [];
+    const sortedAppointments = [...appointments].sort((a, b) => 
+      new Date(b.created_at) - new Date(a.created_at)
+    );
+
+    sortedAppointments.slice(0, 6).forEach(appt => {
+      let action = '';
+      let details = `${appt.pet_name} - ${appt.appt_type}`;
+      
+      if (appt.vet_name) {
+        details += ` with ${appt.vet_name}`;
+      }
+
+      switch (appt.appt_status) {
+        case 'pending':
+          action = 'New appointment booked';
+          break;
+        case 'scheduled':
+          action = 'Appointment scheduled';
+          break;
+        case 'completed':
+          action = 'Appointment completed';
+          break;
+        case 'cancelled':
+          action = 'Appointment cancelled';
+          break;
+        default:
+          action = 'Appointment updated';
+      }
+
+      const time = getTimeAgo(new Date(appt.created_at));
+
+      activities.push({
+        id: appt.appt_id,
+        action,
+        details,
+        time
+      });
+    });
+
+    setRecentActivities(activities);
   }, []);
 
-  useEffect(() => {
-    if (clinicId) {
-      fetchDashboardData();
-    }
-  }, [clinicId]);
+  const fetchDashboardData = useCallback(async () => {
+    if (!clinicId || !vaId) return;
 
-  useEffect(() => {
-    console.log('📊 State update:', {
-      vaId,
-      clinicId,
-      clinicInfo,
-      appointmentCounts,
-      totalPatients,
-      activeVets
-    });
-  }, [vaId, clinicId, clinicInfo, appointmentCounts, totalPatients, activeVets]);
-
-  const fetchUserProfile = async (userId) => {
-    try {
-      const response = await axios.get(`http://localhost:5000/api/profile/${userId}`);
-      const userData = response.data;
-      
-      console.log('✅ User profile data:', userData);
-      
-      if (userData.va_id) {
-        setVaId(userData.va_id);
-        setClinicInfo({
-          clinic_name: userData.va_clinicName,
-          clinic_location: userData.va_vetLocation,
-          clinic_phone: userData.va_clinicPhone,
-          clinic_email: userData.va_clinicEmail
-        });
-        
-        // Fetch full clinic data with clinic_id
-        fetchClinicData(userData.va_id);
-      }
-    } catch (error) {
-      console.error('❌ Error fetching user profile:', error);
-    }
-  };
-  
-  const fetchClinicData = async (vaId) => {
-    try {
-      const response = await axios.get(`http://localhost:5000/api/clinic/${vaId}`);
-      const clinicData = response.data;
-      
-      setClinicId(clinicData.clinic_id);
-      console.log('✅ Clinic ID set:', clinicData.clinic_id);
-    } catch (error) {
-      console.error('❌ Error fetching clinic data:', error);
-    }
-  };
-
-  const fetchClinicInfo = async (vaId) => {
-    try {
-      const response = await axios.get(`http://localhost:5000/api/clinic/${vaId}`);
-      const clinicData = response.data;
-      
-      console.log('✅ Clinic data retrieved:', clinicData); // Debug log
-      
-      setClinicInfo(clinicData);
-      setClinicId(clinicData.clinic_id);
-    } catch (error) {
-      console.error('❌ Error fetching clinic info:', error);
-    }
-  };
-
-  const fetchDashboardData = async () => {
     try {
       // Fetch appointment counts
       const countsResponse = await axios.get(`http://localhost:5000/api/clinic-appointments-count/${clinicId}`);
@@ -161,55 +123,79 @@ const VetAdminDashboard = () => {
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
     }
-  };
+  }, [clinicId, vaId, clinicInfo, generateRecentActivities]);
 
-  const generateRecentActivities = (appointments) => {
-    const activities = [];
-    const sortedAppointments = [...appointments].sort((a, b) => 
-      new Date(b.created_at) - new Date(a.created_at)
-    );
-
-    sortedAppointments.slice(0, 6).forEach(appt => {
-      let action = '';
-      let details = `${appt.pet_name} - ${appt.appt_type}`;
+  const fetchClinicData = useCallback(async (vaId) => {
+    try {
+      const response = await axios.get(`http://localhost:5000/api/clinic/${vaId}`);
+      const clinicData = response.data;
       
-      if (appt.vet_name) {
-        details += ` with ${appt.vet_name}`;
+      setClinicId(clinicData.clinic_id);
+      console.log('✅ Clinic ID set:', clinicData.clinic_id);
+    } catch (error) {
+      console.error('❌ Error fetching clinic data:', error);
+    }
+  }, []);
+
+  const fetchUserProfile = useCallback(async (userId) => {
+    try {
+      const response = await axios.get(`http://localhost:5000/api/profile/${userId}`);
+      const userData = response.data;
+      
+      console.log('✅ User profile data:', userData);
+      
+      if (userData.va_id) {
+        setVaId(userData.va_id);
+        setClinicInfo({
+          clinic_name: userData.va_clinicName,
+          clinic_location: userData.va_vetLocation,
+          clinic_phone: userData.va_clinicPhone,
+          clinic_email: userData.va_clinicEmail
+        });
+        
+        // Fetch full clinic data with clinic_id
+        fetchClinicData(userData.va_id);
       }
+    } catch (error) {
+      console.error('❌ Error fetching user profile:', error);
+    }
+  }, [fetchClinicData]);
 
-      switch (appt.appt_status) {
-        case 'pending':
-          action = 'New appointment booked';
-          break;
-        case 'scheduled':
-          action = 'Appointment scheduled';
-          break;
-        case 'completed':
-          action = 'Appointment completed';
-          break;
-        case 'cancelled':
-          action = 'Appointment cancelled';
-          break;
-        default:
-          action = 'Appointment updated';
-      }
+  useEffect(() => {
+    const storedName = sessionStorage.getItem('firstName');
+    const storedUserId = sessionStorage.getItem('userid');
+    const storedVaId = sessionStorage.getItem('va_id');
+    
+    if (storedName) setFirstName(storedName);
+    
+    if (storedVaId) {
+      setVaId(storedVaId);
+      fetchClinicData(storedVaId);
+    } else if (storedUserId) {
+      fetchUserProfile(storedUserId);
+    }
+  }, [fetchUserProfile, fetchClinicData]);
 
-      const time = getTimeAgo(new Date(appt.created_at));
+  useEffect(() => {
+    if (clinicId) {
+      fetchDashboardData();
+    }
+  }, [clinicId, fetchDashboardData]);
 
-      activities.push({
-        id: appt.appt_id,
-        action,
-        details,
-        time
-      });
+  useEffect(() => {
+    console.log('📊 State update:', {
+      vaId,
+      clinicId,
+      clinicInfo,
+      appointmentCounts,
+      totalPatients,
+      activeVets
     });
-
-    setRecentActivities(activities);
-  };
+  }, [vaId, clinicId, clinicInfo, appointmentCounts, totalPatients, activeVets]);
 
   const getTimeAgo = (date) => {
     const now = new Date();
-    const diff = Math.floor((now - date) / 1000); // seconds
+    const diff = Math.floor((now - date) / 1000);
 
     if (diff < 60) return `${diff} secs ago`;
     if (diff < 3600) return `${Math.floor(diff / 60)} mins ago`;

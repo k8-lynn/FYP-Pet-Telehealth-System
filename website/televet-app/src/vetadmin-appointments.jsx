@@ -24,8 +24,6 @@ const VetAdminAppointments = () => {
   const [showSlotModal, setShowSlotModal] = useState(false);
   const [newSlotTime, setNewSlotTime] = useState('');
   const [isEditMode, setIsEditMode] = useState(false);
-  const [slotToDelete, setSlotToDelete] = useState(null);
-  const [slotsLoading, setSlotsLoading] = useState(false);
   const [selectedPendingSlot, setSelectedPendingSlot] = useState(null);
   const [veterinarians, setVeterinarians] = useState([]);
   const [selectedVeterinarian, setSelectedVeterinarian] = useState(null);
@@ -50,7 +48,7 @@ const VetAdminAppointments = () => {
   const [showDateSlotModal, setShowDateSlotModal] = useState(false);
   const [weekSlotCounts, setWeekSlotCounts] = useState({});
   const [monthSlotCounts, setMonthSlotCounts] = useState({});
-  const [consultationType, setConsultationType] = useState('physical'); // Add this state
+  const [consultationType, setConsultationType] = useState('physical');
 
   const [setHoursForm] = useState({
     monday: { opening: '09:00 AM', closing: '05:00 PM', status: 'Available' },
@@ -102,7 +100,6 @@ const VetAdminAppointments = () => {
   useEffect(() => {
     if (!clinic_id) return;
     
-    // Fetch both physical and online slots
     if (viewMode === 'today') {
       fetchClinicSlotsByDate(clinic_id, currentDate, 'physical');
       fetchClinicSlotsByDate(clinic_id, currentDate, 'online');
@@ -139,25 +136,25 @@ const VetAdminAppointments = () => {
       console.log("✅ Vet Admin connected to Socket.IO:", socket.id);
     });
 
-  socket.on("slotUpdated", (data) => {
-    if (data.clinic_id == clinic_id) {
-      fetchAppointmentCounts(clinic_id);
-      
-      if (viewMode === "today") {
-        fetchClinicSlotsByDate(clinic_id, currentDate, 'physical');
-        fetchClinicSlotsByDate(clinic_id, currentDate, 'online');
-      } else if (viewMode === "weekly") {
-        const weekDays = getWeekDays(currentDate);
-        fetchClinicSlotsRange(clinic_id, weekDays[0], weekDays[6], 'physical');
-        fetchClinicSlotsRange(clinic_id, weekDays[0], weekDays[6], 'online');
-      } else if (viewMode === "monthly") {
-        const year = currentDate.getFullYear();
-        const month = currentDate.getMonth();
-        fetchClinicSlotsRange(clinic_id, new Date(year, month, 1), new Date(year, month + 1, 0), 'physical');
-        fetchClinicSlotsRange(clinic_id, new Date(year, month, 1), new Date(year, month + 1, 0), 'online');
+    socket.on("slotUpdated", (data) => {
+      if (data.clinic_id == clinic_id) {
+        fetchAppointmentCounts(clinic_id);
+        
+        if (viewMode === "today") {
+          fetchClinicSlotsByDate(clinic_id, currentDate, 'physical');
+          fetchClinicSlotsByDate(clinic_id, currentDate, 'online');
+        } else if (viewMode === "weekly") {
+          const weekDays = getWeekDays(currentDate);
+          fetchClinicSlotsRange(clinic_id, weekDays[0], weekDays[6], 'physical');
+          fetchClinicSlotsRange(clinic_id, weekDays[0], weekDays[6], 'online');
+        } else if (viewMode === "monthly") {
+          const year = currentDate.getFullYear();
+          const month = currentDate.getMonth();
+          fetchClinicSlotsRange(clinic_id, new Date(year, month, 1), new Date(year, month + 1, 0), 'physical');
+          fetchClinicSlotsRange(clinic_id, new Date(year, month, 1), new Date(year, month + 1, 0), 'online');
+        }
       }
-    }
-  });
+    });
 
     socket.on("connect_error", (error) => {
       console.error("❌ Vet Admin socket error:", error);
@@ -203,7 +200,6 @@ const VetAdminAppointments = () => {
       socket.off("slotUpdated", handleSlotUpdate);
     };
   }, [clinic_id, viewMode, currentDate]);
-  
 
   const fetchVeterinarians = async (vaId) => {
     try {
@@ -305,7 +301,7 @@ const VetAdminAppointments = () => {
       if (data && data.slots) {
         setTimeSlots(prev => ({
           ...prev,
-          [type]: {  // ✅ CORRECT - use the type parameter
+          [type]: {
             ...prev[type],
             [dateKey]: data.slots
           }
@@ -362,86 +358,6 @@ const VetAdminAppointments = () => {
       }
     } catch (error) {
       console.error("Error fetching appointment counts:", error);
-    }
-  };
-
-  const handleGenerateDefaultSlots = async () => {
-    if (!clinic_id) {
-      alert("Clinic not found");
-      return;
-    }
-
-    setSlotsLoading(true);
-    try {
-      const todayKey = formatDateKey(currentDate);
-      const res = await fetch(`http://localhost:5000/api/clinic-slots/generate/${clinic_id}/date/${todayKey}/${consultationType}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
-      });
-
-      const data = await res.json();
-      
-      if (res.ok) {
-        setTimeSlots(prev => ({
-          ...prev,
-          [consultationType]: {
-            ...prev[consultationType],
-            [todayKey]: data.slots
-          }
-        }));
-        alert(`Default ${consultationType} time slots generated successfully!`);
-      } else {
-        alert(data.error || "Failed to generate slots");
-      }
-    } catch (error) {
-      console.error("Error generating slots:", error);
-      alert("An error occurred while generating slots");
-    } finally {
-      setSlotsLoading(false);
-    }
-  };
-
-  const handleGenerateWeekSlots = async () => {
-    if (!clinic_id) {
-      alert("Clinic not found");
-      return;
-    }
-  
-    const weekDays = getWeekDays(currentDate);
-    setSlotsLoading(true);
-    
-    try {
-      const promises = weekDays.map(day => {
-        const dateKey = formatDateKey(day);
-        return fetch(`http://localhost:5000/api/clinic-slots/generate/${clinic_id}/date/${dateKey}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' }
-        });
-      });
-  
-      const responses = await Promise.all(promises);
-      const slotsData = await Promise.all(responses.map(res => res.json()));
-      
-      const newTimeSlots = {};
-      weekDays.forEach((day, index) => {
-        const dateKey = formatDateKey(day);
-        if (slotsData[index] && slotsData[index].slots) {
-          newTimeSlots[dateKey] = slotsData[index].slots;
-        }
-      });
-      
-      setTimeSlots(prev => ({
-        ...prev,
-        ...newTimeSlots
-      }));
-      
-      alert("Time slots generated for the entire week!");
-      fetchClinicSlotsRange(clinic_id, weekDays[0], weekDays[6]);
-    } catch (error) {
-      console.error("Error generating week slots:", error);
-      alert("An error occurred while generating week slots");
-    } finally {
-      setSlotsLoading(false);
     }
   };
 
@@ -567,49 +483,6 @@ const VetAdminAppointments = () => {
     }
   };
 
-  const handleGenerateDefaultSlotsForDate = async (date) => {
-    if (!clinic_id) {
-      alert("Clinic not found");
-      return;
-    }
-  
-    const dateKey = formatDateKey(date);
-    setSlotsLoading(true);
-    
-    try {
-      const res = await fetch(`http://localhost:5000/api/clinic-slots/generate/${clinic_id}/date/${dateKey}/${consultationType}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
-      });
-  
-      const data = await res.json();
-      
-      if (res.ok) {
-        setTimeSlots(prev => ({
-          ...prev,
-          [dateKey]: data.slots
-        }));
-        alert("Default time slots generated successfully!");
-        
-        if (viewMode === 'weekly') {
-          const weekDays = getWeekDays(currentDate);
-          fetchClinicSlotsRange(clinic_id, weekDays[0], weekDays[6]);
-        } else if (viewMode === 'monthly') {
-          const year = currentDate.getFullYear();
-          const month = currentDate.getMonth();
-          fetchClinicSlotsRange(clinic_id, new Date(year, month, 1), new Date(year, month + 1, 0));
-        }
-      } else {
-        alert(data.error || "Failed to generate slots");
-      }
-    } catch (error) {
-      console.error("Error generating slots:", error);
-      alert("An error occurred while generating slots");
-    } finally {
-      setSlotsLoading(false);
-    }
-  };
-
   const handleDeleteSlot = async () => {
     if (selectedSlotsForDeletion.length === 0) {
       alert('Please select at least one slot to delete');
@@ -625,7 +498,6 @@ const VetAdminAppointments = () => {
     const dateKey = formatDateKey(targetDate);
     const existingSlots = timeSlots[consultationType]?.[dateKey] || [];
     
-    // Check if any selected slots are booked/pending
     const nonAvailableSlots = selectedSlotsForDeletion.filter(slotId => {
       const slot = existingSlots.find(s => s.id === slotId);
       return slot && slot.status !== 'available';
@@ -636,7 +508,6 @@ const VetAdminAppointments = () => {
       return;
     }
   
-    // Filter out selected slots
     const updatedSlots = existingSlots.filter(slot => !selectedSlotsForDeletion.includes(slot.id));
   
     try {
@@ -682,149 +553,135 @@ const VetAdminAppointments = () => {
     });
   };
 
-  // Replace the handleApproveSlot function in vetadmin-appointments.jsx
-
-const handleApproveSlot = async (slot) => {
-  if (!selectedVeterinarian) {
-    alert('Please select a veterinarian');
-    return;
-  }
-
-  const targetDate = selectedDate || currentDate;
-  const dateKey = formatDateKey(targetDate);
-  const existingSlots = timeSlots[consultationType]?.[dateKey] || []; // ✅ ADD consultationType
-
-  // First, update the appointment status in the database if there's a petId
-  if (slot.petId) {
-    try {
-      // Update pet's assigned vet
-      const assignVetRes = await fetch(`http://localhost:5000/api/patients/${slot.petId}/assign-vet`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ vt_id: selectedVeterinarian.vt_id })
-      });
-
-      if (!assignVetRes.ok) {
-        alert('Failed to assign veterinarian to patient');
-        return;
-      }
-    } catch (error) {
-      console.error('Error assigning vet:', error);
-      alert('An error occurred while assigning veterinarian');
+  const handleApproveSlot = async (slot) => {
+    if (!selectedVeterinarian) {
+      alert('Please select a veterinarian');
       return;
     }
-  }
 
-  // Update the slot
-  const updatedSlots = existingSlots.map(s => 
-    s.id === slot.id 
-      ? { 
-          ...s, 
-          status: 'taken',
-          veterinarian: `Dr. ${selectedVeterinarian.usr_firstName} ${selectedVeterinarian.usr_lastName}`,
-          vt_id: selectedVeterinarian.vt_id
+    const targetDate = selectedDate || currentDate;
+    const dateKey = formatDateKey(targetDate);
+    const existingSlots = timeSlots[consultationType]?.[dateKey] || [];
+
+    if (slot.petId) {
+      try {
+        const assignVetRes = await fetch(`http://localhost:5000/api/patients/${slot.petId}/assign-vet`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ vt_id: selectedVeterinarian.vt_id })
+        });
+
+        if (!assignVetRes.ok) {
+          alert('Failed to assign veterinarian to patient');
+          return;
         }
-      : s
-  );
-
-  try {
-    // ✅ ADD consultationType to URL
-    const res = await fetch(`http://localhost:5000/api/clinic-slots/${clinic_id}/date/${dateKey}/${consultationType}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ slots: updatedSlots })
-    });
-
-    if (res.ok) {
-      // ✅ UPDATE with consultationType structure
-      setTimeSlots(prev => ({
-        ...prev,
-        [consultationType]: {
-          ...prev[consultationType],
-          [dateKey]: updatedSlots
-        }
-      }));
-      setSelectedPendingSlot(null);
-      setSelectedVeterinarian(null);
-      alert('Appointment approved and assigned successfully!');
-    } else {
-      alert('Failed to approve appointment');
-    }
-  } catch (error) {
-    console.error('Error approving slot:', error);
-    alert('An error occurred');
-  }
-};
-
-const handleBulkGenerateSlots = async () => {
-  if (!clinic_id) {
-    alert("Clinic not found");
-    return;
-  }
-
-  const { startDate, endDate, slotDuration, consultationTypes } = generateConfig;
-
-  if (!startDate || !endDate || consultationTypes.length === 0) {
-    alert("Please fill in all fields");
-    return;
-  }
-
-  setSlotsLoading(true);
-  
-  try {
-    const res = await fetch(`http://localhost:5000/api/clinic-slots/generate-bulk/${clinic_id}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        startDate,
-        endDate,
-        slotDuration,
-        consultationTypes
-      })
-    });
-
-    const data = await res.json();
-    
-    if (res.ok) {
-      alert(`Successfully generated slots for ${data.datesGenerated} dates!`);
-      setShowGenerateModal(false);
-      
-      // Refresh the current view
-      if (viewMode === 'today') {
-        consultationTypes.forEach(type => {
-          fetchClinicSlotsByDate(clinic_id, currentDate, type);
-        });
-      } else if (viewMode === 'weekly') {
-        const weekDays = getWeekDays(currentDate);
-        consultationTypes.forEach(type => {
-          fetchClinicSlotsRange(clinic_id, weekDays[0], weekDays[6], type);
-        });
-      } else if (viewMode === 'monthly') {
-        const year = currentDate.getFullYear();
-        const month = currentDate.getMonth();
-        consultationTypes.forEach(type => {
-          fetchClinicSlotsRange(clinic_id, new Date(year, month, 1), new Date(year, month + 1, 0), type);
-        });
+      } catch (error) {
+        console.error('Error assigning vet:', error);
+        alert('An error occurred while assigning veterinarian');
+        return;
       }
-    } else {
-      alert(data.error || "Failed to generate slots");
     }
-  } catch (error) {
-    console.error("Error generating bulk slots:", error);
-    alert("An error occurred while generating slots");
-  } finally {
-    setSlotsLoading(false);
-  }
-};
 
+    const updatedSlots = existingSlots.map(s => 
+      s.id === slot.id 
+        ? { 
+            ...s, 
+            status: 'taken',
+            veterinarian: `Dr. ${selectedVeterinarian.usr_firstName} ${selectedVeterinarian.usr_lastName}`,
+            vt_id: selectedVeterinarian.vt_id
+          }
+        : s
+    );
 
+    try {
+      const res = await fetch(`http://localhost:5000/api/clinic-slots/${clinic_id}/date/${dateKey}/${consultationType}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ slots: updatedSlots })
+      });
+
+      if (res.ok) {
+        setTimeSlots(prev => ({
+          ...prev,
+          [consultationType]: {
+            ...prev[consultationType],
+            [dateKey]: updatedSlots
+          }
+        }));
+        setSelectedPendingSlot(null);
+        setSelectedVeterinarian(null);
+        alert('Appointment approved and assigned successfully!');
+      } else {
+        alert('Failed to approve appointment');
+      }
+    } catch (error) {
+      console.error('Error approving slot:', error);
+      alert('An error occurred');
+    }
+  };
+
+  const handleBulkGenerateSlots = async () => {
+    if (!clinic_id) {
+      alert("Clinic not found");
+      return;
+    }
+
+    const { startDate, endDate, slotDuration, consultationTypes } = generateConfig;
+
+    if (!startDate || !endDate || consultationTypes.length === 0) {
+      alert("Please fill in all fields");
+      return;
+    }
+    
+    try {
+      const res = await fetch(`http://localhost:5000/api/clinic-slots/generate-bulk/${clinic_id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          startDate,
+          endDate,
+          slotDuration,
+          consultationTypes
+        })
+      });
+
+      const data = await res.json();
+      
+      if (res.ok) {
+        alert(`Successfully generated slots for ${data.datesGenerated} dates!`);
+        setShowGenerateModal(false);
+        
+        if (viewMode === 'today') {
+          consultationTypes.forEach(type => {
+            fetchClinicSlotsByDate(clinic_id, currentDate, type);
+          });
+        } else if (viewMode === 'weekly') {
+          const weekDays = getWeekDays(currentDate);
+          consultationTypes.forEach(type => {
+            fetchClinicSlotsRange(clinic_id, weekDays[0], weekDays[6], type);
+          });
+        } else if (viewMode === 'monthly') {
+          const year = currentDate.getFullYear();
+          const month = currentDate.getMonth();
+          consultationTypes.forEach(type => {
+            fetchClinicSlotsRange(clinic_id, new Date(year, month, 1), new Date(year, month + 1, 0), type);
+          });
+        }
+      } else {
+        alert(data.error || "Failed to generate slots");
+      }
+    } catch (error) {
+      console.error("Error generating bulk slots:", error);
+      alert("An error occurred while generating slots");
+    }
+  };
 
   const todayKey = formatDateKey(currentDate);
   const todaySlots = timeSlots[consultationType]?.[todayKey] || [];
   const availableCount = todaySlots.filter(s => s.status === 'available').length;
   const takenCount = todaySlots.filter(s => s.status === 'taken').length;
   const pendingCount = todaySlots.filter(s => s.status === 'pending').length;
-
+  
   return (
     <div className="schedule-dashboard-container">
       <PawPattern count={35} />
