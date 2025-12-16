@@ -4544,6 +4544,175 @@ app.post('/api/chat/upload-file', upload.single('file'), (req, res) => {
   );
 });
 
+// =============== VET REPLY TEMPLATES ENDPOINTS ===============
+
+// Get all templates for a vet
+app.get('/api/vet-templates/:vt_id', (req, res) => {
+  const { vt_id } = req.params;
+  
+  const sql = `
+    SELECT * FROM vet_reply_templates_t 
+    WHERE vt_id = ? 
+    ORDER BY usage_count DESC, category ASC
+  `;
+  
+  db.query(sql, [vt_id], (err, results) => {
+    if (err) {
+      console.error('❌ Error fetching templates:', err);
+      return res.status(500).json({ error: 'Failed to fetch templates' });
+    }
+    res.json(results);
+  });
+});
+
+// Create new template
+app.post('/api/vet-templates', (req, res) => {
+  const { vt_id, category, keywords, template_message } = req.body;
+  
+  if (!vt_id || !category || !keywords || !template_message) {
+    return res.status(400).json({ error: 'Missing required fields' });
+  }
+  
+  const sql = `
+    INSERT INTO vet_reply_templates_t (vt_id, category, keywords, template_message)
+    VALUES (?, ?, ?, ?)
+  `;
+  
+  db.query(sql, [vt_id, category, keywords, template_message], (err, result) => {
+    if (err) {
+      console.error('❌ Error creating template:', err);
+      return res.status(500).json({ error: 'Failed to create template' });
+    }
+    
+    res.status(201).json({ 
+      message: 'Template created successfully',
+      template_id: result.insertId 
+    });
+  });
+});
+
+// Update template
+app.put('/api/vet-templates/:template_id', (req, res) => {
+  const { template_id } = req.params;
+  const { category, keywords, template_message, is_active } = req.body;
+  
+  const sql = `
+    UPDATE vet_reply_templates_t 
+    SET category = ?, keywords = ?, template_message = ?, is_active = ?
+    WHERE template_id = ?
+  `;
+  
+  db.query(sql, [category, keywords, template_message, is_active, template_id], (err) => {
+    if (err) {
+      console.error('❌ Error updating template:', err);
+      return res.status(500).json({ error: 'Failed to update template' });
+    }
+    res.json({ message: 'Template updated successfully' });
+  });
+});
+
+// Delete template
+app.delete('/api/vet-templates/:template_id', (req, res) => {
+  const { template_id } = req.params;
+  
+  db.query('DELETE FROM vet_reply_templates_t WHERE template_id = ?', [template_id], (err) => {
+    if (err) {
+      console.error('❌ Error deleting template:', err);
+      return res.status(500).json({ error: 'Failed to delete template' });
+    }
+    res.json({ message: 'Template deleted successfully' });
+  });
+});
+
+// Analyze message and get suggestions
+app.post('/api/vet-templates/analyze', (req, res) => {
+  const { vt_id, message } = req.body;
+  
+  if (!vt_id || !message) {
+    return res.status(400).json({ error: 'Missing required fields' });
+  }
+  
+  // Get active templates
+  const sql = `
+    SELECT * FROM vet_reply_templates_t 
+    WHERE vt_id = ? AND is_active = 'yes'
+    ORDER BY usage_count DESC
+  `;
+  
+  db.query(sql, [vt_id], (err, templates) => {
+    if (err) {
+      console.error('❌ Error fetching templates:', err);
+      return res.status(500).json({ error: 'Failed to analyze message' });
+    }
+    
+    // Simple keyword matching algorithm
+    const messageLower = message.toLowerCase();
+    const suggestions = [];
+    
+    templates.forEach(template => {
+      const keywords = template.keywords.toLowerCase().split(',').map(k => k.trim());
+      let matchScore = 0;
+      let matchedKeywords = [];
+      
+      keywords.forEach(keyword => {
+        if (messageLower.includes(keyword)) {
+          matchScore++;
+          matchedKeywords.push(keyword);
+        }
+      });
+      
+      if (matchScore > 0) {
+        suggestions.push({
+          ...template,
+          match_score: matchScore,
+          matched_keywords: matchedKeywords
+        });
+      }
+    });
+    
+    // Sort by match score and usage count
+    suggestions.sort((a, b) => {
+      if (b.match_score !== a.match_score) {
+        return b.match_score - a.match_score;
+      }
+      return b.usage_count - a.usage_count;
+    });
+    
+    // Return top 3 suggestions
+    res.json(suggestions.slice(0, 3));
+  });
+});
+
+// Log template usage
+app.post('/api/vet-templates/log-usage', (req, res) => {
+  const { template_id, vt_id, chat_id, msg_id, was_edited } = req.body;
+  
+  // Insert usage log
+  const logSql = `
+    INSERT INTO template_usage_log_t (template_id, vt_id, chat_id, msg_id, was_edited)
+    VALUES (?, ?, ?, ?, ?)
+  `;
+  
+  db.query(logSql, [template_id, vt_id, chat_id, msg_id, was_edited], (err) => {
+    if (err) {
+      console.error('❌ Error logging usage:', err);
+      return res.status(500).json({ error: 'Failed to log usage' });
+    }
+    
+    // Increment usage count
+    const updateSql = `
+      UPDATE vet_reply_templates_t 
+      SET usage_count = usage_count + 1 
+      WHERE template_id = ?
+    `;
+    
+    db.query(updateSql, [template_id], (err2) => {
+      if (err2) console.error('❌ Error updating usage count:', err2);
+      res.json({ message: 'Usage logged successfully' });
+    });
+  });
+});
+
 //REMINDERS BACKEND
 // -------------------------------------------------------------
 // 🟢 GET REMINDERS FOR PET PARENT

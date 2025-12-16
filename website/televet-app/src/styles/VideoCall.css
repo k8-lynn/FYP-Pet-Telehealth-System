@@ -41,6 +41,7 @@
     justify-content: space-between;
     align-items: center;
     backdrop-filter: blur(10px);
+    flex-shrink: 0;
   }
   
   .call-info h3 {
@@ -85,6 +86,8 @@
     gap: 16px;
     padding: 16px;
     position: relative;
+    overflow: hidden;
+    min-height: 0;
   }
   
   .video-container {
@@ -92,6 +95,7 @@
     background: #000;
     border-radius: 12px;
     overflow: hidden;
+    min-height: 0;
   }
   
   .main-video {
@@ -103,7 +107,7 @@
     width: 240px;
     height: 180px;
     position: absolute;
-    bottom: 80px;
+    bottom: 100px;
     right: 20px;
     z-index: 10;
     border: 2px solid rgba(255, 255, 255, 0.2);
@@ -167,6 +171,9 @@
     backdrop-filter: blur(10px);
     max-height: 100%;
     overflow-y: auto;
+    overflow-x: hidden;
+    position: relative;
+    z-index: 5;
   }
 
   .video-pet-info h4 {
@@ -183,7 +190,7 @@
   }
 
   .pet-info-item > div {
-    color: white; /* ✅ Force white for container */
+    color: white;
   }
 
   .pet-emoji {
@@ -211,13 +218,13 @@
     margin: 0;
     font-size: 18px;
     font-weight: 600;
-    color: white !important; /* ✅ Always white with !important */
+    color: white !important;
   }
 
   .pet-details {
     margin: 4px 0 0;
     font-size: 14px;
-    color: rgba(255, 255, 255, 0.7) !important; /* ✅ Slightly dimmed for contrast */
+    color: rgba(255, 255, 255, 0.7) !important;
   }
 
   .pet-vitals {
@@ -231,13 +238,15 @@
     background: rgba(255, 255, 255, 0.05);
     padding: 12px;
     border-radius: 8px;
-    text-align: center;
-    color: white; /* ✅ Ensure white text */
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    color: white;
   }
 
   .vital-item span {
     display: block;
-    color: white !important; /* ✅ Force white for both spans */
+    color: white !important;
   }
 
   .vital-item span:first-child {
@@ -291,16 +300,19 @@
   
   .video-call-controls {
     background: rgba(0, 0, 0, 0.5);
-    padding: 24px;
+    padding: 20px 24px;
     display: flex;
     justify-content: center;
     gap: 16px;
     backdrop-filter: blur(10px);
+    flex-shrink: 0;
   }
   
   .incoming-call-actions, .active-call-controls {
     display: flex;
     gap: 16px;
+    flex-wrap: wrap;
+    justify-content: center;
   }
   
   .control-btn, .accept-btn, .decline-btn, .end-call-btn, .start-call-btn {
@@ -370,23 +382,6 @@
     justify-content: center;
     color: white;
   }
-  
-  @media (max-width: 768px) {
-    .video-grid {
-      grid-template-columns: 1fr;
-    }
-    
-    .local-video {
-      width: 120px;
-      height: 90px;
-      bottom: 90px;
-      right: 12px;
-    }
-    
-    .video-pet-info {
-      display: none;
-    }
-  }
 
   .control-btn.active {
     background-color: #ef4444 !important;
@@ -399,19 +394,6 @@
   
   .video-element.hidden {
     display: none !important;
-  }
-
-  .video-pet-info {
-    background: rgba(0, 0, 0, 0.5);
-    border-radius: 12px;
-    padding: 20px;
-    color: white;
-    backdrop-filter: blur(10px);
-    max-height: calc(100vh - 280px);
-    overflow-y: auto;
-    overflow-x: hidden;
-    position: relative;
-    z-index: 5; /* Below modal but above videos */
   }
   
   .video-pet-info::-webkit-scrollbar {
@@ -431,15 +413,6 @@
   .video-pet-info::-webkit-scrollbar-thumb:hover {
     background: rgba(255, 255, 255, 0.3);
   }
-  
-  .vital-item {
-    background: rgba(255, 255, 255, 0.05);
-    padding: 12px;
-    border-radius: 8px;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-  }
 
   /* Ensure modal appears above everything */
 .mypatients-modal-overlay {
@@ -448,7 +421,7 @@
   left: 0 !important;
   right: 0 !important;
   bottom: 0 !important;
-  z-index: 10001 !important; /* Above video call overlay */
+  z-index: 10001 !important;
   background: rgba(0, 0, 0, 0.75) !important;
   display: flex !important;
   align-items: center !important;
@@ -464,7 +437,161 @@
   margin: 2rem !important;
 }
 
-/* Make video call overlay lower than modal */
 .video-call-overlay {
   z-index: 10000;
+}
+
+/* ✅ Responsive fixes for smaller laptops (1366x768, 1440x900) */
+@media (max-width: 1440px) {
+  .video-call-container {
+    width: 95%;
+    height: 92vh;
+  }
+
+  .video-call-header {
+    padding: 16px;
+  }
+
+  .video-grid {
+    grid-template-columns: 1fr 260px;
+    gap: 12px;
+    padding: 12px;
+  }
+
+  .local-video {
+    width: 200px;
+    height: 150px;
+    bottom: 90px;
+    right: 16px;
+  }
+
+  .video-pet-info {
+    padding: 16px;
+  }
+
+  .video-call-controls {
+    padding: 16px 20px;
+  }
+
+  .control-btn {
+    padding: 14px;
+  }
+
+  .control-btn, .accept-btn, .decline-btn, .end-call-btn, .start-call-btn {
+    padding: 14px 28px;
+    font-size: 15px;
+  }
+}
+
+@media (max-width: 1280px) {
+  .video-call-container {
+    width: 98%;
+    height: 94vh;
+  }
+
+  .video-grid {
+    grid-template-columns: 1fr 240px;
+    gap: 10px;
+    padding: 10px;
+  }
+
+  .local-video {
+    width: 180px;
+    height: 135px;
+    bottom: 85px;
+    right: 12px;
+  }
+
+  .video-pet-info {
+    padding: 14px;
+    font-size: 14px;
+  }
+
+  .pet-vitals {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .video-call-controls {
+    padding: 14px 16px;
+    gap: 12px;
+  }
+
+  .control-btn {
+    padding: 12px;
+  }
+
+  .control-btn, .accept-btn, .decline-btn, .end-call-btn, .start-call-btn {
+    padding: 12px 24px;
+    font-size: 14px;
+  }
+}
+
+@media (max-width: 1024px) {
+  .video-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .local-video {
+    width: 160px;
+    height: 120px;
+    bottom: 80px;
+    right: 10px;
+  }
+
+  .video-pet-info {
+    display: none;
+  }
+}
+
+@media (max-width: 768px) {
+  .video-grid {
+    grid-template-columns: 1fr;
+    padding: 8px;
+  }
+  
+  .local-video {
+    width: 120px;
+    height: 90px;
+    bottom: 75px;
+    right: 8px;
+  }
+  
+  .video-pet-info {
+    display: none;
+  }
+
+  .video-call-controls {
+    padding: 12px;
+    gap: 8px;
+  }
+
+  .control-btn {
+    padding: 10px;
+  }
+
+  .control-btn, .accept-btn, .decline-btn, .end-call-btn, .start-call-btn {
+    padding: 10px 20px;
+    font-size: 13px;
+  }
+}
+
+/* Patient Info Dropdown Scrollbar */
+.video-call-overlay div[style*="maxHeight"]::-webkit-scrollbar {
+  width: 8px;
+}
+
+.video-call-overlay div[style*="maxHeight"]::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 4px;
+  margin: 8px 0;
+}
+
+.video-call-overlay div[style*="maxHeight"]::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 4px;
+}
+
+.video-call-overlay div[style*="maxHeight"]::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.5);
 }
