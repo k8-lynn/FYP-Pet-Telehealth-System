@@ -185,12 +185,73 @@ const VetAdminSchedules = () => {
     }
   };
 
+  const convertTo24Hour = (time12h) => {
+    if (!time12h) return null;
+    const [time, modifier] = time12h.split(' ');
+    let [hours, minutes] = time.split(':');
+    if (hours === '12') {
+      hours = '00';
+    }
+    if (modifier === 'PM') {
+      hours = parseInt(hours, 10) + 12;
+    }
+    return `${hours}:${minutes}`;
+  };
+  
+  const validateDayHours = (dayData, dayName) => {
+    const errors = [];
+    
+    // Check if status is not Closed but times are missing
+    if (dayData.status !== 'Closed') {
+      if (!dayData.opening || !dayData.closing) {
+        errors.push(`${dayName}: Opening and closing times are required when status is "${dayData.status}"`);
+        return errors;
+      }
+      
+      // Check if times are valid from timeOptions
+      if (!timeOptions.includes(dayData.opening)) {
+        errors.push(`${dayName}: Invalid opening time format`);
+      }
+      if (!timeOptions.includes(dayData.closing)) {
+        errors.push(`${dayName}: Invalid closing time format`);
+      }
+      
+      // Check if opening and closing times are the same
+      if (dayData.opening === dayData.closing) {
+        errors.push(`${dayName}: Opening and closing times cannot be the same`);
+      }
+      
+      // Check if closing time is before opening time
+      const opening24 = convertTo24Hour(dayData.opening);
+      const closing24 = convertTo24Hour(dayData.closing);
+      
+      if (opening24 && closing24 && closing24 <= opening24) {
+        errors.push(`${dayName}: Closing time must be after opening time`);
+      }
+    }
+    
+    return errors;
+  };
+
   const handleSaveHours = async () => {
     if (!clinic_id) {
       alert("Clinic not found");
       return;
     }
-
+  
+    // Validate all days
+    const allErrors = [];
+    daysOfWeek.forEach((day, index) => {
+      const dayData = hoursForm[day];
+      const errors = validateDayHours(dayData, dayLabels[index]);
+      allErrors.push(...errors);
+    });
+  
+    if (allErrors.length > 0) {
+      alert("Please fix the following errors:\n\n" + allErrors.join('\n'));
+      return;
+    }
+  
     const payload = {};
     daysOfWeek.forEach(day => {
       const dayData = hoursForm[day];
@@ -200,16 +261,16 @@ const VetAdminSchedules = () => {
         status: dayData.status
       });
     });
-
+  
     console.log("💾 Saving payload:", payload);
-
+  
     try {
       const res = await fetch(`http://localhost:5000/api/clinic-hours/${clinic_id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
-
+  
       if (res.ok) {
         alert("Clinic hours updated successfully!");
         fetchClinicHours(clinic_id);
@@ -267,6 +328,20 @@ const VetAdminSchedules = () => {
     const parsed = parseClinicHours(field);
     return parsed && parsed.status && parsed.status.toLowerCase() !== 'closed';
   });
+
+  const handleCloseModal = () => {
+    // Reset form to last saved clinic hours when closing without saving
+    if (clinicHours) {
+      const resetForm = {};
+      daysOfWeek.forEach(day => {
+        const dbField = `${day}_hours`;
+        const rawData = clinicHours[dbField];
+        resetForm[day] = parseClinicHours(rawData);
+      });
+      setHoursForm(resetForm);
+    }
+    setShowHoursModal(false);
+  };
 
   return (
     <div className="schedule-dashboard-container">
@@ -351,9 +426,9 @@ const VetAdminSchedules = () => {
         </div>
 
         {showHoursModal && (
-          <div className="schedule-modal-overlay" onClick={() => setShowHoursModal(false)}>
+          <div className="schedule-modal-overlay" onClick={handleCloseModal}>
             <div className="schedule-modal-content" onClick={(e) => e.stopPropagation()}>
-              <button className="schedule-modal-close" onClick={() => setShowHoursModal(false)}>
+              <button className="schedule-modal-close" onClick={handleCloseModal}>
                 <X size={24} />
               </button>
 
@@ -380,10 +455,31 @@ const VetAdminSchedules = () => {
                             value={dayData.opening || ''}
                             onChange={(e) => {
                               const val = e.target.value;
+                              
+                              // Only allow valid time format characters
+                              if (val && !/^[0-9: APM]*$/i.test(val)) {
+                                return; // Block invalid characters
+                              }
+                              
                               const numericMatch = /^\d+$/.test(val)
                                 ? timeOptions.find(t => t.startsWith(val.padStart(2, '0')))
                                 : null;
-                              handleDayChange(day, 'opening', numericMatch || val);
+                              
+                              const newValue = numericMatch || val;
+                              
+                              // Auto-update status from Closed if time is entered
+                              if (newValue && dayData.status === 'Closed') {
+                                setHoursForm(prev => ({
+                                  ...prev,
+                                  [day]: {
+                                    ...prev[day],
+                                    opening: newValue,
+                                    status: 'Available'
+                                  }
+                                }));
+                              } else {
+                                handleDayChange(day, 'opening', newValue);
+                              }
                             }}
                             onFocus={(e) => e.target.select()}
                             disabled={dayData.status === 'Closed'}
@@ -406,10 +502,31 @@ const VetAdminSchedules = () => {
                             value={dayData.closing || ''}
                             onChange={(e) => {
                               const val = e.target.value;
+                              
+                              // Only allow valid time format characters
+                              if (val && !/^[0-9: APM]*$/i.test(val)) {
+                                return; // Block invalid characters
+                              }
+                              
                               const numericMatch = /^\d+$/.test(val)
                                 ? timeOptions.find(t => t.startsWith(val.padStart(2, '0')))
                                 : null;
-                              handleDayChange(day, 'closing', numericMatch || val);
+                              
+                              const newValue = numericMatch || val;
+                              
+                              // Auto-update status from Closed if time is entered
+                              if (newValue && dayData.status === 'Closed') {
+                                setHoursForm(prev => ({
+                                  ...prev,
+                                  [day]: {
+                                    ...prev[day],
+                                    closing: newValue,
+                                    status: 'Available'
+                                  }
+                                }));
+                              } else {
+                                handleDayChange(day, 'closing', newValue);
+                              }
                             }}
                             onFocus={(e) => e.target.select()}
                             disabled={dayData.status === 'Closed'}

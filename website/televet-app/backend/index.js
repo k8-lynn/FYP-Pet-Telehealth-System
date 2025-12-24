@@ -35,17 +35,17 @@ io.on('connection', (socket) => {
   
   // ✅ Handle user joining their room
   socket.on('joinUser', (userId) => {
-    const userIdStr = String(userId); // ✅ Force string
+    const userIdStr = String(userId);
     const roomName = `user_${userIdStr}`;
     socket.join(roomName);
     console.log(`✅ User ${userIdStr} joined room: ${roomName}`);
     console.log(`📊 Socket ${socket.id} is now in rooms:`, Array.from(socket.rooms));
     
     // Store userId with socket
-    socket.userId = userIdStr; // ✅ Store as string
+    socket.userId = userIdStr;
   });
 
-  // ✅ NEW: Track when user is on chat page
+  // ✅Track when user is on chat page
   socket.on('setOnChatPage', ({ onChatPage }) => {
     if (socket.userId) {
       usersOnChatPage.set(socket.userId, onChatPage);
@@ -54,11 +54,10 @@ io.on('connection', (socket) => {
   });
   
   // ✅ Join chat room
-  // In your io.on('connection') block, update the joinChat handler:
   socket.on('joinChat', (chatId) => {
     socket.join(`chat_${chatId}`);
     console.log(`💬 Socket ${socket.id} joined chat: chat_${chatId}`);
-    socket.emit('joinedChat', { chatId, success: true }); // ADD THIS LINE
+    socket.emit('joinedChat', { chatId, success: true });
   });
   
   // ✅ Leave chat room
