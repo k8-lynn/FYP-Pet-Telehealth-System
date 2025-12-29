@@ -9,16 +9,10 @@ function Header() {
     <header className="header-container">
       {/* Logo */}
       <div className="logo">
-        <span className="logo-dark">YOUR</span>
-        <span className="logo-accent">KITTEN</span>
+        <span className="logo-primary">Telehealth</span>
+        <span className="logo-secondary">Vet</span>
       </div>
 
-      {/* Navigation Links */}
-      <nav className="nav-links">
-        <a href="#about" className="nav-link">About Us</a>
-        <a href="#services" className="nav-link">Services</a>
-        <a href="#contact" className="nav-link">Contact Us</a>
-      </nav>
 
       {/* Buttons */}
       <div className="button-group">

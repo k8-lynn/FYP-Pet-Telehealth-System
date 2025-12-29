@@ -11,18 +11,22 @@
 }
 
 .logo {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem; /* space between Telehealth and Vet */
   font-size: 1.25rem;
-  font-weight: bold;
+  font-weight: 700;
   font-family: 'Inter', sans-serif;
 }
 
-.logo-dark {
-  color: #1f2937;
+.logo-primary {
+  color: #334155; /* soft slate */
 }
 
-.logo-accent {
-  color: #f97316;
+.logo-secondary {
+  color: #3b82f6; /* calm medical blue */
 }
+
 
 .nav-links {
   display: none;

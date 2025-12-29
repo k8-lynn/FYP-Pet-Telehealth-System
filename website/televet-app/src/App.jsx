@@ -6,9 +6,17 @@ import WhatWeOffer from "./WhatWeOffer";
 import paws from './images/paws.png'
 import catDog2 from './images/catDog2.png'
 import tile1 from './images/tile1.png'
-
+import pp_img1 from './images/pp_img1.png'
+import pp_img2 from './images/pp_img2.png'
+import pp_img3 from './images/pp_img3.png'
+import v_img1 from './images/v_img1.png'
+import v_img2 from './images/v_img2.png'
+import v_img3 from './images/v_img3.png'
+import { useNavigate } from 'react-router-dom'
 
 function App() {
+  const navigate = useNavigate()
+  const [openFAQ, setOpenFAQ] = React.useState(null)
   return (
     <div className="min-h-screen bg-[#F5F1E8]">
       <Header />
@@ -32,7 +40,7 @@ function App() {
               personalized care, and expert advice anytime, anywhere.
             </p>
 
-            <button className="signup-btn">Sign Up!</button>
+            <button className="signup-btn" onClick={() => navigate('/register')}>Sign Up!</button>
 
             <div className="hero-image-container">
               <img
@@ -145,9 +153,6 @@ function App() {
             </div>
           </div>
 
-          <div className="text-center mt-8">
-            <button className="learn-more-btn">Learn More</button>
-          </div>
         </section>
         
 
@@ -163,8 +168,44 @@ function App() {
                 Frequently Asked Questions
               </h1>
             </div>
+
+            {/* FAQ Toggle Boxes */}
+            <div className="faq-container">
+              {[
+                {
+                  q: "How do I book a veterinary consultation?",
+                  a: "Choose an available time slot for the consultation and book an appointment!"
+                },
+                {
+                  q: "What issues can be handled through telemedicine?",
+                  a: "Minor health concerns, follow-up consultations, medication advice, and general pet health inquiries can be managed remotely."
+                },
+                {
+                  q: "Can I access my pet’s medical records through the platform?",
+                  a: "Yes, the platform allows you to view and manage your pet’s medical history, treatments, and consultation records digitally."
+                },
+                {
+                  q: "Who can use this platform?",
+                  a: "The platform is designed for pet owners, certified veterinarians, and veterinary administrators to support telehealth consultations and clinic management."
+                }
+              ].map((faq, index) => (
+                <div key={index} className="faq-item">
+                  <button 
+                    className="faq-question"
+                    onClick={() => setOpenFAQ(openFAQ === index ? null : index)}
+                  >
+                    <span>{faq.q}</span>
+                    <span className="faq-icon">{openFAQ === index ? '−' : '+'}</span>
+                  </button>
+                  {openFAQ === index && (
+                    <div className="faq-answer">{faq.a}</div>
+                  )}
+                </div>
+              ))}
+            </div>
+
             <div className="text-center mt-4">
-              <button className="signup-btn">Sign Up!</button>
+              <button className="signup-btn" onClick={() => navigate('/register')}>Sign Up!</button>
               <img src={catDog2} alt="Cat and Dog" className="mt-6 mx-auto max-w-xs" />
             </div>
 

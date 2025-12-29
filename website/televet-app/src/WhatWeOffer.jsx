@@ -1,22 +1,19 @@
 import React, { useState } from 'react'
 import "./styles/WhatWeOffer.css" 
+import pp_img1 from './images/pp_img1.png'
+import pp_img2 from './images/pp_img2.png'
+import pp_img3 from './images/pp_img3.png'
+import v_img1 from './images/v_img1.png'
+import v_img2 from './images/v_img2.png'
+import v_img3 from './images/v_img3.png'
+
 
 const WhatWeOffer = () => {
   const [activeTab, setActiveTab] = useState('owners')
   const [currentImage, setCurrentImage] = useState(0)
 
-  // Sample images - replace with your actual images
-  const petOwnerImages = [
-    '/images/pet-owner-1.jpg',
-    '/images/pet-owner-2.jpg',
-    '/images/pet-owner-3.jpg'
-  ]
-
-  const vetImages = [
-    '/images/vet-1.jpg',
-    '/images/vet-2.jpg',
-    '/images/vet-3.jpg'
-  ]
+  const petOwnerImages = [pp_img3, pp_img2, pp_img1]
+  const vetImages = [v_img1, v_img2, v_img3]
 
   const currentImages = activeTab === 'owners' ? petOwnerImages : vetImages
 
