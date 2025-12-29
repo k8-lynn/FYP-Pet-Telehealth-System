@@ -150,12 +150,6 @@ const VetMyPatients = () => {
               </span>
               <span className="stat-label">Assigned</span>
             </div>
-            <div className="stat-card">
-              <span className="stat-number">
-                {patients.filter(p => getStatusDisplay(p) === 'pending').length}
-              </span>
-              <span className="stat-label">Pending</span>
-            </div>
           </div>
         </div>
 

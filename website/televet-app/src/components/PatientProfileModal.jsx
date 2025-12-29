@@ -14,6 +14,14 @@ const PatientProfileModal = ({
   const [activeHealthView, setActiveHealthView] = useState(null);
   const [activeTrackingView, setActiveTrackingView] = useState(null);
   const [examinations, setExaminations] = useState([]);
+  const [editMode, setEditMode] = useState(false);
+  const [editingExam, setEditingExam] = useState(null);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [showDiscardModal, setShowDiscardModal] = useState(false);
+  const [editingRecord, setEditingRecord] = useState(null);
+  const [editingRecordType, setEditingRecordType] = useState(null);
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [uploadingFile, setUploadingFile] = useState(false);
   const [medicalHistory, setMedicalHistory] = useState({
     documents: [],
     vaccinations: [],
@@ -87,6 +95,429 @@ const PatientProfileModal = ({
     start_date: '',
     end_date: ''
   });
+
+  // Edit Mode Handlers
+const handleEnterEditMode = (exam) => {
+  setEditMode(true);
+  setEditingExam(JSON.parse(JSON.stringify(exam))); // Deep copy
+  setHasUnsavedChanges(false);
+};
+
+const handleExitEditMode = () => {
+  if (hasUnsavedChanges) {
+    setShowDiscardModal(true);
+  } else {
+    setEditMode(false);
+    setEditingExam(null);
+  }
+};
+
+const handleConfirmDiscard = () => {
+  setShowDiscardModal(false);
+  setEditMode(false);
+  setEditingExam(null);
+  setEditingRecord(null);
+  setEditingRecordType(null);
+  setHasUnsavedChanges(false);
+};
+
+const handleEditChange = (field, value) => {
+  setEditingExam(prev => ({ ...prev, [field]: value }));
+  setHasUnsavedChanges(true);
+};
+
+const handleEditTreatment = (index, field, value) => {
+  setEditingExam(prev => {
+    const updatedTreatments = [...prev.treatments];
+    updatedTreatments[index] = { ...updatedTreatments[index], [field]: value };
+    return { ...prev, treatments: updatedTreatments };
+  });
+  setHasUnsavedChanges(true);
+};
+
+const handleEditPrescription = (index, field, value) => {
+  setEditingExam(prev => {
+    const updatedPrescriptions = [...prev.prescriptions];
+    updatedPrescriptions[index] = { ...updatedPrescriptions[index], [field]: value };
+    return { ...prev, prescriptions: updatedPrescriptions };
+  });
+  setHasUnsavedChanges(true);
+};
+
+const handleSaveExamChanges = async () => {
+  try {
+    // Save main exam details
+    await fetch(`http://localhost:5000/api/examinations/${editingExam.appt_id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        appt_type: editingExam.appt_type,
+        appt_description: editingExam.appt_description,
+        appt_status: editingExam.appt_status
+      })
+    });
+
+    // Save treatments
+    for (let i = 0; i < editingExam.treatments.length; i++) {
+      const treatment = editingExam.treatments[i];
+      if (treatment.treat_id) {
+        await fetch(`http://localhost:5000/api/treatments/${treatment.treat_id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            treat_type: treatment.type,
+            dose: treatment.dose,
+            freq: treatment.frequency,
+            duration: treatment.duration,
+            notes: treatment.notes
+          })
+        });
+      }
+    }
+
+    // Save prescriptions
+    for (let i = 0; i < editingExam.prescriptions.length; i++) {
+      const rx = editingExam.prescriptions[i];
+      if (rx.rx_id) {
+        await fetch(`http://localhost:5000/api/prescriptions/${rx.rx_id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            med_name: rx.medication,
+            dose: rx.dose,
+            freq: rx.frequency,
+            duration: rx.duration,
+            instructions: rx.instructions,
+            start_date: rx.start_date,
+            end_date: rx.end_date
+          })
+        });
+      }
+    }
+
+    alert('Changes saved successfully!');
+    setEditMode(false);
+    setEditingExam(null);
+    setHasUnsavedChanges(false);
+    fetchHealthRecords();
+  } catch (error) {
+    console.error('Error saving changes:', error);
+    alert('Failed to save changes. Please try again.');
+  }
+};
+
+// Edit handlers for other health records
+const handleEnterRecordEditMode = (record, type) => {
+  setEditingRecord(JSON.parse(JSON.stringify(record)));
+  setEditingRecordType(type);
+  setHasUnsavedChanges(false);
+};
+
+const handleExitRecordEditMode = () => {
+  if (hasUnsavedChanges) {
+    setShowDiscardModal(true);
+  } else {
+    setEditingRecord(null);
+    setEditingRecordType(null);
+  }
+};
+
+const handleRecordEditChange = (field, value) => {
+  setEditingRecord(prev => ({ ...prev, [field]: value }));
+  setHasUnsavedChanges(true);
+};
+
+const handleSaveRecordChanges = async () => {
+  try {
+    let endpoint = '';
+    let payload = {};
+
+    switch (editingRecordType) {
+      case 'vaccinations':
+        endpoint = `http://localhost:5000/api/vaccinations/${editingRecord.vac_id}`;
+        payload = {
+          vac_name: editingRecord.vaccine,
+          vac_date: editingRecord.vac_date,
+          next_date: editingRecord.next_date,
+          notes: editingRecord.notes
+        };
+        break;
+
+      case 'documents':
+        endpoint = `http://localhost:5000/api/documents/${editingRecord.doc_id}`;
+        payload = {
+          doc_title: editingRecord.title,
+          doc_type: editingRecord.type,
+          file_url: editingRecord.file_url
+        };
+        break;
+
+      case 'conditions':
+        endpoint = `http://localhost:5000/api/conditions/${editingRecord.cond_id}`;
+        payload = {
+          cond_name: editingRecord.condition,
+          diag_date: editingRecord.diag_date,
+          status: editingRecord.status,
+          notes: editingRecord.notes
+        };
+        break;
+
+      case 'surgeries':
+        endpoint = `http://localhost:5000/api/surgeries/${editingRecord.surg_id}`;
+        payload = {
+          surg_name: editingRecord.name,
+          surg_date: editingRecord.date,
+          notes: editingRecord.notes,
+          complications: editingRecord.complications
+        };
+        break;
+    }
+
+    const response = await fetch(endpoint, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    if (response.ok) {
+      alert('Changes saved successfully!');
+      setEditingRecord(null);
+      setEditingRecordType(null);
+      setHasUnsavedChanges(false);
+      fetchHealthRecords();
+    } else {
+      alert('Failed to save changes');
+    }
+  } catch (error) {
+    console.error('Error saving record changes:', error);
+    alert('Failed to save changes. Please try again.');
+  }
+};
+
+// DELETE HANDLERS
+const handleDeleteRecord = async (recordId, recordType) => {
+  if (!window.confirm('Are you sure you want to delete this record? This action cannot be undone.')) {
+    return;
+  }
+
+  try {
+    let endpoint = '';
+    
+    switch (recordType) {
+      case 'vaccinations':
+        endpoint = `http://localhost:5000/api/vaccinations/${recordId}`;
+        break;
+      case 'documents':
+        endpoint = `http://localhost:5000/api/documents/${recordId}`;
+        break;
+      case 'conditions':
+        endpoint = `http://localhost:5000/api/conditions/${recordId}`;
+        break;
+      case 'surgeries':
+        endpoint = `http://localhost:5000/api/surgeries/${recordId}`;
+        break;
+      case 'treatments':
+        endpoint = `http://localhost:5000/api/treatments/${recordId}`;
+        break;
+      case 'prescriptions':
+        endpoint = `http://localhost:5000/api/prescriptions/${recordId}`;
+        break;
+    }
+
+    const response = await fetch(endpoint, {
+      method: 'DELETE'
+    });
+
+    if (response.ok) {
+      alert('Record deleted successfully!');
+      setEditingRecord(null);
+      setEditingRecordType(null);
+      setEditMode(false);
+      setEditingExam(null);
+      fetchHealthRecords();
+      if (recordType === 'treatments' || recordType === 'prescriptions') {
+        fetchAllMedications();
+        fetchAllTreatments();
+      }
+    } else {
+      alert('Failed to delete record');
+    }
+  } catch (error) {
+    console.error('Error deleting record:', error);
+    alert('Failed to delete record. Please try again.');
+  }
+};
+
+const handleFileSelect = (e) => {
+  const file = e.target.files[0];
+  if (file) {
+    // Validate file type
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+    
+    if (!allowedTypes.includes(file.type)) {
+      alert('Invalid file type. Please upload an image, PDF, or Word document.');
+      return;
+    }
+    
+    // Validate file size (10MB max)
+    if (file.size > 10 * 1024 * 1024) {
+      alert('File size must be less than 10MB');
+      return;
+    }
+    
+    setSelectedFile(file);
+  }
+};
+
+const handleUploadDocument = async () => {
+  if (!selectedFile) {
+    alert('Please select a file to upload');
+    return;
+  }
+
+  setUploadingFile(true);
+
+  try {
+    const formData = new FormData();
+    formData.append('document', selectedFile);
+    formData.append('pet_id', petId);
+    formData.append('doc_title', newRecordData.doc_title);
+    formData.append('doc_type', newRecordData.doc_type);
+
+    const response = await fetch('http://localhost:5000/api/pets/upload-document', {
+      method: 'POST',
+      body: formData
+    });
+
+    if (response.ok) {
+      const result = await response.json();
+      alert('Document uploaded successfully!');
+      handleCloseAddRecordModal();
+      setSelectedFile(null);
+      fetchHealthRecords();
+    } else {
+      alert('Failed to upload document');
+    }
+  } catch (error) {
+    console.error('Error uploading document:', error);
+    alert('Failed to upload document. Please try again.');
+  } finally {
+    setUploadingFile(false);
+  }
+};
+
+const handleViewDocument = (fileUrl) => {
+  if (!fileUrl) {
+    alert('No file available');
+    return;
+  }
+  
+  // Open in new tab
+  window.open(`http://localhost:5000${fileUrl}`, '_blank');
+};
+
+const handleDownloadDocument = (fileUrl, title) => {
+  if (!fileUrl) {
+    alert('No file available');
+    return;
+  }
+  
+  // Force download by fetching and creating blob
+  fetch(`http://localhost:5000${fileUrl}`)
+    .then(response => response.blob())
+    .then(blob => {
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = title || 'document';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    })
+    .catch(error => {
+      console.error('Download error:', error);
+      alert('Failed to download file');
+    });
+};
+
+const handleViewDocumentModal = (fileUrl, title) => {
+  if (!fileUrl) {
+    alert('No file available');
+    return;
+  }
+  
+  // Create modal overlay
+  const overlay = document.createElement('div');
+  overlay.style.cssText = `
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    z-index: 999999;  /* Changed from 10000 to 999999 */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+  `;
+  
+  const container = document.createElement('div');
+  container.style.cssText = `
+    background: white;
+    border-radius: 16px;
+    max-width: 90%;
+    max-height: 90%;
+    overflow: auto;
+    position: relative;
+  `;
+  
+  const closeBtn = document.createElement('button');
+  closeBtn.innerHTML = '✕';
+  closeBtn.style.cssText = `
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    background: white;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    z-index: 1;
+  `;
+  
+  closeBtn.onclick = () => document.body.removeChild(overlay);
+  overlay.onclick = (e) => {
+    if (e.target === overlay) document.body.removeChild(overlay);
+  };
+  
+  // Check file type
+  const fileExtension = fileUrl.split('.').pop().toLowerCase();
+  
+  if (['jpg', 'jpeg', 'png', 'gif'].includes(fileExtension)) {
+    const img = document.createElement('img');
+    img.src = `http://localhost:5000${fileUrl}`;
+    img.style.cssText = 'max-width: 100%; max-height: 90vh; display: block;';
+    container.appendChild(img);
+  } else if (fileExtension === 'pdf') {
+    const iframe = document.createElement('iframe');
+    iframe.src = `http://localhost:5000${fileUrl}`;
+    iframe.style.cssText = 'width: 80vw; height: 90vh; border: none;';
+    container.appendChild(iframe);
+  } else {
+    // For other file types, just download
+    handleDownloadDocument(fileUrl, title);
+    return;
+  }
+  
+  container.appendChild(closeBtn);
+  overlay.appendChild(container);
+  document.body.appendChild(overlay);
+};
 
   // Fetch patient details
   const fetchPatientDetails = async () => {
@@ -335,6 +766,7 @@ const PatientProfileModal = ({
   const handleCloseAddRecordModal = () => {
     setShowAddRecordModal(false);
     setAddRecordType(null);
+    setSelectedFile(null);
   };
 
   const handleRecordInputChange = (field, value) => {
@@ -367,6 +799,19 @@ const PatientProfileModal = ({
             alert('Please fill in document title and type');
             return;
           }
+          
+          // If file is selected, upload it
+          if (selectedFile) {
+            await handleUploadDocument();
+            return; // Exit early as handleUploadDocument handles the modal closing
+          }
+          
+          // If no file but has URL, use URL
+          if (!newRecordData.file_url) {
+            alert('Please either upload a file or provide a file URL');
+            return;
+          }
+          
           endpoint = `http://localhost:5000/api/pets/${petId}/documents`;
           payload = {
             doc_title: newRecordData.doc_title,
@@ -743,155 +1188,307 @@ const PatientProfileModal = ({
                     {/* Examinations View */}
                     {activeHealthView === 'examinations' && (
                       <>
-                        <h3>Examinations & Treatment History</h3>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                          <h3>Examinations & Treatment History</h3>
+                          {editMode && (
+                            <div style={{ display: 'flex', gap: '0.5rem' }}>
+                              <button onClick={handleExitEditMode} className="btn-cancel-edit">
+                                Cancel
+                              </button>
+                              <button onClick={handleSaveExamChanges} className="btn-save-edit">
+                                Save Changes
+                              </button>
+                            </div>
+                          )}
+                        </div>
                         {examinations.length === 0 ? (
                           <p className="no-data">No examinations or treatments recorded yet.</p>
                         ) : (
                           <div className="examinations-list">
-                            {examinations.map((exam) => (
-                              <div key={exam.appt_id} className="examination-card">
-                                <div className="exam-header" onClick={() => setExpandedExam(expandedExam === exam.appt_id ? null : exam.appt_id)}>
-                                  <div className="exam-header-left">
-                                    <span className={`exam-type exam-${exam.appt_type.toLowerCase().replace(/\s*&\s*/g, '-').replace(/\s+/g, '-')}`}>
-                                      {exam.appt_type}
-                                    </span>
-                                    <span className="exam-date">
-                                      {new Date(exam.appt_date).toLocaleDateString('en-GB', {
-                                        day: '2-digit',
-                                        month: 'short',
-                                        year: 'numeric'
-                                      })}
-                                    </span>
-                                    <span className={`exam-status ${exam.appt_status}`}>
-                                      {exam.appt_status}
-                                    </span>
-                                  </div>
-                                  <ChevronDown
-                                    size={20}
-                                    className={`expand-icon ${expandedExam === exam.appt_id ? 'expanded' : ''}`}
-                                  />
-                                </div>
-
-                                <div className="exam-summary">
-                                  <p><strong>Vet:</strong> {exam.vet_name}</p>
-                                  <p><strong>Clinic:</strong> {exam.clinic_name}</p>
-                                  <p><strong>Type:</strong> {exam.consultation_type}</p>
-                                  {exam.appt_description && <p><strong>Description:</strong> {exam.appt_description}</p>}
-                                </div>
-
-                                {expandedExam === exam.appt_id && (
-                                  <div className="exam-details">
-                                    {/* Treatments Section */}
-                                    <div className="treatments-section">
-                                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                                        <h4>Treatments Administered</h4>
-                                        <button
-                                          className="btn-add-inline"
-                                          onClick={() => handleOpenAddTreatmentModal(exam.appt_id)}
-                                          style={{
-                                            padding: '0.5rem 1rem',
-                                            background: '#3b82f6',
-                                            color: 'white',
-                                            border: 'none',
-                                            borderRadius: '8px',
-                                            cursor: 'pointer',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: '0.5rem',
-                                            fontSize: '0.875rem'
-                                          }}
-                                        >
-                                          <Plus size={16} /> Add Treatment
-                                        </button>
-                                      </div>
-
-                                      {exam.treatments && exam.treatments.length > 0 ? (
-                                        <table className="data-table">
-                                          <thead>
-                                            <tr>
-                                              <th>Type</th>
-                                              <th>Dose</th>
-                                              <th>Frequency</th>
-                                              <th>Duration</th>
-                                              <th>Notes</th>
-                                            </tr>
-                                          </thead>
-                                          <tbody>
-                                            {exam.treatments.map((treatment, idx) => (
-                                              <tr key={idx}>
-                                                <td>{treatment.type}</td>
-                                                <td>{treatment.dose}</td>
-                                                <td>{treatment.frequency}</td>
-                                                <td>{treatment.duration}</td>
-                                                <td>{treatment.notes}</td>
-                                              </tr>
-                                            ))}
-                                          </tbody>
-                                        </table>
+                            {examinations.map((exam) => {
+                              const currentExam = editMode && editingExam?.appt_id === exam.appt_id ? editingExam : exam;
+                              const isThisExamEditing = editMode && editingExam?.appt_id === exam.appt_id;
+                              
+                              return (
+                                <div key={exam.appt_id} className="examination-card">
+                                  <div className="exam-header" onClick={() => !editMode && setExpandedExam(expandedExam === exam.appt_id ? null : exam.appt_id)}>
+                                    <div className="exam-header-left">
+                                      {isThisExamEditing ? (
+                                        <input
+                                          type="text"
+                                          value={currentExam.appt_type}
+                                          onChange={(e) => handleEditChange('appt_type', e.target.value)}
+                                          onClick={(e) => e.stopPropagation()}
+                                          style={{ padding: '0.25rem 0.5rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}
+                                        />
                                       ) : (
-                                        <p className="no-data">No treatments recorded for this examination.</p>
+                                        <span className={`exam-type exam-${exam.appt_type.toLowerCase().replace(/\s*&\s*/g, '-').replace(/\s+/g, '-')}`}>
+                                          {exam.appt_type}
+                                        </span>
+                                      )}
+                                      <span className="exam-date">
+                                        {new Date(exam.appt_date).toLocaleDateString('en-GB', {
+                                          day: '2-digit',
+                                          month: 'short',
+                                          year: 'numeric'
+                                        })}
+                                      </span>
+                                      {isThisExamEditing ? (
+                                        <select
+                                          value={currentExam.appt_status}
+                                          onChange={(e) => handleEditChange('appt_status', e.target.value)}
+                                          onClick={(e) => e.stopPropagation()}
+                                          style={{ padding: '0.25rem 0.5rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}
+                                        >
+                                          <option value="scheduled">Scheduled</option>
+                                          <option value="completed">Completed</option>
+                                          <option value="cancelled">Cancelled</option>
+                                        </select>
+                                      ) : (
+                                        <span className={`exam-status ${exam.appt_status}`}>
+                                          {exam.appt_status}
+                                        </span>
                                       )}
                                     </div>
+                                    {!editMode && (
+                                      <ChevronDown
+                                        size={20}
+                                        className={`expand-icon ${expandedExam === exam.appt_id ? 'expanded' : ''}`}
+                                      />
+                                    )}
+                                  </div>
 
-                                    {/* Prescriptions Section */}
-                                    <div className="prescriptions-section" style={{ marginTop: '2rem' }}>
-                                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                                        <h4>Prescriptions</h4>
-                                        <button
-                                          className="btn-add-inline"
-                                          onClick={() => handleOpenAddPrescriptionModal(exam.appt_id)}
-                                          style={{
-                                            padding: '0.5rem 1rem',
-                                            background: '#3b82f6',
-                                            color: 'white',
-                                            border: 'none',
-                                            borderRadius: '8px',
-                                            cursor: 'pointer',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: '0.5rem',
-                                            fontSize: '0.875rem'
-                                          }}
-                                        >
-                                          <Plus size={16} /> Add Prescription
-                                        </button>
+                                  <div className="exam-summary">
+                                    <p><strong>Vet:</strong> {exam.vet_name}</p>
+                                    <p><strong>Clinic:</strong> {exam.clinic_name}</p>
+                                    <p><strong>Type:</strong> {exam.consultation_type}</p>
+                                    {isThisExamEditing ? (
+                                      <div>
+                                        <strong>Description:</strong>
+                                        <textarea
+                                          value={currentExam.appt_description || ''}
+                                          onChange={(e) => handleEditChange('appt_description', e.target.value)}
+                                          style={{ width: '100%', padding: '0.5rem', marginTop: '0.25rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}
+                                          rows="2"
+                                        />
+                                      </div>
+                                    ) : (
+                                      exam.appt_description && <p><strong>Description:</strong> {exam.appt_description}</p>
+                                    )}
+                                  </div>
+
+                                  {(expandedExam === exam.appt_id || isThisExamEditing) && (
+                                    <div className="exam-details">
+                                      {viewMode === 'vet' && !editMode && (
+                                        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1rem' }}>
+                                          <button
+                                            onClick={() => handleEnterEditMode(exam)}
+                                            className="btn-edit-record"
+                                          >
+                                            Edit Record
+                                          </button>
+                                        </div>
+                                      )}
+
+                                      {/* Treatments Section */}
+                                      <div className="treatments-section">
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                                          <h4>Treatments Administered</h4>
+                                          {!editMode && viewMode === 'vet' && (
+                                            <button
+                                              className="btn-add-treatment"
+                                              onClick={() => handleOpenAddTreatmentModal(exam.appt_id)}
+                                            >
+                                              <Plus size={16} /> Add Treatment
+                                            </button>
+                                          )}
+                                        </div>
+
+                                        {currentExam.treatments && currentExam.treatments.length > 0 ? (
+                                          <table className="data-table">
+                                            <thead>
+                                              <tr>
+                                                <th>Type</th>
+                                                <th>Dose</th>
+                                                <th>Frequency</th>
+                                                <th>Duration</th>
+                                                <th>Notes</th>
+                                              </tr>
+                                            </thead>
+                                            <tbody>
+                                              {currentExam.treatments.map((treatment, idx) => (
+                                                <tr key={idx}>
+                                                  <td>
+                                                    {isThisExamEditing ? (
+                                                      <input
+                                                        type="text"
+                                                        value={treatment.type}
+                                                        onChange={(e) => handleEditTreatment(idx, 'type', e.target.value)}
+                                                        style={{ width: '100%', padding: '0.25rem', border: '1px solid #cbd5e1', borderRadius: '4px' }}
+                                                      />
+                                                    ) : treatment.type}
+                                                  </td>
+                                                  <td>
+                                                    {isThisExamEditing ? (
+                                                      <input
+                                                        type="text"
+                                                        value={treatment.dose}
+                                                        onChange={(e) => handleEditTreatment(idx, 'dose', e.target.value)}
+                                                        style={{ width: '100%', padding: '0.25rem', border: '1px solid #cbd5e1', borderRadius: '4px' }}
+                                                      />
+                                                    ) : treatment.dose}
+                                                  </td>
+                                                  <td>
+                                                    {isThisExamEditing ? (
+                                                      <input
+                                                        type="text"
+                                                        value={treatment.frequency}
+                                                        onChange={(e) => handleEditTreatment(idx, 'frequency', e.target.value)}
+                                                        style={{ width: '100%', padding: '0.25rem', border: '1px solid #cbd5e1', borderRadius: '4px' }}
+                                                      />
+                                                    ) : treatment.frequency}
+                                                  </td>
+                                                  <td>
+                                                    {isThisExamEditing ? (
+                                                      <input
+                                                        type="text"
+                                                        value={treatment.duration}
+                                                        onChange={(e) => handleEditTreatment(idx, 'duration', e.target.value)}
+                                                        style={{ width: '100%', padding: '0.25rem', border: '1px solid #cbd5e1', borderRadius: '4px' }}
+                                                      />
+                                                    ) : treatment.duration}
+                                                  </td>
+                                                  <td>
+                                                    {isThisExamEditing ? (
+                                                      <input
+                                                        type="text"
+                                                        value={treatment.notes || ''}
+                                                        onChange={(e) => handleEditTreatment(idx, 'notes', e.target.value)}
+                                                        style={{ width: '100%', padding: '0.25rem', border: '1px solid #cbd5e1', borderRadius: '4px' }}
+                                                      />
+                                                    ) : treatment.notes}
+                                                  </td>
+                                                </tr>
+                                              ))}
+                                            </tbody>
+                                          </table>
+                                        ) : (
+                                          <p className="no-data">No treatments recorded for this examination.</p>
+                                        )}
                                       </div>
 
-                                      {exam.prescriptions && exam.prescriptions.length > 0 ? (
-                                        <table className="data-table">
-                                          <thead>
-                                            <tr>
-                                              <th>Medication</th>
-                                              <th>Dose</th>
-                                              <th>Frequency</th>
-                                              <th>Duration</th>
-                                              <th>Instructions</th>
-                                              <th>Period</th>
-                                            </tr>
-                                          </thead>
-                                          <tbody>
-                                            {exam.prescriptions.map((rx, idx) => (
-                                              <tr key={idx}>
-                                                <td>{rx.medication}</td>
-                                                <td>{rx.dose}</td>
-                                                <td>{rx.frequency}</td>
-                                                <td>{rx.duration}</td>
-                                                <td>{rx.instructions}</td>
-                                                <td>
-                                                  {rx.start_date} {rx.end_date ? `to ${rx.end_date}` : '(Ongoing)'}
-                                                </td>
+                                      {/* Prescriptions Section */}
+                                      <div className="prescriptions-section" style={{ marginTop: '2rem' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                                          <h4>Prescriptions</h4>
+                                          {!editMode && viewMode === 'vet' && (
+                                            <button
+                                              className="btn-add-prescription"
+                                              onClick={() => handleOpenAddPrescriptionModal(exam.appt_id)}
+                                            >
+                                              <Plus size={16} /> Add Prescription
+                                            </button>
+                                          )}
+                                        </div>
+
+                                        {currentExam.prescriptions && currentExam.prescriptions.length > 0 ? (
+                                          <table className="data-table">
+                                            <thead>
+                                              <tr>
+                                                <th>Medication</th>
+                                                <th>Dose</th>
+                                                <th>Frequency</th>
+                                                <th>Duration</th>
+                                                <th>Instructions</th>
+                                                <th>Period</th>
                                               </tr>
-                                            ))}
-                                          </tbody>
-                                        </table>
-                                      ) : (
-                                        <p className="no-data">No prescriptions recorded for this examination.</p>
-                                      )}
+                                            </thead>
+                                            <tbody>
+                                              {currentExam.prescriptions.map((rx, idx) => (
+                                                <tr key={idx}>
+                                                  <td>
+                                                    {isThisExamEditing ? (
+                                                      <input
+                                                        type="text"
+                                                        value={rx.medication}
+                                                        onChange={(e) => handleEditPrescription(idx, 'medication', e.target.value)}
+                                                        style={{ width: '100%', padding: '0.25rem', border: '1px solid #cbd5e1', borderRadius: '4px' }}
+                                                      />
+                                                    ) : rx.medication}
+                                                  </td>
+                                                  <td>
+                                                    {isThisExamEditing ? (
+                                                      <input
+                                                        type="text"
+                                                        value={rx.dose}
+                                                        onChange={(e) => handleEditPrescription(idx, 'dose', e.target.value)}
+                                                        style={{ width: '100%', padding: '0.25rem', border: '1px solid #cbd5e1', borderRadius: '4px' }}
+                                                      />
+                                                    ) : rx.dose}
+                                                  </td>
+                                                  <td>
+                                                    {isThisExamEditing ? (
+                                                      <input
+                                                        type="text"
+                                                        value={rx.frequency}
+                                                        onChange={(e) => handleEditPrescription(idx, 'frequency', e.target.value)}
+                                                        style={{ width: '100%', padding: '0.25rem', border: '1px solid #cbd5e1', borderRadius: '4px' }}
+                                                      />
+                                                    ) : rx.frequency}
+                                                  </td>
+                                                  <td>
+                                                    {isThisExamEditing ? (
+                                                      <input
+                                                        type="text"
+                                                        value={rx.duration}
+                                                        onChange={(e) => handleEditPrescription(idx, 'duration', e.target.value)}
+                                                        style={{ width: '100%', padding: '0.25rem', border: '1px solid #cbd5e1', borderRadius: '4px' }}
+                                                      />
+                                                    ) : rx.duration}
+                                                  </td>
+                                                  <td>
+                                                    {isThisExamEditing ? (
+                                                      <input
+                                                        type="text"
+                                                        value={rx.instructions || ''}
+                                                        onChange={(e) => handleEditPrescription(idx, 'instructions', e.target.value)}
+                                                        style={{ width: '100%', padding: '0.25rem', border: '1px solid #cbd5e1', borderRadius: '4px' }}
+                                                      />
+                                                    ) : rx.instructions}
+                                                  </td>
+                                                  <td>
+                                                    {isThisExamEditing ? (
+                                                      <div style={{ display: 'flex', gap: '0.25rem', flexDirection: 'column' }}>
+                                                        <input
+                                                          type="date"
+                                                          value={rx.start_date}
+                                                          onChange={(e) => handleEditPrescription(idx, 'start_date', e.target.value)}
+                                                          style={{ width: '100%', padding: '0.25rem', border: '1px solid #cbd5e1', borderRadius: '4px' }}
+                                                        />
+                                                        <input
+                                                          type="date"
+                                                          value={rx.end_date || ''}
+                                                          onChange={(e) => handleEditPrescription(idx, 'end_date', e.target.value)}
+                                                          style={{ width: '100%', padding: '0.25rem', border: '1px solid #cbd5e1', borderRadius: '4px' }}
+                                                        />
+                                                      </div>
+                                                    ) : (
+                                                      `${rx.start_date} ${rx.end_date ? `to ${rx.end_date}` : '(Ongoing)'}`
+                                                    )}
+                                                  </td>
+                                                </tr>
+                                              ))}
+                                            </tbody>
+                                          </table>
+                                        ) : (
+                                          <p className="no-data">No prescriptions recorded for this examination.</p>
+                                        )}
+                                      </div>
                                     </div>
-                                  </div>
-                                )}
-                              </div>
-                            ))}
+                                  )}
+                                </div>
+                              );
+                            })}
                           </div>
                         )}
                       </>
@@ -981,25 +1578,132 @@ const PatientProfileModal = ({
                     {/* Documents View */}
                     {activeHealthView === 'documents' && (
                       <>
-                        <h3>Documents & Attachments</h3>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                          <h3>Documents & Attachments</h3>
+                          {editingRecordType === 'documents' && (
+                            <div style={{ display: 'flex', gap: '0.5rem' }}>
+                              <button 
+                                onClick={() => handleDeleteRecord(editingRecord.doc_id, 'documents')} 
+                                className="btn-delete-edit"
+                                style={{ background: '#ef4444', color: 'white' }}
+                              >
+                                Delete
+                              </button>
+                              <button onClick={handleExitRecordEditMode} className="btn-cancel-edit">
+                                Cancel
+                              </button>
+                              <button onClick={handleSaveRecordChanges} className="btn-save-edit">
+                                Save Changes
+                              </button>
+                            </div>
+                          )}
+                        </div>
                         {medicalHistory.documents.length === 0 ? (
                           <p className="no-data">No documents uploaded.</p>
                         ) : (
                           <div className="documents-grid">
-                            {medicalHistory.documents.map((doc) => (
-                              <div key={doc.id} className="document-card">
-                                <div className="doc-icon">
-                                  {doc.type === 'xray' ? <Activity size={24} color="#4f46e5" /> :
-                                    doc.type === 'lab' ? <FileText size={24} color="#059669" /> :
-                                      <FileText size={24} color="#64748b" />}
+                            {medicalHistory.documents.map((doc) => {
+                              const isEditing = editingRecord?.doc_id === doc.id && editingRecordType === 'documents';
+                              const currentDoc = isEditing ? editingRecord : doc;
+
+                              return (
+                                <div 
+                                  key={doc.id} 
+                                  className="document-card" 
+                                  style={{ 
+                                    position: 'relative',
+                                    cursor: isEditing ? 'default' : 'pointer',
+                                    display: 'flex',
+                                    flexDirection: 'column'
+                                  }}
+                                  onClick={() => !isEditing && handleViewDocumentModal(doc.file_url, doc.title)}
+                                >
+                                  <div className="doc-icon">
+                                    {currentDoc.type === 'xray' ? <Activity size={24} color="#4f46e5" /> :
+                                      currentDoc.type === 'lab' ? <FileText size={24} color="#059669" /> :
+                                        <FileText size={24} color="#64748b" />}
+                                  </div>
+                                  <div className="doc-info">
+                                    {isEditing ? (
+                                      <>
+                                        <input
+                                          type="text"
+                                          value={currentDoc.title}
+                                          onChange={(e) => handleRecordEditChange('title', e.target.value)}
+                                          onClick={(e) => e.stopPropagation()}
+                                          style={{ width: '100%', padding: '0.25rem', marginBottom: '0.5rem', border: '1px solid #cbd5e1', borderRadius: '4px' }}
+                                        />
+                                        <select
+                                          value={currentDoc.type}
+                                          onChange={(e) => handleRecordEditChange('type', e.target.value)}
+                                          onClick={(e) => e.stopPropagation()}
+                                          style={{ width: '100%', padding: '0.25rem', marginBottom: '0.5rem', border: '1px solid #cbd5e1', borderRadius: '4px' }}
+                                        >
+                                          <option value="report">Report</option>
+                                          <option value="xray">X-Ray</option>
+                                          <option value="lab">Lab Result</option>
+                                          <option value="rx">Prescription</option>
+                                          <option value="photo">Photo</option>
+                                          <option value="other">Other</option>
+                                        </select>
+                                        <input
+                                          type="text"
+                                          value={currentDoc.file_url || ''}
+                                          onChange={(e) => handleRecordEditChange('file_url', e.target.value)}
+                                          onClick={(e) => e.stopPropagation()}
+                                          placeholder="File URL"
+                                          style={{ width: '100%', padding: '0.25rem', border: '1px solid #cbd5e1', borderRadius: '4px' }}
+                                        />
+                                      </>
+                                    ) : (
+                                      <>
+                                        <strong>{doc.title}</strong>
+                                        <span className="doc-date">{new Date(doc.date).toLocaleDateString('en-GB')}</span>
+                                      </>
+                                    )}
+                                  </div>
+                                  {!isEditing && (
+                                    <div style={{ 
+                                      display: 'flex', 
+                                      gap: '0.5rem', 
+                                      marginTop: '0.75rem',
+                                      width: '100%'
+                                    }}>
+                                      <button 
+                                        className="doc-download"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleDownloadDocument(doc.file_url, doc.title);
+                                        }}
+                                        style={{ 
+                                          background: 'linear-gradient(135deg, #a8e6cf 0%, #98ddc0 100%)',
+                                          color: '#065f46',
+                                          flex: 1
+                                        }}
+                                      >
+                                        Download
+                                      </button>
+                                      {viewMode === 'vet' && (
+                                        <button
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleEnterRecordEditMode({ ...doc, doc_id: doc.id }, 'documents');
+                                          }}
+                                          className="doc-download"
+                                          style={{ 
+                                            background: 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)',
+                                            color: '#92400e',
+                                            flex: 1
+                                          }}
+                                        >
+                                          Edit
+                                        </button>
+                                      )}
+                                    </div>
+                                  )}
                                 </div>
-                                <div className="doc-info">
-                                  <strong>{doc.title}</strong>
-                                  <span className="doc-date">{new Date(doc.date).toLocaleDateString('en-GB')}</span>
-                                </div>
-                                <button className="doc-download">View</button>
-                              </div>
-                            ))}
+                              );
+                            })}
                           </div>
                         )}
                       </>
@@ -1008,7 +1712,26 @@ const PatientProfileModal = ({
                     {/* Vaccinations View */}
                     {activeHealthView === 'vaccinations' && (
                       <>
-                        <h3>Vaccination History</h3>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                          <h3>Vaccination History</h3>
+                          {editingRecordType === 'vaccinations' && (
+                            <div style={{ display: 'flex', gap: '0.5rem' }}>
+                              <button 
+                                onClick={() => handleDeleteRecord(editingRecord.vac_id, 'vaccinations')} 
+                                className="btn-delete-edit"
+                                style={{ background: '#ef4444', color: 'white' }}
+                              >
+                                Delete
+                              </button>
+                              <button onClick={handleExitRecordEditMode} className="btn-cancel-edit">
+                                Cancel
+                              </button>
+                              <button onClick={handleSaveRecordChanges} className="btn-save-edit">
+                                Save Changes
+                              </button>
+                            </div>
+                          )}
+                        </div>
                         {medicalHistory.vaccinations.length === 0 ? (
                           <p className="no-data">No vaccinations recorded.</p>
                         ) : (
@@ -1020,23 +1743,77 @@ const PatientProfileModal = ({
                                 <th>Next Due</th>
                                 <th>Veterinarian</th>
                                 <th>Notes</th>
+                                {viewMode === 'vet' && <th>Actions</th>}
                               </tr>
                             </thead>
                             <tbody>
-                              {medicalHistory.vaccinations.map((vac, idx) => (
-                                <tr key={idx} className={new Date(vac.next_date) < new Date() ? 'overdue' : ''}>
-                                  <td>{vac.vaccine}</td>
-                                  <td>{new Date(vac.vac_date).toLocaleDateString('en-GB')}</td>
-                                  <td>
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                                      <span>{new Date(vac.next_date).toLocaleDateString('en-GB')}</span>
-                                      {new Date(vac.next_date) < new Date() && <span className="badge overdue-badge">Overdue</span>}
-                                    </div>
-                                  </td>
-                                  <td>{vac.vet}</td>
-                                  <td>{vac.notes}</td>
-                                </tr>
-                              ))}
+                              {medicalHistory.vaccinations.map((vac, idx) => {
+                                const isEditing = editingRecord?.vac_id === vac.vac_id && editingRecordType === 'vaccinations';
+                                const currentVac = isEditing ? editingRecord : vac;
+
+                                return (
+                                  <tr key={idx} className={new Date(vac.next_date) < new Date() ? 'overdue' : ''}>
+                                    <td>
+                                      {isEditing ? (
+                                        <input
+                                          type="text"
+                                          value={currentVac.vaccine}
+                                          onChange={(e) => handleRecordEditChange('vaccine', e.target.value)}
+                                          style={{ width: '100%', padding: '0.25rem', border: '1px solid #cbd5e1', borderRadius: '4px' }}
+                                        />
+                                      ) : vac.vaccine}
+                                    </td>
+                                    <td>
+                                      {isEditing ? (
+                                        <input
+                                          type="date"
+                                          value={currentVac.vac_date}
+                                          onChange={(e) => handleRecordEditChange('vac_date', e.target.value)}
+                                          style={{ width: '100%', padding: '0.25rem', border: '1px solid #cbd5e1', borderRadius: '4px' }}
+                                        />
+                                      ) : new Date(vac.vac_date).toLocaleDateString('en-GB')}
+                                    </td>
+                                    <td>
+                                      {isEditing ? (
+                                        <input
+                                          type="date"
+                                          value={currentVac.next_date}
+                                          onChange={(e) => handleRecordEditChange('next_date', e.target.value)}
+                                          style={{ width: '100%', padding: '0.25rem', border: '1px solid #cbd5e1', borderRadius: '4px' }}
+                                        />
+                                      ) : (
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                                          <span>{new Date(vac.next_date).toLocaleDateString('en-GB')}</span>
+                                          {new Date(vac.next_date) < new Date() && <span className="badge overdue-badge">Overdue</span>}
+                                        </div>
+                                      )}
+                                    </td>
+                                    <td>{vac.vet}</td>
+                                    <td>
+                                      {isEditing ? (
+                                        <textarea
+                                          value={currentVac.notes || ''}
+                                          onChange={(e) => handleRecordEditChange('notes', e.target.value)}
+                                          style={{ width: '100%', padding: '0.25rem', border: '1px solid #cbd5e1', borderRadius: '4px' }}
+                                          rows="2"
+                                        />
+                                      ) : vac.notes}
+                                    </td>
+                                    {viewMode === 'vet' && (
+                                      <td>
+                                        {!editingRecordType && (
+                                          <button
+                                            onClick={() => handleEnterRecordEditMode(vac, 'vaccinations')}
+                                            className="btn-edit-inline"
+                                          >
+                                            Edit
+                                          </button>
+                                        )}
+                                      </td>
+                                    )}
+                                  </tr>
+                                );
+                              })}
                             </tbody>
                           </table>
                         )}
@@ -1046,7 +1823,26 @@ const PatientProfileModal = ({
                     {/* Conditions View */}
                     {activeHealthView === 'conditions' && (
                       <>
-                        <h3>Chronic Conditions & Diagnoses</h3>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                          <h3>Chronic Conditions & Diagnoses</h3>
+                          {editingRecordType === 'conditions' && (
+                            <div style={{ display: 'flex', gap: '0.5rem' }}>
+                              <button 
+                                onClick={() => handleDeleteRecord(editingRecord.cond_id, 'conditions')} 
+                                className="btn-delete-edit"
+                                style={{ background: '#ef4444', color: 'white' }}
+                              >
+                                Delete
+                              </button>
+                              <button onClick={handleExitRecordEditMode} className="btn-cancel-edit">
+                                Cancel
+                              </button>
+                              <button onClick={handleSaveRecordChanges} className="btn-save-edit">
+                                Save Changes
+                              </button>
+                            </div>
+                          )}
+                        </div>
                         {medicalHistory.conditions.length === 0 ? (
                           <p className="no-data">No chronic conditions recorded.</p>
                         ) : (
@@ -1057,17 +1853,75 @@ const PatientProfileModal = ({
                                 <th>Diagnosed</th>
                                 <th>Status</th>
                                 <th>Notes</th>
+                                {viewMode === 'vet' && <th>Actions</th>}
                               </tr>
                             </thead>
                             <tbody>
-                              {medicalHistory.conditions.map((cond, idx) => (
-                                <tr key={idx}>
-                                  <td>{cond.condition}</td>
-                                  <td>{new Date(cond.diag_date).toLocaleDateString('en-GB')}</td>
-                                  <td><span className={`badge ${cond.status}`}>{cond.status}</span></td>
-                                  <td>{cond.notes}</td>
-                                </tr>
-                              ))}
+                              {medicalHistory.conditions.map((cond, idx) => {
+                                const isEditing = editingRecord?.cond_id === cond.cond_id && editingRecordType === 'conditions';
+                                const currentCond = isEditing ? editingRecord : cond;
+
+                                return (
+                                  <tr key={idx}>
+                                    <td>
+                                      {isEditing ? (
+                                        <input
+                                          type="text"
+                                          value={currentCond.condition}
+                                          onChange={(e) => handleRecordEditChange('condition', e.target.value)}
+                                          style={{ width: '100%', padding: '0.25rem', border: '1px solid #cbd5e1', borderRadius: '4px' }}
+                                        />
+                                      ) : cond.condition}
+                                    </td>
+                                    <td>
+                                      {isEditing ? (
+                                        <input
+                                          type="date"
+                                          value={currentCond.diag_date}
+                                          onChange={(e) => handleRecordEditChange('diag_date', e.target.value)}
+                                          style={{ width: '100%', padding: '0.25rem', border: '1px solid #cbd5e1', borderRadius: '4px' }}
+                                        />
+                                      ) : new Date(cond.diag_date).toLocaleDateString('en-GB')}
+                                    </td>
+                                    <td>
+                                      {isEditing ? (
+                                        <select
+                                          value={currentCond.status}
+                                          onChange={(e) => handleRecordEditChange('status', e.target.value)}
+                                          style={{ width: '100%', padding: '0.25rem', border: '1px solid #cbd5e1', borderRadius: '4px' }}
+                                        >
+                                          <option value="active">Active</option>
+                                          <option value="resolved">Resolved</option>
+                                        </select>
+                                      ) : (
+                                        <span className={`badge ${cond.status}`}>{cond.status}</span>
+                                      )}
+                                    </td>
+                                    <td>
+                                      {isEditing ? (
+                                        <textarea
+                                          value={currentCond.notes || ''}
+                                          onChange={(e) => handleRecordEditChange('notes', e.target.value)}
+                                          style={{ width: '100%', padding: '0.25rem', border: '1px solid #cbd5e1', borderRadius: '4px' }}
+                                          rows="2"
+                                        />
+                                      ) : cond.notes}
+                                    </td>
+                                    {viewMode === 'vet' && (
+                                      <td>
+                                        {!editingRecordType && (
+                                          <button
+                                            onClick={() => handleEnterRecordEditMode(cond, 'conditions')}
+                                            className="btn-edit-inline"
+                                          >
+                                            Edit
+                                          </button>
+                                        )}
+                                      </td>
+                                    )}
+                                  </tr>
+                                );
+                              })}
                             </tbody>
                           </table>
                         )}
@@ -1077,7 +1931,26 @@ const PatientProfileModal = ({
                     {/* Surgeries View */}
                     {activeHealthView === 'surgeries' && (
                       <>
-                        <h3>Surgical History</h3>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                          <h3>Surgical History</h3>
+                          {editingRecordType === 'surgeries' && (
+                            <div style={{ display: 'flex', gap: '0.5rem' }}>
+                              <button 
+                                onClick={() => handleDeleteRecord(editingRecord.surg_id, 'surgeries')} 
+                                className="btn-delete-edit"
+                                style={{ background: '#ef4444', color: 'white' }}
+                              >
+                                Delete
+                              </button>
+                              <button onClick={handleExitRecordEditMode} className="btn-cancel-edit">
+                                Cancel
+                              </button>
+                              <button onClick={handleSaveRecordChanges} className="btn-save-edit">
+                                Save Changes
+                              </button>
+                            </div>
+                          )}
+                        </div>
                         {(!medicalHistory.surgeries || medicalHistory.surgeries.length === 0) ? (
                           <p className="no-data">No surgeries recorded.</p>
                         ) : (
@@ -1089,18 +1962,72 @@ const PatientProfileModal = ({
                                 <th>Veterinarian</th>
                                 <th>Notes</th>
                                 <th>Complications</th>
+                                {viewMode === 'vet' && <th>Actions</th>}
                               </tr>
                             </thead>
                             <tbody>
-                              {medicalHistory.surgeries.map((surg, idx) => (
-                                <tr key={idx}>
-                                  <td>{surg.name}</td>
-                                  <td>{new Date(surg.date).toLocaleDateString('en-GB')}</td>
-                                  <td>{surg.vet || 'N/A'}</td>
-                                  <td>{surg.notes || 'N/A'}</td>
-                                  <td>{surg.complications || 'None'}</td>
-                                </tr>
-                              ))}
+                              {medicalHistory.surgeries.map((surg, idx) => {
+                                const isEditing = editingRecord?.surg_id === surg.surg_id && editingRecordType === 'surgeries';
+                                const currentSurg = isEditing ? editingRecord : surg;
+
+                                return (
+                                  <tr key={idx}>
+                                    <td>
+                                      {isEditing ? (
+                                        <input
+                                          type="text"
+                                          value={currentSurg.name}
+                                          onChange={(e) => handleRecordEditChange('name', e.target.value)}
+                                          style={{ width: '100%', padding: '0.25rem', border: '1px solid #cbd5e1', borderRadius: '4px' }}
+                                        />
+                                      ) : surg.name}
+                                    </td>
+                                    <td>
+                                      {isEditing ? (
+                                        <input
+                                          type="date"
+                                          value={currentSurg.date}
+                                          onChange={(e) => handleRecordEditChange('date', e.target.value)}
+                                          style={{ width: '100%', padding: '0.25rem', border: '1px solid #cbd5e1', borderRadius: '4px' }}
+                                        />
+                                      ) : new Date(surg.date).toLocaleDateString('en-GB')}
+                                    </td>
+                                    <td>{surg.vet || 'N/A'}</td>
+                                    <td>
+                                      {isEditing ? (
+                                        <textarea
+                                          value={currentSurg.notes || ''}
+                                          onChange={(e) => handleRecordEditChange('notes', e.target.value)}
+                                          style={{ width: '100%', padding: '0.25rem', border: '1px solid #cbd5e1', borderRadius: '4px' }}
+                                          rows="2"
+                                        />
+                                      ) : surg.notes || 'N/A'}
+                                    </td>
+                                    <td>
+                                      {isEditing ? (
+                                        <textarea
+                                          value={currentSurg.complications || ''}
+                                          onChange={(e) => handleRecordEditChange('complications', e.target.value)}
+                                          style={{ width: '100%', padding: '0.25rem', border: '1px solid #cbd5e1', borderRadius: '4px' }}
+                                          rows="2"
+                                        />
+                                      ) : surg.complications || 'None'}
+                                    </td>
+                                    {viewMode === 'vet' && (
+                                      <td>
+                                        {!editingRecordType && (
+                                          <button
+                                            onClick={() => handleEnterRecordEditMode(surg, 'surgeries')}
+                                            className="btn-edit-inline"
+                                          >
+                                            Edit
+                                          </button>
+                                        )}
+                                      </td>
+                                    )}
+                                  </tr>
+                                );
+                              })}
                             </tbody>
                           </table>
                         )}
@@ -1624,6 +2551,44 @@ const PatientProfileModal = ({
                   </div>
 
                   <div className="view-section">
+                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>Upload Document *</label>
+                    <input
+                      type="file"
+                      accept="image/*,.pdf,.doc,.docx"
+                      onChange={handleFileSelect}
+                      style={{ 
+                        width: '100%', 
+                        padding: '0.875rem', 
+                        border: '2px solid #e8f0f7', 
+                        borderRadius: '12px', 
+                        marginBottom: '1rem',
+                        cursor: 'pointer'
+                      }}
+                    />
+                    {selectedFile && (
+                      <p style={{ fontSize: '0.875rem', color: '#059669', marginTop: '-0.5rem', marginBottom: '1rem' }}>
+                        ✓ Selected: {selectedFile.name}
+                      </p>
+                    )}
+                    <p style={{ fontSize: '0.875rem', color: '#64748b', marginTop: '-0.5rem', marginBottom: '1rem' }}>
+                      Accepted formats: Images (JPG, PNG, GIF), PDF, Word documents. Max size: 10MB
+                    </p>
+                  </div>
+
+                  <div style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: '1rem', 
+                    margin: '1rem 0',
+                    color: '#64748b',
+                    fontSize: '0.875rem'
+                  }}>
+                    <hr style={{ flex: 1, border: 'none', borderTop: '1px solid #e8f0f7' }} />
+                    <span>OR</span>
+                    <hr style={{ flex: 1, border: 'none', borderTop: '1px solid #e8f0f7' }} />
+                  </div>
+
+                  <div className="view-section">
                     <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>File URL (Optional)</label>
                     <input
                       type="text"
@@ -1631,7 +2596,13 @@ const PatientProfileModal = ({
                       placeholder="https://..."
                       value={newRecordData.file_url}
                       onChange={(e) => handleRecordInputChange('file_url', e.target.value)}
+                      disabled={selectedFile !== null}
                     />
+                    {selectedFile && (
+                      <p style={{ fontSize: '0.875rem', color: '#64748b', marginTop: '-0.5rem' }}>
+                        URL input disabled when file is selected
+                      </p>
+                    )}
                   </div>
                 </>
               )}
@@ -1747,8 +2718,13 @@ const PatientProfileModal = ({
                 <button
                   onClick={handleSubmitRecord}
                   className="mypatients-submit-button"
+                  disabled={uploadingFile}
+                  style={{
+                    opacity: uploadingFile ? 0.6 : 1,
+                    cursor: uploadingFile ? 'not-allowed' : 'pointer'
+                  }}
                 >
-                  Save Record
+                  {uploadingFile ? 'Uploading...' : 'Save Record'}
                 </button>
               </div>
             </div>
@@ -1914,6 +2890,53 @@ const PatientProfileModal = ({
                 </button>
                 <button onClick={handleSubmitPrescription} className="mypatients-submit-button">
                   Save Prescription
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Discard Changes Confirmation Modal */}
+      {showDiscardModal && (
+        <div className="mypatients-modal-overlay" onClick={() => setShowDiscardModal(false)}>
+          <div className="mypatients-modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '400px' }}>
+            <div className="mypatients-modal-header">
+              <h2 className="mypatients-modal-title">Discard Changes?</h2>
+              <button className="mypatients-modal-close" onClick={() => setShowDiscardModal(false)}>
+                <X size={24} />
+              </button>
+            </div>
+            <div className="view-modal-body">
+              <p style={{ marginBottom: '1.5rem' }}>
+                You have unsaved changes. Are you sure you want to discard them?
+              </p>
+              <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
+                <button
+                  onClick={() => setShowDiscardModal(false)}
+                  style={{
+                    padding: '0.5rem 1.5rem',
+                    background: '#6b7280',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '8px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Keep Editing
+                </button>
+                <button
+                  onClick={handleConfirmDiscard}
+                  style={{
+                    padding: '0.5rem 1.5rem',
+                    background: '#ef4444',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '8px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Discard Changes
                 </button>
               </div>
             </div>

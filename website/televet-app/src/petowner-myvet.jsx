@@ -229,6 +229,15 @@ const MyVet = () => {
 
   const handleRegisterVet = async () => {
     if (selectedVet) {
+      // ✅ Check if trying to register with the same clinic
+      if (registeredVet && (
+        (selectedVet.va_id && registeredVet.va_id && selectedVet.va_id === registeredVet.va_id) || 
+        (selectedVet.va_clinicName === registeredVet.va_clinicName)
+    )) {
+      alert("You are already registered with this clinic.");
+      return;
+    }
+  
       try {
         const usr_id = sessionStorage.getItem('userid');
         if (!usr_id) {
@@ -347,7 +356,6 @@ const MyVet = () => {
                 <button 
                   className="myvet-change-button"
                   onClick={() => {
-                    setRegisteredVet(null);
                     setShowSearchModal(true);
                   }}
                 >

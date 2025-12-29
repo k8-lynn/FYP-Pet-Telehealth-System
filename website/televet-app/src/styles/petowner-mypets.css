@@ -1135,9 +1135,10 @@
   border-radius: 14px;
   padding: 1.25rem;
   display: flex;
-  align-items: center;
-  gap: 1rem;
+  flex-direction: column;
+  gap: 0.75rem;
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  min-height: 180px;
 }
 
 .document-card:hover {
@@ -1174,26 +1175,6 @@
   font-size: 0.8rem;
   color: #64748b;
   font-weight: 600;
-}
-
-.doc-download {
-  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
-  color: #1e40af;
-  border: 2px solid #93c5fd;
-  padding: 0.6rem 1rem;
-  border-radius: 10px;
-  font-size: 0.85rem;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-  flex-shrink: 0;
-  letter-spacing: -0.01em;
-}
-
-.doc-download:hover {
-  transform: translateY(-2px) scale(1.02);
-  background: linear-gradient(135deg, #bfdbfe 0%, #93c5fd 100%);
-  box-shadow: 0 4px 12px rgba(147, 197, 253, 0.3);
 }
 
 .badge {
@@ -2128,4 +2109,169 @@
 .vet-name-display.not-assigned {
   color: #94a3b8;
   font-style: italic;
+}
+
+/* Edit Record Button - Light Blue */
+.btn-edit-record {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1.25rem;
+  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+  color: #1e40af;
+  border: 2px solid #93c5fd;
+  border-radius: 12px;
+  font-weight: 700;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  letter-spacing: -0.01em;
+}
+
+.btn-edit-record:hover {
+  background: linear-gradient(135deg, #bfdbfe 0%, #93c5fd 100%);
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 4px 12px rgba(147, 197, 253, 0.3);
+}
+
+/* Add Treatment Button - Purple/Violet */
+.btn-add-treatment {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1rem;
+  background: linear-gradient(135deg, #e9d5ff 0%, #d8b4fe 100%);
+  color: #581c87;
+  border: 2px solid #c084fc;
+  border-radius: 10px;
+  font-weight: 700;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  letter-spacing: -0.01em;
+}
+
+.btn-add-treatment:hover {
+  background: linear-gradient(135deg, #d8b4fe 0%, #c084fc 100%);
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 4px 12px rgba(192, 132, 252, 0.3);
+}
+
+/* Add Prescription Button - Teal/Cyan */
+.btn-add-prescription {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1rem;
+  background: linear-gradient(135deg, #ccfbf1 0%, #99f6e4 100%);
+  color: #0f766e;
+  border: 2px solid #5eead4;
+  border-radius: 10px;
+  font-weight: 700;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  letter-spacing: -0.01em;
+}
+
+.btn-add-prescription:hover {
+  background: linear-gradient(135deg, #99f6e4 0%, #5eead4 100%);
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 4px 12px rgba(94, 234, 212, 0.3);
+}
+
+/* Edit Buttons in Tables - Yellow/Gold */
+.btn-edit-inline {
+  padding: 0.4rem 0.9rem;
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  color: #92400e;
+  border: 2px solid #fcd34d;
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  letter-spacing: -0.01em;
+}
+
+.btn-edit-inline:hover {
+  background: linear-gradient(135deg, #fde68a 0%, #fcd34d 100%);
+  transform: translateY(-2px) scale(1.05);
+  box-shadow: 0 4px 12px rgba(252, 211, 77, 0.3);
+}
+
+/* Cancel Edit Button - Light Gray */
+.btn-cancel-edit {
+  padding: 0.6rem 1.25rem;
+  background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+  color: #475569;
+  border: 2px solid #cbd5e1;
+  border-radius: 10px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  letter-spacing: -0.01em;
+}
+
+.btn-cancel-edit:hover {
+  background: linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 100%);
+  color: #1e3a8a;
+  transform: translateY(-2px) scale(1.02);
+}
+
+/* Save Changes Button - Green */
+.btn-save-edit {
+  padding: 0.6rem 1.25rem;
+  background: linear-gradient(135deg, #bae8d0 0%, #a8e6cf 100%);
+  color: #065f46;
+  border: 2px solid #6ee7b7;
+  border-radius: 10px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  letter-spacing: -0.01em;
+}
+
+.btn-save-edit:hover {
+  background: linear-gradient(135deg, #a8e6cf 0%, #98ddc0 100%);
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 4px 12px rgba(168, 230, 207, 0.3);
+}
+
+.doc-download {
+  padding: 0.5rem 0.75rem;
+  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+  color: #1e40af;
+  border: 2px solid #93c5fd;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  white-space: nowrap;
+}
+
+.doc-download:hover {
+  background: linear-gradient(135deg, #bfdbfe 0%, #93c5fd 100%);
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 4px 12px rgba(147, 197, 253, 0.3);
+}
+
+/* DELETE BUTTON in Edit Mode Headers */
+.btn-delete-edit {
+  padding: 0.6rem 1.25rem;
+  background: linear-gradient(135deg, #ffb3ba 0%, #ffa3a8 100%);
+  color: #7f1d1d;
+  border: 2px solid #ffa3a8;
+  border-radius: 10px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  letter-spacing: -0.01em;
+}
+
+.btn-delete-edit:hover {
+  background: linear-gradient(135deg, #ffa3a8 0%, #ff9399 100%);
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 4px 12px rgba(255, 179, 186, 0.3);
 }

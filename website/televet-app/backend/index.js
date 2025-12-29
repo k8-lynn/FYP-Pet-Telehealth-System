@@ -5772,6 +5772,7 @@ app.get('/api/pets/:pet_id/examinations', (req, res) => {
         new Promise((resolve, reject) => {
           const treatmentsSQL = `
             SELECT 
+              treatment_id as treat_id,
               treat_type as type,
               dose,
               freq as frequency,
@@ -5789,6 +5790,7 @@ app.get('/api/pets/:pet_id/examinations', (req, res) => {
         new Promise((resolve, reject) => {
           const prescriptionsSQL = `
             SELECT 
+              rx_id,
               med_name as medication,
               dose,
               freq as frequency,
@@ -5907,5 +5909,242 @@ app.get('/api/pets/:pet_id/soap-notes', (req, res) => {
       return res.status(500).json({ error: 'Failed to fetch SOAP notes' });
     }
     res.status(200).json(results);
+  });
+});
+// PUT update examination
+app.put('/api/examinations/:appt_id', (req, res) => {
+  const { appt_id } = req.params;
+  const { appt_type, appt_description, appt_status } = req.body;
+
+  const sql = `
+    UPDATE appointment_t 
+    SET appt_type = ?, appt_description = ?, appt_status = ?
+    WHERE appt_id = ?
+  `;
+
+  db.query(sql, [appt_type, appt_description, appt_status, appt_id], (err, result) => {
+    if (err) {
+      console.error('❌ Error updating examination:', err);
+      return res.status(500).json({ error: 'Failed to update examination' });
+    }
+    res.status(200).json({ message: 'Examination updated successfully' });
+  });
+});
+
+// PUT update treatment
+app.put('/api/treatments/:treat_id', (req, res) => {
+  const { treat_id } = req.params;
+  const { treat_type, dose, freq, duration, notes } = req.body;
+
+  const sql = `
+    UPDATE pet_treatment_t 
+    SET treat_type = ?, dose = ?, freq = ?, duration = ?, notes = ?
+    WHERE treatment_id = ?
+  `;
+
+  db.query(sql, [treat_type, dose, freq, duration, notes, treat_id], (err, result) => {
+    if (err) {
+      console.error('❌ Error updating treatment:', err);
+      return res.status(500).json({ error: 'Failed to update treatment' });
+    }
+    res.status(200).json({ message: 'Treatment updated successfully' });
+  });
+});
+
+// PUT update prescription
+app.put('/api/prescriptions/:rx_id', (req, res) => {
+  const { rx_id } = req.params;
+  const { med_name, dose, freq, duration, instructions, start_date, end_date } = req.body;
+
+  const formattedStartDate = start_date ? new Date(start_date).toISOString().split('T')[0] : null;
+  const formattedEndDate = end_date ? new Date(end_date).toISOString().split('T')[0] : null;
+
+  const sql = `
+    UPDATE pet_prescription_t 
+    SET med_name = ?, dose = ?, freq = ?, duration = ?, instructions = ?, start_date = ?, end_date = ?
+    WHERE rx_id = ?
+  `;
+
+  db.query(sql, [med_name, dose, freq, duration, instructions, formattedStartDate, formattedEndDate, rx_id], (err, result) => {
+    if (err) {
+      console.error('❌ Error updating prescription:', err);
+      return res.status(500).json({ error: 'Failed to update prescription' });
+    }
+    res.status(200).json({ message: 'Prescription updated successfully' });
+  });
+});
+
+// PUT update vaccination
+app.put('/api/vaccinations/:vac_id', (req, res) => {
+  const { vac_id } = req.params;
+  const { vac_name, vac_date, next_date, notes } = req.body;
+
+  const formattedVacDate = vac_date ? new Date(vac_date).toISOString().split('T')[0] : null;
+  const formattedNextDate = next_date ? new Date(next_date).toISOString().split('T')[0] : null;
+
+  const sql = `
+    UPDATE pet_vaccination_t 
+    SET vac_name = ?, vac_date = ?, next_date = ?, notes = ?
+    WHERE vac_id = ?
+  `;
+
+  db.query(sql, [vac_name, formattedVacDate, formattedNextDate, notes, vac_id], (err, result) => {
+    if (err) {
+      console.error('❌ Error updating vaccination:', err);
+      return res.status(500).json({ error: 'Failed to update vaccination' });
+    }
+    res.status(200).json({ message: 'Vaccination updated successfully' });
+  });
+});
+
+// PUT update document
+app.put('/api/documents/:doc_id', (req, res) => {
+  const { doc_id } = req.params;
+  const { doc_title, doc_type, file_url } = req.body;
+
+  const sql = `
+    UPDATE pet_document_t 
+    SET doc_title = ?, doc_type = ?, file_url = ?
+    WHERE doc_id = ?
+  `;
+
+  db.query(sql, [doc_title, doc_type, file_url, doc_id], (err, result) => {
+    if (err) {
+      console.error('❌ Error updating document:', err);
+      return res.status(500).json({ error: 'Failed to update document' });
+    }
+    res.status(200).json({ message: 'Document updated successfully' });
+  });
+});
+
+// PUT update condition
+app.put('/api/conditions/:cond_id', (req, res) => {
+  const { cond_id } = req.params;
+  const { cond_name, diag_date, status, notes } = req.body;
+
+  const formattedDiagDate = diag_date ? new Date(diag_date).toISOString().split('T')[0] : null;
+
+  const sql = `
+    UPDATE pet_condition_t 
+    SET cond_name = ?, diag_date = ?, status = ?, notes = ?
+    WHERE cond_id = ?
+  `;
+
+  db.query(sql, [cond_name, formattedDiagDate, status, notes, cond_id], (err, result) => {
+    if (err) {
+      console.error('❌ Error updating condition:', err);
+      return res.status(500).json({ error: 'Failed to update condition' });
+    }
+    res.status(200).json({ message: 'Condition updated successfully' });
+  });
+});
+
+// PUT update surgery
+app.put('/api/surgeries/:surg_id', (req, res) => {
+  const { surg_id } = req.params;
+  const { surg_name, surg_date, notes, complications } = req.body;
+
+  const formattedDate = surg_date ? new Date(surg_date).toISOString().split('T')[0] : null;
+
+  const sql = `
+    UPDATE pet_surgery_t 
+    SET surg_name = ?, surg_date = ?, notes = ?, complications = ?
+    WHERE surg_id = ?
+  `;
+
+  db.query(sql, [surg_name, formattedDate, notes, complications, surg_id], (err, result) => {
+    if (err) {
+      console.error('❌ Error updating surgery:', err);
+      return res.status(500).json({ error: 'Failed to update surgery' });
+    }
+    res.status(200).json({ message: 'Surgery updated successfully' });
+  });
+});
+
+// Upload pet document
+app.post('/api/pets/upload-document', upload.single('document'), (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ error: 'No file uploaded' });
+  }
+
+  const { pet_id, doc_title, doc_type } = req.body;
+  
+  if (!pet_id || !doc_title || !doc_type) {
+    return res.status(400).json({ error: 'Missing required fields' });
+  }
+
+  const fileUrl = `/uploads/chat/${req.file.filename}`;
+
+  const sql = `
+    INSERT INTO pet_document_t (pet_id, doc_title, doc_type, file_url)
+    VALUES (?, ?, ?, ?)
+  `;
+
+  db.query(sql, [pet_id, doc_title, doc_type, fileUrl], (err, result) => {
+    if (err) {
+      console.error('❌ Error saving document:', err);
+      return res.status(500).json({ error: 'Failed to save document' });
+    }
+
+    console.log(`✅ Document uploaded for pet ${pet_id}: ${doc_title}`);
+    res.status(201).json({ 
+      message: 'Document uploaded successfully',
+      doc_id: result.insertId,
+      file_url: fileUrl
+    });
+  });
+});
+
+// DELETE vaccination
+app.delete('/api/vaccinations/:vac_id', (req, res) => {
+  const { vac_id } = req.params;
+  db.query('DELETE FROM pet_vaccination_t WHERE vac_id = ?', [vac_id], (err, result) => {
+    if (err) return res.status(500).json({ error: 'Failed to delete vaccination' });
+    res.json({ message: 'Vaccination deleted successfully' });
+  });
+});
+
+// DELETE document
+app.delete('/api/documents/:doc_id', (req, res) => {
+  const { doc_id } = req.params;
+  db.query('DELETE FROM pet_document_t WHERE doc_id = ?', [doc_id], (err, result) => {
+    if (err) return res.status(500).json({ error: 'Failed to delete document' });
+    res.json({ message: 'Document deleted successfully' });
+  });
+});
+
+// DELETE condition
+app.delete('/api/conditions/:cond_id', (req, res) => {
+  const { cond_id } = req.params;
+  db.query('DELETE FROM pet_condition_t WHERE cond_id = ?', [cond_id], (err, result) => {
+    if (err) return res.status(500).json({ error: 'Failed to delete condition' });
+    res.json({ message: 'Condition deleted successfully' });
+  });
+});
+
+// DELETE surgery
+app.delete('/api/surgeries/:surg_id', (req, res) => {
+  const { surg_id } = req.params;
+  db.query('DELETE FROM pet_surgery_t WHERE surg_id = ?', [surg_id], (err, result) => {
+    if (err) return res.status(500).json({ error: 'Failed to delete surgery' });
+    res.json({ message: 'Surgery deleted successfully' });
+  });
+});
+
+// DELETE treatment
+app.delete('/api/treatments/:treat_id', (req, res) => {
+  const { treat_id } = req.params;
+  db.query('DELETE FROM pet_treatment_t WHERE treatment_id = ?', [treat_id], (err, result) => {
+    if (err) return res.status(500).json({ error: 'Failed to delete treatment' });
+    res.json({ message: 'Treatment deleted successfully' });
+  });
+});
+
+// DELETE prescription
+app.delete('/api/prescriptions/:rx_id', (req, res) => {
+  const { rx_id } = req.params;
+  db.query('DELETE FROM pet_prescription_t WHERE rx_id = ?', [rx_id], (err, result) => {
+    if (err) return res.status(500).json({ error: 'Failed to delete prescription' });
+    res.json({ message: 'Prescription deleted successfully' });
   });
 });

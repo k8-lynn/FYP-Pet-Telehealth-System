@@ -391,3 +391,7 @@
 .empty-state p {
   margin: 0;
 }
+
+.pet-name-table {
+  color: #64748b;
+}

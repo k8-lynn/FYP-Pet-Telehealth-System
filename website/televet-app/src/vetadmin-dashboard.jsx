@@ -343,7 +343,7 @@ const VetAdminDashboard = () => {
                         <span className="appointment-time">{formatTime(appointment.appt_date)}</span>
                       </div>
                       <div className="table-cell">
-                        <span className="pet-name">{appointment.pet_name}</span>
+                        <span className="pet-name-table">{appointment.pet_name}</span>
                       </div>
                       <div className="table-cell">
                         <span className="owner-name">

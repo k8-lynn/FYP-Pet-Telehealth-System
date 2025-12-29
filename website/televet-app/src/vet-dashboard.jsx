@@ -446,7 +446,7 @@ const handleRescheduleRequest = async (apptId, rescheduleReason) => {
                         <span className="appointment-time">{formatAppointmentTime(appointment.appt_date)}</span>
                       </div>
                       <div className="table-cell">
-                        <span className="pet-name">{appointment.pet_name}</span>
+                        <span className="pet-name-table">{appointment.pet_name}</span>
                       </div>
                       <div className="table-cell">
                         <span className="owner-name">{appointment.owner_firstName} {appointment.owner_lastName}</span>

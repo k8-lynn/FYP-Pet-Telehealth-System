@@ -1225,6 +1225,113 @@ const handleImageDelete = async () => {
   }
 };
 
+const handleViewDocument = (fileUrl) => {
+  if (!fileUrl) {
+    setMessage({ type: 'error', text: 'No file available' });
+    return;
+  }
+  window.open(`http://localhost:5000${fileUrl}`, '_blank');
+};
+
+const handleDownloadDocument = (fileUrl, title) => {
+  if (!fileUrl) {
+    setMessage({ type: 'error', text: 'No file available' });
+    return;
+  }
+  
+  fetch(`http://localhost:5000${fileUrl}`)
+    .then(response => response.blob())
+    .then(blob => {
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = title || 'document';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    })
+    .catch(error => {
+      console.error('Download error:', error);
+      setMessage({ type: 'error', text: 'Failed to download file' });
+    });
+};
+
+const handleViewDocumentModal = (fileUrl, title) => {
+  if (!fileUrl) {
+    setMessage({ type: 'error', text: 'No file available' });
+    return;
+  }
+  
+  const overlay = document.createElement('div');
+  overlay.style.cssText = `
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    z-index: 999999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+  `;
+  
+  const container = document.createElement('div');
+  container.style.cssText = `
+    background: white;
+    border-radius: 16px;
+    max-width: 90%;
+    max-height: 90%;
+    overflow: auto;
+    position: relative;
+  `;
+  
+  const closeBtn = document.createElement('button');
+  closeBtn.innerHTML = '✕';
+  closeBtn.style.cssText = `
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    background: white;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    z-index: 1;
+  `;
+  
+  closeBtn.onclick = () => document.body.removeChild(overlay);
+  overlay.onclick = (e) => {
+    if (e.target === overlay) document.body.removeChild(overlay);
+  };
+  
+  const fileExtension = fileUrl.split('.').pop().toLowerCase();
+  
+  if (['jpg', 'jpeg', 'png', 'gif'].includes(fileExtension)) {
+    const img = document.createElement('img');
+    img.src = `http://localhost:5000${fileUrl}`;
+    img.style.cssText = 'max-width: 100%; max-height: 90vh; display: block;';
+    container.appendChild(img);
+  } else if (fileExtension === 'pdf') {
+    const iframe = document.createElement('iframe');
+    iframe.src = `http://localhost:5000${fileUrl}`;
+    iframe.style.cssText = 'width: 80vw; height: 90vh; border: none;';
+    container.appendChild(iframe);
+  } else {
+    handleDownloadDocument(fileUrl, title);
+    return;
+  }
+  
+  container.appendChild(closeBtn);
+  overlay.appendChild(container);
+  document.body.appendChild(overlay);
+};
+
   return (
     
     <div className="mypets-container">
@@ -1694,7 +1801,16 @@ const handleImageDelete = async () => {
                           ) : (
                             <div className="documents-grid">
                               {medicalHistory.documents.map((doc) => (
-                                <div key={doc.id} className="document-card">
+                                <div 
+                                  key={doc.id} 
+                                  className="document-card"
+                                  style={{ 
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    flexDirection: 'column'
+                                  }}
+                                  onClick={() => handleViewDocumentModal(doc.file_url, doc.title)}
+                                >
                                   <div className="doc-icon">
                                     {doc.type === 'xray' ? <Activity size={24} color="#4f46e5" /> : 
                                     doc.type === 'lab' ? <FileText size={24} color="#059669" /> : 
@@ -1704,7 +1820,32 @@ const handleImageDelete = async () => {
                                     <strong>{doc.title}</strong>
                                     <span className="doc-date">{new Date(doc.date).toLocaleDateString('en-GB')}</span>
                                   </div>
-                                  <button className="doc-download">View</button>
+                                  <div style={{ 
+                                    display: 'flex', 
+                                    gap: '0.5rem', 
+                                    marginTop: '0.75rem',
+                                    width: '100%'
+                                  }}>
+                                    <button 
+                                      className="doc-download"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleDownloadDocument(doc.file_url, doc.title);
+                                      }}
+                                      style={{ 
+                                        background: 'linear-gradient(135deg, #a8e6cf 0%, #98ddc0 100%)',
+                                        color: '#065f46',
+                                        flex: 1,
+                                        padding: '0.5rem',
+                                        border: 'none',
+                                        borderRadius: '8px',
+                                        cursor: 'pointer',
+                                        fontWeight: 'bold'
+                                      }}
+                                    >
+                                      Download
+                                    </button>
+                                  </div>
                                 </div>
                               ))}
                             </div>

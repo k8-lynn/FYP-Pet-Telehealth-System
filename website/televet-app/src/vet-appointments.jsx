@@ -70,6 +70,10 @@ const VetAppointments = () => {
       .then(data => {
         console.log('📋 Appointments data received:', data);
         console.log('📊 Number of appointments:', data.length);
+
+        const sortedData = data.sort((a, b) => new Date(b.appt_date) - new Date(a.appt_date));
+        setAppointments(sortedData);
+
         setAppointments(data);
       })
       .catch(err => {
