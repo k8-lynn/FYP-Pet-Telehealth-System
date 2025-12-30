@@ -162,11 +162,13 @@ const PetOwnerDashboard = () => {
   
       const appointments = await response.json();
       
-      // Transform the data to include appt_datetime for easier filtering
-      const transformedAppointments = appointments.map(appt => ({
-        ...appt,
-        appt_datetime: new Date(appt.appt_date)
-      }));
+      // ✅ Transform and include ALL appointments (pending, scheduled, rescheduled)
+      const transformedAppointments = appointments
+        .filter(appt => appt.appt_status === 'scheduled' || appt.appt_status === 'pending')
+        .map(appt => ({
+          ...appt,
+          appt_datetime: new Date(appt.appt_date)
+        }));
   
       console.log('📅 Fetched appointments:', transformedAppointments);
       setUpcomingAppointments(transformedAppointments);
@@ -478,11 +480,16 @@ const PetOwnerDashboard = () => {
                             <span className={`consultation-badge ${appt.consultation_type === 'online' ? 'online' : 'physical'}`}>
                               {appt.consultation_type === 'online' ? 'Online' : 'Physical'}
                             </span>
-                            {appt.resched_flag === 'yes' && (
+                            {/* ✅ Show different badge based on status */}
+                            {appt.resched_flag === 'yes' && !appt.vet_name ? (
                               <span className="vet-badge status-rescheduled" style={{ marginLeft: '8px', fontSize: '0.75rem' }}>
-                                Rescheduled
+                                Rescheduled (Pending)
                               </span>
-                            )}
+                            ) : appt.appt_status === 'pending' ? (
+                              <span className="vet-badge status-pending" style={{ marginLeft: '8px', fontSize: '0.75rem' }}>
+                                Pending
+                              </span>
+                            ) : null}
                           </div>
                           <div className="appointment-time">
                             {appt.appt_datetime.toLocaleTimeString('en-US', { 

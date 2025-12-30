@@ -6,6 +6,8 @@ import PawPattern from "./components/PawPattern";
 import PetOwnerNavbar from './components/petowner-navbar';
 import ProfileNotification from "./components/ProfileNotification";
 import AppointmentDetailsModal from './components/AppointmentDetailsModal';
+import BookAppointment from './components/bookAppointment';
+import Toast from './components/toast';
 
 const RemindersPage = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -25,7 +27,12 @@ const RemindersPage = () => {
   const [ppId, setPpId] = useState(null);
   const [showAppointmentModal, setShowAppointmentModal] = useState(false);
   const [selectedAppointmentDetails, setSelectedAppointmentDetails] = useState(null);
-  const [userid] = useState(null);
+  const [userid, setUserid] = useState(null);
+  const [showBookingModal, setShowBookingModal] = useState(false);
+  const [rescheduleData, setRescheduleData] = useState(null);
+  const [registeredVet, setRegisteredVet] = useState(null);
+  const [showBookingToast, setShowBookingToast] = useState(false);
+  const [bookingDetails, setBookingDetails] = useState(null);
   
   const [newReminder, setNewReminder] = useState({
     title: '',
@@ -45,7 +52,9 @@ const RemindersPage = () => {
     if (storedName) setFirstName(storedName);
     
     if (storedUserId) {
+      setUserid(storedUserId);
       fetchPetParentInfo(storedUserId);
+      fetchAssignedClinic(storedUserId);
     } else {
       setLoading(false);
     }
@@ -79,6 +88,24 @@ const RemindersPage = () => {
     } catch (error) {
       console.error('❌ Error fetching pet parent info:', error);
       setLoading(false);
+    }
+  };
+
+  const fetchAssignedClinic = async (usr_id) => {
+    try {
+      const res = await fetch(`http://localhost:5000/api/user-clinic/${usr_id}`);
+      const data = await res.json();
+  
+      if (data.clinic) {
+        const vetRes = await fetch(`http://localhost:5000/api/vet-by-name/${encodeURIComponent(data.clinic)}`);
+        const vetData = await vetRes.json();
+  
+        if (vetRes.ok && vetData) {
+          setRegisteredVet(vetData);
+        }
+      }
+    } catch (error) {
+      console.error("❌ Error fetching assigned clinic:", error);
     }
   };
 
@@ -493,43 +520,34 @@ const RemindersPage = () => {
     }
   };
 
-const handleRescheduleRequest = async (apptId, rescheduleReason) => {
-  const requestedBy = 'petParent'; // Fixed: hardcode it since this is petowner-chat
-  
-  try {
-    const response = await fetch(`http://localhost:5000/api/appointments/${apptId}/reschedule-request`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        rescheduleReason,
-        requestedBy: requestedBy
-      })
-    });
+  const handleRescheduleRequest = (appointmentDetails) => {
+    // Store the appointment data and open booking modal
+    setRescheduleData(appointmentDetails);
+    setShowAppointmentModal(false); // Close details modal
+    setShowBookingModal(true);
+  };
 
-    if (!response.ok) {
-      throw new Error('Failed to request reschedule');
-    }
-
-    const data = await response.json();
-    alert('Reschedule request sent successfully');
-    
-    // Refresh appointment details
-    setShowAppointmentModal(false);
-    setSelectedAppointmentDetails(null);
-
-    // Refresh appointments list
-    if (userid) {
-      fetchUpcomingAppointments(userid);
+  const handleBookingSuccess = (details) => {
+    if (details.rescheduled) {
+      alert(`Appointment rescheduled successfully to ${details.date.toLocaleDateString()} at ${details.time}. Your appointment is now pending approval.`);
+    } else {
+      setBookingDetails(details);
+      setShowBookingToast(true);
+      
+      setTimeout(() => {
+        setShowBookingToast(false);
+        setBookingDetails(null);
+      }, 3000);
     }
     
-    return data;
-  } catch (error) {
-    console.error('Error requesting reschedule:', error);
-    throw error;
-  }
-};
+    setRescheduleData(null);
+    
+    // Refresh appointments
+    const storedUserId = sessionStorage.getItem('userid');
+    if (storedUserId) {
+      fetchUpcomingAppointments(storedUserId);
+    }
+  };
 
   return (
     <div className="reminders-container">
@@ -995,6 +1013,36 @@ const handleRescheduleRequest = async (apptId, rescheduleReason) => {
             window.location.href = '/petowner-chat';
           }}
         />
+
+        {/* Book Appointment Modal */}
+        {showBookingModal && registeredVet && (
+          <div className="modal-overlay" onClick={() => setShowBookingModal(false)}>
+            <div onClick={(e) => e.stopPropagation()}>
+              <BookAppointment 
+                clinicId={rescheduleData?.clinic_id || registeredVet.clinic_id}
+                onClose={() => {
+                  setShowBookingModal(false);
+                  setRescheduleData(null);
+                }}
+                onBookingSuccess={handleBookingSuccess}
+                rescheduleMode={!!rescheduleData}
+                oldAppointmentId={rescheduleData?.appt_id}
+                rescheduleData={rescheduleData}
+                initialDescription={rescheduleData?.appt_description || ''}
+                autoFillDescription={!!rescheduleData}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Booking Toast */}
+        {showBookingToast && bookingDetails && (
+          <Toast
+            type="pending"
+            title="Awaiting Approval"
+            message={`Booking pending for ${bookingDetails.time}`}
+          />
+        )}
       </div>
     </div>
     );

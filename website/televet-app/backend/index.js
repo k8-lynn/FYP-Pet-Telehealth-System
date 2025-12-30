@@ -2458,11 +2458,14 @@ app.get('/api/user-appointments/:usr_id', (req, res) => {
       a.resched_reason,
       a.created_at,
       pet.pet_id,
-      pet.pet_name
+      pet.pet_name,
+      CONCAT(vu.usr_firstName, ' ', vu.usr_lastName) as vet_name
     FROM appointment_t a
     INNER JOIN pet_t pet ON a.pet_id = pet.pet_id
     INNER JOIN pet_parent_t pp ON a.pp_id = pp.pp_id
-    WHERE pp.usr_id = ? AND a.appt_status = 'scheduled'
+    LEFT JOIN veterinarian_t vt ON a.vt_id = vt.vt_id
+    LEFT JOIN user_t vu ON vt.usr_id = vu.usr_id
+    WHERE pp.usr_id = ? AND a.appt_status IN ('scheduled', 'pending')
     ORDER BY a.appt_date ASC
   `;
 
@@ -2660,20 +2663,22 @@ app.put('/api/patients/:pet_id/assign-vet', (req, res) => {
           a.appt_description,
           a.created_at,
           a.clinic_id,
+          a.resched_flag,
           pet.pet_id,
           pet.pet_name
         FROM appointment_t a
         INNER JOIN pet_t pet ON a.pet_id = pet.pet_id
-        WHERE a.pet_id = ? AND a.appt_status = 'pending'
+        WHERE a.pet_id = ? AND (a.appt_status = 'pending' OR (a.appt_status = 'scheduled' AND a.resched_flag = 'yes'))
+        ORDER BY a.created_at DESC
         LIMIT 1
       `;
 
       db.query(getAppointmentSQL, [pet_id], (err2, apptResult) => {
         // Update appointment status
         const updateAppointmentsSQL = `
-          UPDATE appointment_t
-          SET vt_id = ?, appt_status = 'scheduled', resched_flag = 'no', updated_at = NOW()
-          WHERE pet_id = ? AND appt_status = 'pending'
+        UPDATE appointment_t
+        SET vt_id = ?, appt_status = 'scheduled', updated_at = NOW()
+        WHERE pet_id = ? AND (appt_status = 'pending' OR (appt_status = 'scheduled' AND resched_flag = 'yes'))
         `;
 
         db.query(updateAppointmentsSQL, [vt_id, pet_id], (err3) => {
@@ -2701,6 +2706,7 @@ app.put('/api/patients/:pet_id/assign-vet', (req, res) => {
               const appointmentId = appt.appt_id;
               const appointmentDate = appt.appt_date;
               const pet_name = appt.pet_name;
+              const appointmentDetails = appt;
 
               const apptDate = new Date(appt.appt_date);
               const dateKey = `${apptDate.getFullYear()}-${String(apptDate.getMonth() + 1).padStart(2, '0')}-${String(apptDate.getDate()).padStart(2, '0')}`;
@@ -2764,46 +2770,66 @@ app.put('/api/patients/:pet_id/assign-vet', (req, res) => {
 
               // ✅ CREATE NOTIFICATIONS FOR BOTH OWNER AND VET
               const getOwnerSQL = `
-                SELECT pp.usr_id
-                FROM pet_t pet
-                INNER JOIN pet_parent_t pp ON pet.pp_id = pp.pp_id
-                WHERE pet.pet_id = ?
+              SELECT pp.usr_id
+              FROM pet_t pet
+              INNER JOIN pet_parent_t pp ON pet.pp_id = pp.pp_id
+              WHERE pet.pet_id = ?
               `;
 
               db.query(getOwnerSQL, [pet_id], (errOwner, ownerResult) => {
-                if (!errOwner && ownerResult.length > 0) {
-                  const owner_usr_id = ownerResult[0].usr_id;
-                  
-                  // Create approved notification for OWNER
-                  const ownerMessage = `Your appointment for ${pet_name} has been approved by ${vetName}.`;
-                  createNotification(owner_usr_id, pet_id, appointmentId, 'approved', ownerMessage, appointmentDate);
-                  console.log(`✅ Owner notification sent to usr_id: ${owner_usr_id}`);
+              if (!errOwner && ownerResult.length > 0) {
+                const owner_usr_id = ownerResult[0].usr_id;
+                
+                // ✅ Check if this was a rescheduled appointment
+                const wasRescheduled = appt.resched_flag === 'yes';
+                
+                // Create appropriate notification message
+                const ownerMessage = wasRescheduled 
+                  ? `Your rescheduled appointment for ${pet_name} has been approved by ${vetName}.`
+                  : `Your appointment for ${pet_name} has been approved by ${vetName}.`;
+                
+                createNotification(owner_usr_id, pet_id, appointmentId, 'approved', ownerMessage, appointmentDate);
+                console.log(`✅ Owner notification sent to usr_id: ${owner_usr_id} (${wasRescheduled ? 'rescheduled' : 'new'} appointment)`);
 
-                  // ✅ CREATE NOTIFICATION FOR VET (we already have vet_usr_id from earlier!)
-                  // First verify this usr_id belongs to a veterinarian, not vet admin
-                  const checkVetSQL = `SELECT vt_id FROM veterinarian_t WHERE usr_id = ?`;
-                  db.query(checkVetSQL, [vet_usr_id], (errCheck, checkResult) => {
-                    if (!errCheck && checkResult.length > 0) {
-                      // This is indeed a veterinarian, safe to send notification
-                      const vetMessage = `You have been assigned to ${pet_name} for appointment`;
-                      createNotification(vet_usr_id, pet_id, appointmentId, 'assigned', vetMessage, appointmentDate);
-                      console.log(`✅ Vet notification sent to usr_id: ${vet_usr_id} for vt_id: ${vt_id}`);
-                    } else {
-                      console.log(`⏭️ Skipped vet notification - usr_id ${vet_usr_id} is not a veterinarian`);
+                // Now clear the reschedule flags AFTER notification is sent
+                if (wasRescheduled) {
+                  const clearRescheduleSQL = `
+                    UPDATE appointment_t
+                    SET resched_flag = 'no', resched_reason = NULL
+                    WHERE appt_id = ?
+                  `;
+                  db.query(clearRescheduleSQL, [appointmentId], (errClear) => {
+                    if (!errClear) {
+                      console.log(`✅ Cleared reschedule flags for appt_id: ${appointmentId}`);
                     }
                   });
-                } else {
-                  console.error('❌ Error fetching owner usr_id:', errOwner);
                 }
+
+                // ✅ CREATE NOTIFICATION FOR VET (we already have vet_usr_id from earlier!)
+                // First verify this usr_id belongs to a veterinarian, not vet admin
+                const checkVetSQL = `SELECT vt_id FROM veterinarian_t WHERE usr_id = ?`;
+                db.query(checkVetSQL, [vet_usr_id], (errCheck, checkResult) => {
+                  if (!errCheck && checkResult.length > 0) {
+                    // This is indeed a veterinarian, safe to send notification
+                    const vetMessage = `You have been assigned to ${pet_name} for appointment`;
+                    createNotification(vet_usr_id, pet_id, appointmentId, 'assigned', vetMessage, appointmentDate);
+                    console.log(`✅ Vet notification sent to usr_id: ${vet_usr_id} for vt_id: ${vt_id}`);
+                  } else {
+                    console.log(`⏭️ Skipped vet notification - usr_id ${vet_usr_id} is not a veterinarian`);
+                  }
+                });
+              } else {
+                console.error('❌ Error fetching owner usr_id:', errOwner);
+              }
               });
 
               // Send response after all operations
               res.status(200).json({ message: 'Vet assigned successfully' });
 
-            } else {
+              } else {
               console.log(`✅ Patient ${pet_id} assigned to vet ${vt_id} (no appointment found)`);
               res.status(200).json({ message: 'Vet assigned successfully' });
-            }
+              }
           });
         });
       });
@@ -3562,27 +3588,27 @@ app.put('/api/appointments/:apptId/reschedule', (req, res) => {
           }
 
           // Step 5: NOW update appointment record (AFTER vet notification)
+          // ✅ Keep status as 'scheduled' but with resched_flag
           const updateApptSQL = `
-            UPDATE appointment_t
-            SET appt_date = ?,
-                appt_type = ?,
-                consultation_type = ?,
-                appt_description = ?,
-                appt_status = 'pending',
-                vt_id = NULL,
-                resched_flag = 'yes',
-                resched_reason = ?,
-                updated_at = NOW()
-            WHERE appt_id = ?
+          UPDATE appointment_t
+          SET appt_date = ?,
+              appt_type = ?,
+              consultation_type = ?,
+              appt_description = ?,
+              vt_id = NULL,
+              resched_flag = 'yes',
+              resched_reason = ?,
+              updated_at = NOW()
+          WHERE appt_id = ?
           `;
 
           db.query(updateApptSQL, [
-            new_appt_date, 
-            appt_type, 
-            consultation_type, 
-            appt_description, 
-            reschedule_reason,
-            apptId
+          new_appt_date, 
+          appt_type, 
+          consultation_type, 
+          appt_description, 
+          reschedule_reason,
+          apptId
           ], (err7) => {
             if (err7) {
               console.error('❌ Error updating appointment:', err7);

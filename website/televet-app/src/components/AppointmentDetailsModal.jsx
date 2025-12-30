@@ -22,7 +22,7 @@ const AppointmentDetailsModal = ({
 
   const canCancel = (appointmentDetails.appt_status === 'pending' || 
     appointmentDetails.appt_status === 'scheduled') &&
-    appointmentDetails.resched_flag !== 'yes';
+    !(appointmentDetails.resched_flag === 'yes' && !appointmentDetails.vet_name);
 
   const handleCancelSubmit = async () => {
     // Vets MUST provide a reason, pet owners it's optional
@@ -46,7 +46,7 @@ const AppointmentDetailsModal = ({
   };
 
   const displayStatus =
-  appointmentDetails.resched_flag === 'yes'
+  appointmentDetails.resched_flag === 'yes' && !appointmentDetails.vet_name
     ? 'rescheduled'
     : appointmentDetails.appt_status;
 
