@@ -30,6 +30,8 @@ const VetAdminAppointments = () => {
   const [selectedAppointmentDetails, setSelectedAppointmentDetails] = useState(null);
   const [showGenerateModal, setShowGenerateModal] = useState(false);
   const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
+  const [showAppointmentDetailsModal, setShowAppointmentDetailsModal] = useState(false);
+  const [selectedBookedAppointment, setSelectedBookedAppointment] = useState(null);
   const [generateConfig, setGenerateConfig] = useState({
     startDate: '',
     endDate: '',
@@ -681,6 +683,53 @@ const VetAdminAppointments = () => {
   const availableCount = todaySlots.filter(s => s.status === 'available').length;
   const takenCount = todaySlots.filter(s => s.status === 'taken').length;
   const pendingCount = todaySlots.filter(s => s.status === 'pending').length;
+
+  const handleViewBookedAppointment = async (slot) => {
+    if (!slot.petId) {
+      console.log('⚠️ No petId found in slot');
+      return;
+    }
+    
+    console.log('🔍 Fetching booked appointment for petId:', slot.petId);
+    console.log('🕐 Slot time:', slot.time);
+    
+    try {
+      // ✅ Construct the full appointment datetime from the current date and slot time
+      const targetDate = selectedDate || currentDate;
+      const dateKey = formatDateKey(targetDate);
+      
+      // Parse the slot time (e.g., "12:00 PM")
+      const [time, period] = slot.time.split(' ');
+      let [hours, minutes] = time.split(':').map(Number);
+      
+      // Convert to 24-hour format
+      if (period === 'PM' && hours !== 12) hours += 12;
+      if (period === 'AM' && hours === 12) hours = 0;
+      
+      // Create the datetime string in MySQL format
+      const apptDateTime = `${dateKey} ${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00`;
+      
+      console.log('📅 Looking for appointment at:', apptDateTime);
+      
+      // ✅ Pass the appointment date as a query parameter
+      const response = await fetch(`http://localhost:5000/api/scheduled-appointment-by-pet/${slot.petId}?appt_date=${encodeURIComponent(apptDateTime)}`);
+      const appointmentData = await response.json();
+      
+      console.log('📋 Appointment data received:', appointmentData);
+      
+      if (response.ok) {
+        setSelectedBookedAppointment(appointmentData);
+        setShowAppointmentDetailsModal(true);
+        console.log('✅ Modal should now be open');
+      } else {
+        console.error('❌ Failed to fetch appointment:', appointmentData);
+        alert('Could not find appointment details for this time slot');
+      }
+    } catch (error) {
+      console.error('❌ Error fetching appointment details:', error);
+      alert('Error loading appointment details');
+    }
+  };
   
   return (
     <div className="schedule-dashboard-container">
@@ -872,33 +921,36 @@ const VetAdminAppointments = () => {
 
                   <div className="schedule-slots-grid">
                     {todaySlots.map(slot => (
-                      <div 
-                        key={slot.id}
-                        className={`schedule-time-slot ${slot.status} ${isEditMode ? 'edit-mode' : ''} ${
-                          selectedSlotsForDeletion.includes(slot.id) ? 'selected-for-deletion' : ''
-                        }`}
-                        onClick={async () => {
-                          if (isEditMode) {
-                            // ✅ FIX 1: Only allow selection if status is available
-                            if (slot.status === 'available') {
-                              toggleSlotSelection(slot.id);
-                            }
-                          } else if (slot.status === 'pending' && slot.petId) {
-                            // In normal mode, open pending appointment modal
-                            setSelectedPendingSlot(slot);
-                            
-                            try {
-                              const res = await fetch(`http://localhost:5000/api/appointment-by-pet/${slot.petId}`);
-                              const data = await res.json();
-                              if (res.ok) {
-                                setSelectedAppointmentDetails(data);
-                              }
-                            } catch (error) {
-                              console.error('Error fetching appointment details:', error);
-                            }
+                    <div 
+                      key={slot.id}
+                      className={`schedule-time-slot ${slot.status} ${isEditMode ? 'edit-mode' : ''} ${
+                        selectedSlotsForDeletion.includes(slot.id) ? 'selected-for-deletion' : ''
+                      }`}
+                      style={{ cursor: (slot.status === 'pending' || slot.status === 'taken') && !isEditMode ? 'pointer' : 'default' }}
+                      onClick={async () => {
+                        if (isEditMode) {
+                          if (slot.status === 'available') {
+                            toggleSlotSelection(slot.id);
                           }
-                        }}
-                      >
+                        } else if (slot.status === 'pending' && slot.petId) {
+                          // Open pending appointment modal for approval
+                          setSelectedPendingSlot(slot);
+                          
+                          try {
+                            const res = await fetch(`http://localhost:5000/api/appointment-by-pet/${slot.petId}`);
+                            const data = await res.json();
+                            if (res.ok) {
+                              setSelectedAppointmentDetails(data);
+                            }
+                          } catch (error) {
+                            console.error('Error fetching appointment details:', error);
+                          }
+                        } else if (slot.status === 'taken' && slot.petId) {
+                          // ✅ NEW: Open appointment details modal for booked appointments
+                          handleViewBookedAppointment(slot);
+                        }
+                      }}
+                    >
                         {isEditMode && (
                           <div className="schedule-slot-checkbox">
                             {/* ✅ FIX 2: Only render checkbox if slot is available */}
@@ -1165,11 +1217,11 @@ const VetAdminAppointments = () => {
                           <div 
                             key={slot.id}
                             className={`schedule-time-slot ${slot.status}`}
+                            style={{ cursor: slot.status === 'pending' || slot.status === 'taken' ? 'pointer' : 'default' }}
                             onClick={async () => {
                               if (slot.status === 'pending' && slot.petId) {
                                 setSelectedPendingSlot(slot);
                                 
-                                // Fetch appointment details by petId instead
                                 try {
                                   const res = await fetch(`http://localhost:5000/api/appointment-by-pet/${slot.petId}`);
                                   const data = await res.json();
@@ -1179,6 +1231,9 @@ const VetAdminAppointments = () => {
                                 } catch (error) {
                                   console.error('Error fetching appointment details:', error);
                                 }
+                              } else if (slot.status === 'taken' && slot.petId) {
+                                // ✅ NEW: Open appointment details modal for booked appointments
+                                handleViewBookedAppointment(slot);
                               }
                             }}
                           >
@@ -1471,6 +1526,93 @@ const VetAdminAppointments = () => {
                     <X size={18} />
                     Yes, Delete
                   </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Appointment Details Modal for Booked Appointments */}
+        {showAppointmentDetailsModal && selectedBookedAppointment && (
+          <div className="schedule-modal-overlay" onClick={() => setShowAppointmentDetailsModal(false)}>
+            <div className="schedule-modal-content schedule-appointment-details-modal" onClick={(e) => e.stopPropagation()}>
+              <button className="schedule-modal-close" onClick={() => setShowAppointmentDetailsModal(false)}>
+                <X size={24} />
+              </button>
+
+              <div className="schedule-modal-header">
+                <Calendar size={48} />
+                <h2>Appointment Details</h2>
+                <p>View scheduled appointment information</p>
+              </div>
+
+              <div className="schedule-modal-body">
+                <div className="schedule-approval-info">
+                  <div className="schedule-approval-info-item">
+                    <Users size={20} />
+                    <div>
+                      <span className="info-label">Pet Name</span>
+                      <span className="info-value">{selectedBookedAppointment.pet_name}</span>
+                    </div>
+                  </div>
+                  <div className="schedule-approval-info-item">
+                    <Calendar size={20} />
+                    <div>
+                      <span className="info-label">Appointment Type</span>
+                      <span className="info-value">{selectedBookedAppointment.appt_type}</span>
+                    </div>
+                  </div>
+                  <div className="schedule-approval-info-item">
+                    <MapPin size={20} />
+                    <div>
+                      <span className="info-label">Consultation Type</span>
+                      <span className="info-value">
+                        {selectedBookedAppointment.consultation_type === 'online' ? 'Online' : 'Physical'}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="schedule-approval-info-item">
+                    <Clock size={20} />
+                    <div>
+                      <span className="info-label">Appointment Date</span>
+                      <span className="info-value">
+                        {new Date(selectedBookedAppointment.appt_date).toLocaleDateString('en-US', {
+                          weekday: 'long',
+                          month: 'long',
+                          day: 'numeric',
+                          year: 'numeric',
+                          hour: 'numeric',
+                          minute: '2-digit',
+                          hour12: true
+                        })}
+                      </span>
+                    </div>
+                  </div>
+                  {selectedBookedAppointment.appt_description && (
+                    <div className="schedule-approval-info-item">
+                      <Edit3 size={20} />
+                      <div>
+                        <span className="info-label">Description</span>
+                        <span className="info-value">{selectedBookedAppointment.appt_description}</span>
+                      </div>
+                    </div>
+                  )}
+                  <div className="schedule-approval-info-item">
+                    <Clock size={20} />
+                    <div>
+                      <span className="info-label">Booked At</span>
+                      <span className="info-value">
+                        {new Date(selectedBookedAppointment.created_at).toLocaleDateString('en-US', {
+                          month: 'long',
+                          day: 'numeric',
+                          year: 'numeric',
+                          hour: 'numeric',
+                          minute: '2-digit',
+                          hour12: true
+                        })}
+                      </span>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>

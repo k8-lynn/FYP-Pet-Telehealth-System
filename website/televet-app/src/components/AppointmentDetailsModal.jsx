@@ -13,10 +13,10 @@ const AppointmentDetailsModal = ({
   onRescheduleRequest // New callback for reschedule request
 }) => {
   const [showCancelModal, setShowCancelModal] = useState(false);
-  const [showRescheduleModal, setShowRescheduleModal] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
-  const [rescheduleReason, setRescheduleReason] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showRescheduleModal, setShowRescheduleModal] = useState(false);
+  const [rescheduleReason, setRescheduleReason] = useState('');
 
   if (!showModal || !appointmentDetails) return null;
 
@@ -51,25 +51,7 @@ const AppointmentDetailsModal = ({
     : appointmentDetails.appt_status;
 
 
-  const handleRescheduleSubmit = async () => {
-    if (!rescheduleReason.trim()) {
-      alert('Please provide a reason for rescheduling');
-      return;
-    }
-
-    setIsSubmitting(true);
-    try {
-      await onRescheduleRequest(appointmentDetails.appt_id, rescheduleReason);
-      setShowRescheduleModal(false);
-      setRescheduleReason('');
-      onClose();
-    } catch (error) {
-      console.error('Error requesting reschedule:', error);
-      alert('Failed to request reschedule');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+  
 
   return (
     <>
@@ -187,14 +169,14 @@ const AppointmentDetailsModal = ({
             </div>
 
             {/* Action Buttons */}
-            {canCancel && (
+            {canCancel && userRole === 'pp' && (
               <div className="appointment-actions">
                 <button 
                   className="btn-reschedule-request"
                   onClick={() => setShowRescheduleModal(true)}
                 >
                   <Calendar size={16} />
-                  Request Reschedule
+                  Reschedule Appointment
                 </button>
                 <button 
                   className="btn-cancel-appointment"
@@ -286,13 +268,12 @@ const AppointmentDetailsModal = ({
           </div>
         </div>
       )}
-
-      {/* Reschedule Request Modal */}
+      {/* Reschedule Reason Modal */}
       {showRescheduleModal && (
         <div className="mypatients-modal-overlay" onClick={() => setShowRescheduleModal(false)}>
           <div className="mypatients-modal-content reschedule-modal" onClick={(e) => e.stopPropagation()}>
             <div className="mypatients-modal-header">
-              <h2 className="mypatients-modal-title">Request to Reschedule</h2>
+              <h2 className="mypatients-modal-title">Reschedule Appointment</h2>
               <button className="mypatients-modal-close" onClick={() => setShowRescheduleModal(false)}>
                 <X size={24} />
               </button>
@@ -300,9 +281,7 @@ const AppointmentDetailsModal = ({
 
             <div className="view-modal-body">
               <p className="reschedule-info">
-                {userRole === 'pp' 
-                  ? 'Your reschedule request will be sent to the veterinarian. They will contact you to arrange a new appointment time.'
-                  : 'Please provide a reason for rescheduling. The pet owner will be notified and you can arrange a new time.'}
+                Please provide a reason for rescheduling this appointment.
               </p>
 
               <div className="form-group">
@@ -326,23 +305,40 @@ const AppointmentDetailsModal = ({
               <div className="modal-actions">
                 <button 
                   className="mypatients-cancel-button"
-                  onClick={() => setShowRescheduleModal(false)}
+                  onClick={() => {
+                    setShowRescheduleModal(false);
+                    setRescheduleReason('');
+                  }}
                   disabled={isSubmitting}
                 >
                   Cancel
                 </button>
                 <button 
-                  className="mypatients-submit-button"
-                  onClick={handleRescheduleSubmit}
-                  disabled={isSubmitting}
+                  className="btn-confirm-reschedule"
+                  onClick={() => {
+                    if (!rescheduleReason.trim()) {
+                      alert('Please provide a reason for rescheduling');
+                      return;
+                    }
+                    setShowRescheduleModal(false);
+                    onClose(); // Close details modal
+                    if (onRescheduleRequest) {
+                      onRescheduleRequest({
+                        ...appointmentDetails,
+                        rescheduleReason
+                      });
+                    }
+                  }}
+                  disabled={isSubmitting || !rescheduleReason.trim()}
                 >
-                  {isSubmitting ? 'Sending...' : 'Send Request'}
+                  Continue to Select New Slot
                 </button>
               </div>
             </div>
           </div>
         </div>
       )}
+      
     </>
   );
 };

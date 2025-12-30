@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Calendar, Clock, CheckCircle, ChevronLeft, ChevronRight, X, Monitor, Building2, AlertTriangle, Droplet, Wind, Activity, HeartPulse, CircleAlert, AlertCircle } from 'lucide-react';import "../styles/bookAppointment.css";
 import { io } from "socket.io-client";
 
-const BookAppointment = ({ clinicId, onClose, onBookingSuccess, initialDescription = '', autoFillDescription = false }) => {
+const BookAppointment = ({ clinicId, onClose, onBookingSuccess, initialDescription = '', autoFillDescription = false, rescheduleMode = false, oldAppointmentId = null, rescheduleData = null }) => {
   const [viewMode, setViewMode] = useState('today');
   const [currentDate, setCurrentDate] = useState(new Date());
   const [timeSlots, setTimeSlots] = useState([]);
@@ -319,7 +319,7 @@ const handleEmergencyResponse = (isEmergency) => {
       alert('Please provide a description');
       return;
     }
-
+  
     const userId = sessionStorage.getItem('userid');
     if (!selectedPet) {
       alert('Please select a pet');
@@ -328,15 +328,15 @@ const handleEmergencyResponse = (isEmergency) => {
     
     const petOwnerName = `${sessionStorage.getItem('firstName')} - ${selectedPet.pet_name}`;
     const dateStr = formatDateForAPI(selectedDate);
-
+  
     try {
-      // Step 1: Get current slots - ✅ ADD consultationType
+      // Step 1: Get current slots
       const res = await fetch(`http://localhost:5000/api/clinic-slots/${clinicId}/date/${dateStr}/${consultationType}`);
       const data = await res.json();
       
       let currentSlots = data?.slots || [];
-
-      // Step 2: Update slot status to pending
+  
+      // Step 2: Update NEW slot status to pending
       const updatedSlots = currentSlots.map(slot => 
         slot.id === selectedSlot.id 
           ? { 
@@ -350,58 +350,95 @@ const handleEmergencyResponse = (isEmergency) => {
             }
           : slot
       );
-
-      // Step 3: Update slots in database - ✅ ADD consultationType
+  
+      // Step 3: Update NEW slots in database
       const updateRes = await fetch(`http://localhost:5000/api/clinic-slots/${clinicId}/date/${dateStr}/${consultationType}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ slots: updatedSlots })
       });
-
+  
       if (!updateRes.ok) {
         alert('Failed to book appointment');
         return;
       }
-
-      // Step 4: Create appointment record
+  
+      // Step 4: Create appointment record (or reschedule existing)
       const appointmentDateTime = `${dateStr} ${convertTo24Hour(selectedSlot.time)}`;
       
-      const appointmentRes = await fetch('http://localhost:5000/api/appointments', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          clinic_id: clinicId,
-          pet_id: selectedPet.pet_id,
-          usr_id: userId,
-          appt_type: appointmentType,
-          consultation_type: consultationType,
-          appt_description: appointmentDescription,
-          appt_date: appointmentDateTime,
-          slot_time: selectedSlot.time
-        })
-      });
-
-      if (appointmentRes.ok) {
-        setShowConfirmModal(false);
-        setSelectedPet(null);
-        
-        onClose();
-        
-        if (onBookingSuccess) {
-          onBookingSuccess({
-            time: selectedSlot.time,
-            date: selectedDate
-          });
+      if (rescheduleMode && oldAppointmentId) {
+        // RESCHEDULE: Update existing appointment and release old slot
+        const rescheduleRes = await fetch(`http://localhost:5000/api/appointments/${oldAppointmentId}/reschedule`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            new_appt_date: appointmentDateTime,
+            new_slot_time: selectedSlot.time,
+            appt_type: appointmentType,
+            consultation_type: consultationType,
+            appt_description: appointmentDescription,
+            reschedule_reason: rescheduleData?.rescheduleReason || 'No reason provided' // ADD THIS
+          })
+        });
+  
+        if (rescheduleRes.ok) {
+          setShowConfirmModal(false);
+          setSelectedPet(null);
+          onClose();
+          
+          if (onBookingSuccess) {
+            onBookingSuccess({
+              time: selectedSlot.time,
+              date: selectedDate,
+              rescheduled: true
+            });
+          }
+          
+          setSelectedSlot(null);
+          setSelectedDate(null);
+          setAppointmentType('');
+          setAppointmentDescription('');
+        } else {
+          alert('Failed to reschedule appointment');
         }
-        
-        setSelectedSlot(null);
-        setSelectedDate(null);
-        setAppointmentType('');
-        setAppointmentDescription('');
       } else {
-        alert('Failed to create appointment record');
+        // NORMAL BOOKING: Create new appointment
+        const appointmentRes = await fetch('http://localhost:5000/api/appointments', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            clinic_id: clinicId,
+            pet_id: selectedPet.pet_id,
+            usr_id: userId,
+            appt_type: appointmentType,
+            consultation_type: consultationType,
+            appt_description: appointmentDescription,
+            appt_date: appointmentDateTime,
+            slot_time: selectedSlot.time
+          })
+        });
+  
+        if (appointmentRes.ok) {
+          setShowConfirmModal(false);
+          setSelectedPet(null);
+          onClose();
+          
+          if (onBookingSuccess) {
+            onBookingSuccess({
+              time: selectedSlot.time,
+              date: selectedDate
+            });
+          }
+          
+          setSelectedSlot(null);
+          setSelectedDate(null);
+          setAppointmentType('');
+          setAppointmentDescription('');
+        } else {
+          alert('Failed to create appointment record');
+        }
       }
-
+  
     } catch (error) {
       console.error('Error booking slot:', error);
       alert('An error occurred while booking');

@@ -15,6 +15,13 @@
   backdrop-filter: blur(10px);
 }
 
+/* Remove underline from all sidebar links */
+.sidebar a {
+  text-decoration: none;
+  color: inherit;
+}
+
+
 .sidebar.collapsed {
   width: 80px;
 }

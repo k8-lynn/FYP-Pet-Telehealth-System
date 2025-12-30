@@ -510,6 +510,29 @@ app.post('/api/register', (req, res) => {
   });
 });
 
+// -------------------------------------------------------------
+// 🟢 CHECK IF EMAIL EXISTS
+// -------------------------------------------------------------
+app.get('/api/check-email', (req, res) => {
+  const { email } = req.query;
+
+  if (!email) {
+    return res.status(400).json({ error: 'Email is required' });
+  }
+
+  const sql = 'SELECT usr_id FROM user_t WHERE usr_email = ?';
+
+  db.query(sql, [email], (err, result) => {
+    if (err) {
+      console.error('❌ Error checking email:', err);
+      return res.status(500).json({ error: 'Database error' });
+    }
+
+    // If result has rows, email exists
+    res.status(200).json({ exists: result.length > 0 });
+  });
+});
+
 // GET /api/clinic-by-vet/:vt_id - Get clinic info for a veterinarian
 app.get('/api/clinic-by-vet/:vt_id', (req, res) => {
   const { vt_id } = req.params;
@@ -2512,7 +2535,7 @@ app.put('/api/patients/:pet_id/assign-vet', (req, res) => {
         // Update appointment status
         const updateAppointmentsSQL = `
           UPDATE appointment_t
-          SET vt_id = ?, appt_status = 'scheduled', updated_at = NOW()
+          SET vt_id = ?, appt_status = 'scheduled', resched_flag = 'no', updated_at = NOW()
           WHERE pet_id = ? AND appt_status = 'pending'
         `;
 
@@ -2545,14 +2568,14 @@ app.put('/api/patients/:pet_id/assign-vet', (req, res) => {
               const apptDate = new Date(appt.appt_date);
               const dateKey = `${apptDate.getFullYear()}-${String(apptDate.getMonth() + 1).padStart(2, '0')}-${String(apptDate.getDate()).padStart(2, '0')}`;
 
-              // Get slots for this date
+              // Get slots for this date AND consultation type
               const getSlotsSQL = `
                 SELECT slots 
                 FROM clinic_slots_t 
-                WHERE clinic_id = ? AND slot_date = ?
+                WHERE clinic_id = ? AND slot_date = ? AND consultation_type = ?
               `;
 
-              db.query(getSlotsSQL, [appt.clinic_id, dateKey], (err5, slotsResult) => {
+              db.query(getSlotsSQL, [appt.clinic_id, dateKey, appt.consultation_type], (err5, slotsResult) => {
                 if (!err5 && slotsResult.length > 0) {
                   let slots = slotsResult[0].slots;
                   
@@ -2586,13 +2609,13 @@ app.put('/api/patients/:pet_id/assign-vet', (req, res) => {
                   const updateSlotsSQL = `
                     UPDATE clinic_slots_t 
                     SET slots = ?, last_updated = NOW()
-                    WHERE clinic_id = ? AND slot_date = ?
+                    WHERE clinic_id = ? AND slot_date = ? AND consultation_type = ?
                   `;
 
-                  db.query(updateSlotsSQL, [JSON.stringify(updatedSlots), appt.clinic_id, dateKey], (err6) => {
+                  db.query(updateSlotsSQL, [JSON.stringify(updatedSlots), appt.clinic_id, dateKey, appt.consultation_type], (err6) => {
                     if (!err6) {
                       console.log(`✅ Slot updated to 'taken' for pet ${pet_id}`);
-                      io.emit('slotUpdated', { clinic_id: appt.clinic_id, date: dateKey, action: 'assigned' });
+                      io.emit('slotUpdated', { clinic_id: appt.clinic_id, date: dateKey, consultation_type: appt.consultation_type, action: 'assigned' });
                     } else {
                       console.error('⚠️ Error updating slot:', err6);
                     }
@@ -2726,6 +2749,72 @@ app.get('/api/appointment-by-pet/:pet_id', (req, res) => {
   });
 });
 
+// GET /api/scheduled-appointment-by-pet/:pet_id - Get scheduled appointment for a pet
+app.get('/api/scheduled-appointment-by-pet/:pet_id', (req, res) => {
+  const { pet_id } = req.params;
+  const { appt_date } = req.query; // Get date from query parameter
+
+  let sql;
+  let params;
+
+  if (appt_date) {
+    // If date is provided, find the exact appointment
+    sql = `
+      SELECT 
+        a.appt_id,
+        a.appt_type,
+        a.consultation_type,
+        a.appt_description,
+        a.appt_date,
+        a.appt_status,
+        a.created_at,
+        pet.pet_name,
+        CONCAT(vu.usr_firstName, ' ', vu.usr_lastName) as vet_name
+      FROM appointment_t a
+      INNER JOIN pet_t pet ON a.pet_id = pet.pet_id
+      LEFT JOIN veterinarian_t vt ON a.vt_id = vt.vt_id
+      LEFT JOIN user_t vu ON vt.usr_id = vu.usr_id
+      WHERE a.pet_id = ? AND a.appt_status = 'scheduled' AND a.appt_date = ?
+      LIMIT 1
+    `;
+    params = [pet_id, appt_date];
+  } else {
+    // If no date provided, get the most recent scheduled appointment
+    sql = `
+      SELECT 
+        a.appt_id,
+        a.appt_type,
+        a.consultation_type,
+        a.appt_description,
+        a.appt_date,
+        a.appt_status,
+        a.created_at,
+        pet.pet_name,
+        CONCAT(vu.usr_firstName, ' ', vu.usr_lastName) as vet_name
+      FROM appointment_t a
+      INNER JOIN pet_t pet ON a.pet_id = pet.pet_id
+      LEFT JOIN veterinarian_t vt ON a.vt_id = vt.vt_id
+      LEFT JOIN user_t vu ON vt.usr_id = vu.usr_id
+      WHERE a.pet_id = ? AND a.appt_status = 'scheduled'
+      ORDER BY a.appt_date DESC
+      LIMIT 1
+    `;
+    params = [pet_id];
+  }
+
+  db.query(sql, params, (err, result) => {
+    if (err) {
+      console.error('❌ Error fetching scheduled appointment details:', err);
+      return res.status(500).json({ error: 'Failed to fetch appointment details' });
+    }
+
+    if (result.length === 0) {
+      return res.status(404).json({ error: 'No scheduled appointment found' });
+    }
+
+    res.status(200).json(result[0]);
+  });
+});
 // -------------------------------------------------------------
 // 🟢 DELETE PATIENT (removes from clinic)
 // -------------------------------------------------------------
@@ -3066,13 +3155,31 @@ app.put('/api/appointments/:apptId/cancel', (req, res) => {
         });
         
         // Send notification to the other party
-        if (cancelledBy === 'petParent' && apptData.vt_id) {
-          // Notify vet
-          const getVetSQL = 'SELECT usr_id FROM veterinarian_t WHERE vt_id = ?';
-          db.query(getVetSQL, [apptData.vt_id], (err3, vetResult) => {
-            if (!err3 && vetResult.length > 0) {
-              const notifMsg = `Appointment for ${apptData.pet_name} on ${formattedApptDate} has been cancelled by the pet owner.${cancelReason ? ` Reason: ${cancelReason}` : ''}`;
-              createNotification(vetResult[0].usr_id, apptData.pet_id, apptId, 'cancelled', notifMsg, apptData.appt_date);
+        if (cancelledBy === 'petParent') {
+          // Notify vet if assigned
+          if (apptData.vt_id) {
+            const getVetSQL = 'SELECT usr_id FROM veterinarian_t WHERE vt_id = ?';
+            db.query(getVetSQL, [apptData.vt_id], (err3, vetResult) => {
+              if (!err3 && vetResult.length > 0) {
+                const notifMsg = `Appointment for ${apptData.pet_name} on ${formattedApptDate} has been cancelled by the pet owner.${cancelReason ? ` Reason: ${cancelReason}` : ''}`;
+                createNotification(vetResult[0].usr_id, apptData.pet_id, apptId, 'cancelled', notifMsg, apptData.appt_date);
+              }
+            });
+          }
+          
+          // ALWAYS notify vet admin
+          const getVetAdminSQL = `
+            SELECT u.usr_id 
+            FROM vet_admin_t va
+            INNER JOIN user_t u ON va.usr_id = u.usr_id
+            INNER JOIN clinic_t c ON va.va_id = c.va_id
+            WHERE c.clinic_id = ?
+          `;
+          db.query(getVetAdminSQL, [apptData.clinic_id], (err4, adminResult) => {
+            if (!err4 && adminResult.length > 0) {
+              const adminMsg = `Appointment for ${apptData.pet_name} on ${formattedApptDate} has been cancelled by the pet owner.${cancelReason ? ` Reason: ${cancelReason}` : ''}`;
+              createNotification(adminResult[0].usr_id, apptData.pet_id, apptId, 'cancelled', adminMsg, apptData.appt_date);
+              console.log(`✅ Vet admin notified of cancellation`);
             }
           });
         } else if (cancelledBy === 'veterinarian') {
@@ -3129,64 +3236,250 @@ app.put('/api/appointments/:apptId/cancel', (req, res) => {
 
 // Request reschedule endpoint
 // Request reschedule endpoint
-app.put('/api/appointments/:apptId/reschedule-request', (req, res) => {
+
+
+// PUT /api/appointments/:apptId/reschedule - Complete reschedule with new slot
+// PUT /api/appointments/:apptId/reschedule - Complete reschedule with new slot
+// PUT /api/appointments/:apptId/reschedule - Complete reschedule with new slot
+app.put('/api/appointments/:apptId/reschedule', (req, res) => {
   const { apptId } = req.params;
-  const { rescheduleReason, requestedBy } = req.body;
+  const { new_appt_date, new_slot_time, appt_type, consultation_type, appt_description, reschedule_reason } = req.body;
+  const io = req.app.get('io');
 
-  db.query(
-    `UPDATE appointment_t 
-     SET resched_flag = 'yes',
-         resched_reason = ?
-     WHERE appt_id = ?`,
-    [rescheduleReason, apptId],
-    (err, result) => {
-      if (err) {
-        console.error('❌ Error requesting reschedule:', err);
-        return res.status(500).json({ error: 'Failed to request reschedule' });
+  console.log('🔄 Reschedule request:', {
+    apptId,
+    new_appt_date,
+    new_slot_time,
+    consultation_type,
+    reschedule_reason
+  });
+
+  // Step 1: Get old appointment details first
+  const getOldApptSQL = `
+    SELECT a.*, p.pet_name, pp.usr_id as owner_usr_id, pp.pp_id
+    FROM appointment_t a
+    JOIN pet_t p ON a.pet_id = p.pet_id
+    JOIN pet_parent_t pp ON a.pp_id = pp.pp_id
+    WHERE a.appt_id = ?
+  `;
+
+  db.query(getOldApptSQL, [apptId], (err, oldApptResult) => {
+    if (err || oldApptResult.length === 0) {
+      console.error('❌ Error fetching old appointment:', err);
+      return res.status(500).json({ error: 'Failed to fetch appointment' });
+    }
+
+    const oldAppt = oldApptResult[0];
+    const oldDate = new Date(oldAppt.appt_date);
+    const oldDateKey = `${oldDate.getFullYear()}-${String(oldDate.getMonth() + 1).padStart(2, '0')}-${String(oldDate.getDate()).padStart(2, '0')}`;
+
+    const newDate = new Date(new_appt_date);
+    const newDateKey = `${newDate.getFullYear()}-${String(newDate.getMonth() + 1).padStart(2, '0')}-${String(newDate.getDate()).padStart(2, '0')}`;
+
+    console.log('📅 Date keys:', { oldDateKey, newDateKey });
+    console.log('🔍 Old appointment vt_id:', oldAppt.vt_id);
+
+    // Format dates for notifications
+    const formattedNewDate = new Date(new_appt_date).toLocaleDateString('en-US', {
+      weekday: 'long',
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true
+    });
+
+    const formattedOldDate = new Date(oldAppt.appt_date).toLocaleDateString('en-US', {
+      weekday: 'long',
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true
+    });
+
+    // Step 2: Send VET notification FIRST (synchronously) if assigned
+    const sendVetNotification = (callback) => {
+      if (oldAppt.vt_id) {
+        console.log('📧 Attempting to notify vet with vt_id:', oldAppt.vt_id);
+        const getVetSQL = 'SELECT usr_id FROM veterinarian_t WHERE vt_id = ?';
+        db.query(getVetSQL, [oldAppt.vt_id], (errVet, vetResult) => {
+          if (!errVet && vetResult.length > 0) {
+            const vetMsg = `Appointment for ${oldAppt.pet_name} has been rescheduled from ${formattedOldDate} to ${formattedNewDate}. Reason: "${reschedule_reason}". You have been unassigned from this appointment.`;
+            createNotification(vetResult[0].usr_id, oldAppt.pet_id, apptId, 'cancelled', vetMsg, new_appt_date);
+            console.log(`✅ Vet notification sent to usr_id: ${vetResult[0].usr_id}`);
+          } else {
+            console.log('⚠️ No vet found or error:', errVet);
+          }
+          callback(); // Continue to next step
+        });
+      } else {
+        console.log('⏭️ No vet assigned, skipping vet notification');
+        callback(); // No vet, continue
       }
+    };
 
-      if (result.affectedRows === 0) {
-        return res.status(404).json({ error: 'Appointment not found' });
-      }
+    // Execute vet notification, then continue
+    sendVetNotification(() => {
+      // Step 3: Release OLD slot
+      const getOldSlotsSQL = 'SELECT slots FROM clinic_slots_t WHERE clinic_id = ? AND slot_date = ? AND consultation_type = ?';
+      
+      db.query(getOldSlotsSQL, [oldAppt.clinic_id, oldDateKey, oldAppt.consultation_type], (err2, oldSlotsResult) => {
+        if (!err2 && oldSlotsResult.length > 0) {
+          let oldSlots = oldSlotsResult[0].slots;
+          if (typeof oldSlots === 'string') {
+            try {
+              oldSlots = JSON.parse(oldSlots);
+            } catch (e) {
+              console.error('⚠️ Error parsing old slots:', e);
+            }
+          }
 
-      // Get appointment details
-      const getApptSQL = `
-        SELECT a.*, p.pet_name, u.usr_firstName, u.usr_lastName, pp.usr_id as owner_usr_id
-        FROM appointment_t a
-        JOIN pet_t p ON a.pet_id = p.pet_id
-        JOIN pet_parent_t pp ON a.pp_id = pp.pp_id
-        JOIN user_t u ON pp.usr_id = u.usr_id
-        WHERE a.appt_id = ?
-      `;
+          const updatedOldSlots = oldSlots.map(slot => {
+            if (slot.petId == oldAppt.pet_id) {
+              console.log('✅ Releasing old slot:', slot);
+              return {
+                ...slot,
+                status: 'available',
+                patient: null,
+                petId: null,
+                veterinarian: null,
+                vt_id: null,
+                userId: null,
+                appointmentType: null,
+                description: null
+              };
+            }
+            return slot;
+          });
 
-      db.query(getApptSQL, [apptId], (err2, apptResult) => {
-        if (err2 || apptResult.length === 0) {
-          console.error('⚠️ Error fetching appointment details:', err2);
-          return res.json({ message: 'Reschedule request sent successfully' });
-        }
-
-        const apptData = apptResult[0];
-        
-        // Send notification to the other party
-        if (requestedBy === 'petParent' && apptData.vt_id) {
-          // Notify vet
-          const getVetSQL = 'SELECT usr_id FROM veterinarian_t WHERE vt_id = ?';
-          db.query(getVetSQL, [apptData.vt_id], (err3, vetResult) => {
-            if (!err3 && vetResult.length > 0) {
-              const notifMsg = `${apptData.usr_firstName} ${apptData.usr_lastName} has requested to reschedule the appointment for ${apptData.pet_name}. Reason: ${rescheduleReason}`;
-              createNotification(vetResult[0].usr_id, apptData.pet_id, apptId, 'message', notifMsg, apptData.appt_date);
+          const updateOldSlotsSQL = 'UPDATE clinic_slots_t SET slots = ?, last_updated = NOW() WHERE clinic_id = ? AND slot_date = ? AND consultation_type = ?';
+          db.query(updateOldSlotsSQL, [JSON.stringify(updatedOldSlots), oldAppt.clinic_id, oldDateKey, oldAppt.consultation_type], (err3) => {
+            if (!err3) {
+              console.log(`✅ Released old slot for pet ${oldAppt.pet_id}`);
+              io.emit('slotUpdated', { 
+                clinic_id: oldAppt.clinic_id, 
+                date: oldDateKey, 
+                consultation_type: oldAppt.consultation_type,
+                action: 'released' 
+              });
             }
           });
-        } else if (requestedBy === 'veterinarian') {
-          // Notify pet owner
-          const notifMsg = `The veterinarian has requested to reschedule your appointment for ${apptData.pet_name}. Reason: ${rescheduleReason}`;
-          createNotification(apptData.owner_usr_id, apptData.pet_id, apptId, 'message', notifMsg, apptData.appt_date);
         }
 
-        res.json({ message: 'Reschedule request sent successfully' });
+        // Step 4: Update NEW slot to pending
+        const getNewSlotsSQL = 'SELECT slots FROM clinic_slots_t WHERE clinic_id = ? AND slot_date = ? AND consultation_type = ?';
+        
+        db.query(getNewSlotsSQL, [oldAppt.clinic_id, newDateKey, consultation_type], (err4, newSlotsResult) => {
+          if (!err4 && newSlotsResult.length > 0) {
+            let newSlots = newSlotsResult[0].slots;
+            if (typeof newSlots === 'string') {
+              try {
+                newSlots = JSON.parse(newSlots);
+              } catch (e) {
+                console.error('⚠️ Error parsing new slots:', e);
+              }
+            }
+
+            console.log('🔍 Looking for slot with time:', new_slot_time);
+
+            // Get owner name for slot
+            const getOwnerNameSQL = 'SELECT u.usr_firstName FROM user_t u WHERE u.usr_id = ?';
+            
+            db.query(getOwnerNameSQL, [oldAppt.owner_usr_id], (err5, ownerResult) => {
+              const ownerFirstName = ownerResult && ownerResult.length > 0 ? ownerResult[0].usr_firstName : 'Unknown';
+              const petOwnerName = `${ownerFirstName} - ${oldAppt.pet_name}`;
+
+              // Find and update the new slot to pending
+              const updatedNewSlots = newSlots.map(slot => {
+                if (slot.time.trim() === new_slot_time.trim() && slot.status === 'available') {
+                  console.log('✅ Found matching slot to book:', slot);
+                  return {
+                    ...slot,
+                    status: 'pending',
+                    patient: petOwnerName,
+                    petId: oldAppt.pet_id,
+                    userId: oldAppt.owner_usr_id,
+                    appointmentType: appt_type,
+                    description: appt_description
+                  };
+                }
+                return slot;
+              });
+
+              const updateNewSlotsSQL = 'UPDATE clinic_slots_t SET slots = ?, last_updated = NOW() WHERE clinic_id = ? AND slot_date = ? AND consultation_type = ?';
+              db.query(updateNewSlotsSQL, [JSON.stringify(updatedNewSlots), oldAppt.clinic_id, newDateKey, consultation_type], (err6) => {
+                if (!err6) {
+                  console.log(`✅ Set new slot to pending for pet ${oldAppt.pet_id}`);
+                  io.emit('slotUpdated', { 
+                    clinic_id: oldAppt.clinic_id, 
+                    date: newDateKey, 
+                    consultation_type: consultation_type,
+                    action: 'booked' 
+                  });
+                }
+              });
+            });
+          }
+
+          // Step 5: NOW update appointment record (AFTER vet notification)
+          const updateApptSQL = `
+            UPDATE appointment_t
+            SET appt_date = ?,
+                appt_type = ?,
+                consultation_type = ?,
+                appt_description = ?,
+                appt_status = 'pending',
+                vt_id = NULL,
+                resched_flag = 'yes',
+                resched_reason = ?,
+                updated_at = NOW()
+            WHERE appt_id = ?
+          `;
+
+          db.query(updateApptSQL, [
+            new_appt_date, 
+            appt_type, 
+            consultation_type, 
+            appt_description, 
+            reschedule_reason,
+            apptId
+          ], (err7) => {
+            if (err7) {
+              console.error('❌ Error updating appointment:', err7);
+              return res.status(500).json({ error: 'Failed to reschedule appointment' });
+            }
+
+            console.log('✅ Appointment record updated with resched_flag and reason');
+
+            // Step 6: Notify pet owner
+            const ownerMsg = `Your appointment for ${oldAppt.pet_name} has been rescheduled to ${formattedNewDate} and is pending approval.`;
+            createNotification(oldAppt.owner_usr_id, oldAppt.pet_id, apptId, 'pending', ownerMsg, new_appt_date);
+
+            // Step 7: Notify vet admin
+            const getVetAdminSQL = `
+              SELECT u.usr_id 
+              FROM vet_admin_t va
+              INNER JOIN user_t u ON va.usr_id = u.usr_id
+              INNER JOIN clinic_t c ON va.va_id = c.va_id
+              WHERE c.clinic_id = ?
+            `;
+            db.query(getVetAdminSQL, [oldAppt.clinic_id], (err9, adminResult) => {
+              if (!err9 && adminResult.length > 0) {
+                const adminMsg = `${oldAppt.pet_name} has rescheduled their appointment from ${formattedOldDate} to ${formattedNewDate} and needs approval. Reason: "${reschedule_reason}"`;
+                createNotification(adminResult[0].usr_id, oldAppt.pet_id, apptId, 'pending', adminMsg, new_appt_date);
+              }
+            });
+
+            console.log(`✅ Appointment ${apptId} rescheduled successfully`);
+            res.json({ message: 'Appointment rescheduled successfully' });
+          });
+        });
       });
-    }
-  );
+    });
+  });
 });
 
 // DELETE /api/appointments/:appt_id - Remove appointment from database

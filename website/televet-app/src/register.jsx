@@ -4,6 +4,7 @@ import "./styles/register.css";
 const Register = () => {
   const [step, setStep] = useState(1);
   const [consentChecked, setConsentChecked] = useState(false);
+  const [showUserTypeError, setShowUserTypeError] = useState(false);
   const [formData, setFormData] = useState({
     // Common fields
     firstName: '',
@@ -50,8 +51,33 @@ const Register = () => {
     }));
   };
 
-  const handleNext = (e) => {
+  const handleNext = async (e) => {
     e.preventDefault();
+    
+    // Check if user type is selected on step 1
+    if (step === 1 && !formData.userType) {
+      setShowUserTypeError(true);
+      alert("Please select whether you are a Pet Parent or Vet Admin");
+      return;
+    }
+    
+    // Check password match on step 1
+    if (step === 1) {
+      if (formData.password !== formData.confirmPassword) {
+        alert("Passwords do not match");
+        return;
+      }
+      
+      // Check if email already exists
+      const emailExists = await checkEmailExists(formData.email);
+      if (emailExists) {
+        alert("This email is already registered. Please use a different email or login.");
+        return;
+      }
+    }
+    
+    // Reset error and proceed
+    setShowUserTypeError(false);
     if (step < 4) {
       setStep(prev => prev + 1);
     }
@@ -166,6 +192,16 @@ const Register = () => {
 
   const stepLabels = getStepLabels();
 
+  const checkEmailExists = async (email) => {
+    try {
+      const response = await fetch(`http://localhost:5000/api/check-email?email=${encodeURIComponent(email)}`);
+      const data = await response.json();
+      return data.exists;
+    } catch (err) {
+      console.error("Error checking email:", err);
+      return false;
+    }
+  };
 
 
   return (
@@ -214,16 +250,31 @@ const Register = () => {
                 <div>
                   <label>Confirm Password</label>
                   <input type="password" name="confirmPassword" value={formData.confirmPassword} onChange={handleChange} required />
+                  {formData.password && formData.confirmPassword && formData.password !== formData.confirmPassword && (
+                    <p style={{color: 'red', fontSize: '14px'}}>Passwords do not match</p>
+                  )}
                 </div>
                 <div>
                   <label className="user-type-label">Are you a...</label>
                   <div className="user-type">
                     <label className="radio-button">
-                      <input type="radio" name="userType" value="petParent" checked={formData.userType === 'petParent'} onChange={handleChange} required />
+                      <input 
+                        type="radio" 
+                        name="userType" 
+                        value="petParent" 
+                        checked={formData.userType === 'petParent'} 
+                        onChange={handleChange} 
+                      />
                       <span>Pet Parent</span>
                     </label>
                     <label className="radio-button">
-                      <input type="radio" name="userType" value="vet" checked={formData.userType === 'vet'} onChange={handleChange} />
+                      <input 
+                        type="radio" 
+                        name="userType" 
+                        value="vet" 
+                        checked={formData.userType === 'vet'} 
+                        onChange={handleChange} 
+                      />
                       <span>Vet Admin</span>
                     </label>
                   </div>
@@ -489,10 +540,14 @@ const Register = () => {
                       <div>
                         <label>Phone:</label>
                         <input
-                          type="text"
+                          type="tel"
                           name="clinicPhone"
                           value={formData.clinicPhone}
-                          onChange={handleChange}
+                          onChange={(e) => {
+                            // Only allow numbers
+                            const value = e.target.value.replace(/[^0-9]/g, '');
+                            setFormData(prev => ({ ...prev, clinicPhone: value }));
+                          }}
                           placeholder="Enter phone number"
                           required
                         />

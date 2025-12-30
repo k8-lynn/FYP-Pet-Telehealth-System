@@ -273,7 +273,7 @@ const [expandedExam, setExpandedExam] = useState(null);
       const response = await axios.post('http://localhost:5000/api/add-pet', {
         userId,
         ...newPetData,
-        gender: newPetData.gender === 'Male' ? 'm' : 'f'
+        gender: newPetData.gender === 'male' ? 'm' : 'f'
       });
 
 

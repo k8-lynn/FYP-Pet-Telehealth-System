@@ -36,6 +36,7 @@ const PetOwnerDashboard = () => {
   const [userId, setUserId] = useState(null);
   const [ppId, setPpId] = useState(null);
   const [userPets, setUserPets] = useState([]);
+  const [rescheduleData, setRescheduleData] = useState(null);
   const [newReminder, setNewReminder] = useState({
     title: '',
     pet_id: '',
@@ -201,18 +202,24 @@ const PetOwnerDashboard = () => {
   };
 
   const handleBookingSuccess = (details) => {
-    setBookingDetails(details);
-    setShowBookingToast(true);
+    if (details.rescheduled) {
+      alert(`Appointment rescheduled successfully to ${details.date.toLocaleDateString()} at ${details.time}. Your appointment is now pending approval.`);
+    } else {
+      setBookingDetails(details);
+      setShowBookingToast(true);
+      
+      setTimeout(() => {
+        setShowBookingToast(false);
+        setBookingDetails(null);
+      }, 3000);
+    }
+    
+    setRescheduleData(null);
     
     // Refresh appointments
     if (userId) {
       fetchUpcomingAppointments(userId);
     }
-    
-    setTimeout(() => {
-      setShowBookingToast(false);
-      setBookingDetails(null);
-    }, 3000);
   };
 
   const fetchReminderDates = async (pp_id, year, month) => {
@@ -408,43 +415,12 @@ const PetOwnerDashboard = () => {
     }
   };
 
-const handleRescheduleRequest = async (apptId, rescheduleReason) => {
-  const requestedBy = 'petParent'; // Fixed: hardcode it since this is petowner-chat
-  
-  try {
-    const response = await fetch(`http://localhost:5000/api/appointments/${apptId}/reschedule-request`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        rescheduleReason,
-        requestedBy: requestedBy
-      })
-    });
-
-    if (!response.ok) {
-      throw new Error('Failed to request reschedule');
-    }
-
-    const data = await response.json();
-    alert('Reschedule request sent successfully');
-    
-    // Refresh appointment details
-    setShowAppointmentModal(false);
-    setSelectedAppointmentDetails(null);
-
-    // Refresh appointments list
-    if (userId) {
-      fetchUpcomingAppointments(userId);
-    }
-    
-    return data;
-  } catch (error) {
-    console.error('Error requesting reschedule:', error);
-    throw error;
-  }
-};
+  const handleRescheduleRequest = (appointmentDetails) => {
+    // The reason is already collected in AppointmentDetailsModal
+    // Just store the appointment data and open booking modal
+    setRescheduleData(appointmentDetails);
+    setShowBookingModal(true);
+  };
 
   return (
     <div className="petowner-dashboard-container">
@@ -624,13 +600,22 @@ const handleRescheduleRequest = async (apptId, rescheduleReason) => {
         </div>
 
         {/* Book Appointment Modal */}
+        {/* Book Appointment Modal */}
         {showBookingModal && registeredVet && (
           <div className="myvet-modal-overlay" onClick={() => setShowBookingModal(false)}>
             <div onClick={(e) => e.stopPropagation()}>
               <BookAppointment 
-                clinicId={registeredVet.clinic_id} 
-                onClose={() => setShowBookingModal(false)}
+                clinicId={rescheduleData?.clinic_id || registeredVet.clinic_id}
+                onClose={() => {
+                  setShowBookingModal(false);
+                  setRescheduleData(null);
+                }}
                 onBookingSuccess={handleBookingSuccess}
+                rescheduleMode={!!rescheduleData}
+                oldAppointmentId={rescheduleData?.appt_id}
+                rescheduleData={rescheduleData}
+                initialDescription={rescheduleData?.appt_description || ''}
+                autoFillDescription={!!rescheduleData}
               />
             </div>
           </div>
