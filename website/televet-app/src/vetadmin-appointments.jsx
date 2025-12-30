@@ -879,8 +879,10 @@ const VetAdminAppointments = () => {
                         }`}
                         onClick={async () => {
                           if (isEditMode) {
-                            // In edit mode, toggle selection
-                            toggleSlotSelection(slot.id);
+                            // ✅ FIX 1: Only allow selection if status is available
+                            if (slot.status === 'available') {
+                              toggleSlotSelection(slot.id);
+                            }
                           } else if (slot.status === 'pending' && slot.petId) {
                             // In normal mode, open pending appointment modal
                             setSelectedPendingSlot(slot);
@@ -899,13 +901,15 @@ const VetAdminAppointments = () => {
                       >
                         {isEditMode && (
                           <div className="schedule-slot-checkbox">
-                            <input
-                              type="checkbox"
-                              checked={selectedSlotsForDeletion.includes(slot.id)}
-                              onChange={() => toggleSlotSelection(slot.id)}
-                              disabled={slot.status !== 'available'}
-                              onClick={(e) => e.stopPropagation()}
-                            />
+                            {/* ✅ FIX 2: Only render checkbox if slot is available */}
+                            {slot.status === 'available' && (
+                              <input
+                                type="checkbox"
+                                checked={selectedSlotsForDeletion.includes(slot.id)}
+                                onChange={() => toggleSlotSelection(slot.id)}
+                                onClick={(e) => e.stopPropagation()}
+                              />
+                            )}
                           </div>
                         )}
                         <div className="schedule-slot-header">
