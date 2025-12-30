@@ -14,6 +14,11 @@
   backdrop-filter: blur(10px);
 }
 
+.vetadmin-sidebar a {
+  text-decoration: none;
+  color: inherit;
+}
+
 .vetadmin-sidebar.collapsed {
   width: 80px;
 }

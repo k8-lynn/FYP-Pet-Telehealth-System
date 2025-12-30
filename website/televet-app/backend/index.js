@@ -6,12 +6,20 @@ import dotenv from 'dotenv';
 import haversine from 'haversine-distance';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
+import cookieParser from 'cookie-parser';
 
 dotenv.config();
 
 const app = express();
-app.use(cors());
+
+// ✅ CORS configuration MUST be before other middleware
+app.use(cors({
+  origin: 'http://localhost:5173',
+  credentials: true
+}));
+
 app.use(express.json());
+app.use(cookieParser());
 
 // ✅ Create HTTP server & Socket.IO instance
 const server = createServer(app);
@@ -209,14 +217,27 @@ app.post('/api/login', (req, res) => {
 
     const user = result[0];
 
-    // 🧾 Log the login event with all key details
-    console.log("✅ Login successful for user:");
-    console.log({
+    console.log("✅ Login successful for user:", {
       usr_id: user.usr_id,
       usr_firstName: user.usr_firstName,
       usr_lastName: user.usr_lastName,
       usr_email: user.usr_email,
       usr_type: user.usr_type
+    });
+
+    // ✅ Set HTTP-only cookie for session
+    res.cookie('userId', user.usr_id, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+    });
+
+    res.cookie('userType', user.usr_type, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 7 * 24 * 60 * 60 * 1000
     });
 
     // ✅ If user is a veterinarian, fetch their vt_id
@@ -237,13 +258,20 @@ app.post('/api/login', (req, res) => {
         const vt_id = vetResult[0].vt_id;
         console.log('✅ Veterinarian vt_id:', vt_id);
 
+        res.cookie('vt_id', vt_id, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'lax',
+          maxAge: 7 * 24 * 60 * 60 * 1000
+        });
+
         return res.status(200).json({
           message: 'Login successful',
           userId: user.usr_id,
           firstName: user.usr_firstName,
           lastName: user.usr_lastName,
           userType: user.usr_type,
-          vt_id: vt_id // ✅ Include vt_id for veterinarians
+          vt_id: vt_id
         });
       });
     } 
@@ -265,13 +293,20 @@ app.post('/api/login', (req, res) => {
         const va_id = adminResult[0].va_id;
         console.log('✅ Vet Admin va_id:', va_id);
 
+        res.cookie('va_id', va_id, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'lax',
+          maxAge: 7 * 24 * 60 * 60 * 1000
+        });
+
         return res.status(200).json({
           message: 'Login successful',
           userId: user.usr_id,
           firstName: user.usr_firstName,
           lastName: user.usr_lastName,
           userType: user.usr_type,
-          va_id: va_id // ✅ Include va_id for vet admins
+          va_id: va_id
         });
       });
     }
@@ -285,6 +320,51 @@ app.post('/api/login', (req, res) => {
         userType: user.usr_type
       });
     }
+  });
+});
+
+// -------------------------------------------------------------
+// 🟢 LOGOUT
+// -------------------------------------------------------------
+app.post('/api/logout', (req, res) => {
+  res.clearCookie('userId');
+  res.clearCookie('userType');
+  res.clearCookie('vt_id');
+  res.clearCookie('va_id');
+  
+  return res.status(200).json({ message: 'Logged out successfully' });
+});
+
+// -------------------------------------------------------------
+// 🟢 CHECK SESSION
+// -------------------------------------------------------------
+app.get('/api/check-session', (req, res) => {
+  const userId = req.cookies.userId;
+  const userType = req.cookies.userType;
+  
+  if (!userId || !userType) {
+    return res.status(401).json({ authenticated: false });
+  }
+
+  // Get user details from database
+  const sql = 'SELECT usr_firstName, usr_lastName FROM user_t WHERE usr_id = ?';
+  
+  db.query(sql, [userId], (err, result) => {
+    if (err || result.length === 0) {
+      return res.status(401).json({ authenticated: false });
+    }
+
+    const user = result[0];
+    
+    return res.status(200).json({
+      authenticated: true,
+      userId,
+      userType,
+      firstName: user.usr_firstName,
+      lastName: user.usr_lastName,
+      vt_id: req.cookies.vt_id,
+      va_id: req.cookies.va_id
+    });
   });
 });
 
@@ -1040,7 +1120,18 @@ app.post('/api/veterinarians', (req, res) => {
     db.query(sqlUser, [firstName, lastName, email, password], (err, userResult) => {
       if (err) {
         console.error("❌ Error inserting into user_t:", err);
-        return res.status(500).json({ error: "Failed to create user" });
+        
+        // ✅ CHECK FOR DUPLICATE EMAIL ERROR
+        if (err.code === 'ER_DUP_ENTRY' && err.sqlMessage.includes('usr_email')) {
+          return res.status(400).json({ 
+            error: 'Email already exists. Please use a different email address.' 
+          });
+        }
+        
+        // ✅ GENERIC ERROR FOR OTHER ISSUES
+        return res.status(500).json({ 
+          error: 'Failed to create user. Please try again.' 
+        });
       }
 
       const usr_id = userResult.insertId;
@@ -1142,6 +1233,52 @@ app.put('/api/veterinarians/:vt_id/toggle-duty', (req, res) => {
       res.status(200).json({ 
         message: 'Duty status updated successfully',
         vt_onDutyToday: newStatus 
+      });
+    });
+  });
+});
+
+// DELETE /api/veterinarians/:vt_id
+app.delete('/api/veterinarians/:vt_id', (req, res) => {
+  const { vt_id } = req.params;
+
+  console.log('🗑️ Attempting to delete veterinarian with vt_id:', vt_id);
+
+  // First, delete the user account
+  const getUserSQL = 'SELECT usr_id FROM veterinarian_t WHERE vt_id = ?';
+  
+  db.query(getUserSQL, [vt_id], (err, result) => {
+    if (err) {
+      console.error('❌ Error finding user:', err);
+      return res.status(500).json({ error: 'Failed to find veterinarian' });
+    }
+
+    if (result.length === 0) {
+      return res.status(404).json({ error: 'Veterinarian not found' });
+    }
+
+    const usr_id = result[0].usr_id;
+
+    // Delete from veterinarian_t first (foreign key constraint)
+    const deleteVetSQL = 'DELETE FROM veterinarian_t WHERE vt_id = ?';
+    
+    db.query(deleteVetSQL, [vt_id], (err2) => {
+      if (err2) {
+        console.error('❌ Error deleting veterinarian record:', err2);
+        return res.status(500).json({ error: 'Failed to delete veterinarian record' });
+      }
+
+      // Then delete from user_t
+      const deleteUserSQL = 'DELETE FROM user_t WHERE usr_id = ?';
+      
+      db.query(deleteUserSQL, [usr_id], (err3) => {
+        if (err3) {
+          console.error('❌ Error deleting user account:', err3);
+          return res.status(500).json({ error: 'Failed to delete user account' });
+        }
+
+        console.log('✅ Successfully deleted veterinarian and user account');
+        res.status(200).json({ message: 'Veterinarian deleted successfully' });
       });
     });
   });

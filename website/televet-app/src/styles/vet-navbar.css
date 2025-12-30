@@ -13,6 +13,13 @@
     z-index: 1000;
     backdrop-filter: blur(10px);
   }
+
+/* Remove underline from all sidebar links */
+.vet-sidebar a {
+  text-decoration: none;
+  color: inherit;
+}
+
   
   .vet-sidebar.collapsed {
     width: 80px;

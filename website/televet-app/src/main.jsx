@@ -34,37 +34,46 @@ import MyProfile from './myprofile.jsx';
 // eslint-disable-next-line react-refresh/only-export-components
 function AppWrapper() {
   const [userId, setUserId] = React.useState(null);
+  const [userType, setUserType] = React.useState(null);
+  const [isLoading, setIsLoading] = React.useState(true);
   const [showVideoCall, setShowVideoCall] = React.useState(false);
   const [videoCallData, setVideoCallData] = React.useState(null);
   
+  // ✅ Check session on mount
   React.useEffect(() => {
-    const storedUserId = sessionStorage.getItem('userid');
-    console.log('🔍 AppWrapper checking userId:', storedUserId);
-    setUserId(storedUserId);
-    
-    // Listen for storage changes (in case of login/logout)
-    const handleStorageChange = () => {
-      const newUserId = sessionStorage.getItem('userid');
-      console.log('🔄 UserId changed to:', newUserId);
-      setUserId(newUserId);
-    };
-    
-    window.addEventListener('storage', handleStorageChange);
-    
-    // Also check periodically in case storage changes in same tab
-    const interval = setInterval(() => {
-      const currentUserId = sessionStorage.getItem('userid');
-      if (currentUserId !== userId) {
-        console.log('🔄 UserId detected change to:', currentUserId);
-        setUserId(currentUserId);
+    const checkSession = async () => {
+      try {
+        const response = await fetch('http://localhost:5000/api/check-session', {
+          credentials: 'include'
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          if (data.authenticated) {
+            setUserId(data.userId);
+            setUserType(data.userType);
+            
+            // Store in sessionStorage for backward compatibility
+            sessionStorage.setItem('userid', data.userId);
+            sessionStorage.setItem('userType', data.userType);
+            sessionStorage.setItem('firstName', data.firstName);
+            sessionStorage.setItem('lastName', data.lastName);
+            
+            if (data.vt_id) sessionStorage.setItem('vt_id', data.vt_id);
+            if (data.va_id) sessionStorage.setItem('va_id', data.va_id);
+            
+            console.log('✅ Session restored:', data);
+          }
+        }
+      } catch (error) {
+        console.error('Session check failed:', error);
+      } finally {
+        setIsLoading(false);
       }
-    }, 1000);
-    
-    return () => {
-      window.removeEventListener('storage', handleStorageChange);
-      clearInterval(interval);
     };
-  }, [userId]);
+    
+    checkSession();
+  }, []);
   
   // ✅ This will manage online status globally
   useOnlineStatus(userId);
@@ -72,6 +81,21 @@ function AppWrapper() {
   const handleAcceptCall = (callData) => {
     setVideoCallData(callData);
   };
+  
+  if (isLoading) {
+    return (
+      <div style={{
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        height: '100vh',
+        fontSize: '1.2rem',
+        color: '#64748b'
+      }}>
+        Loading...
+      </div>
+    );
+  }
   
   return (
     <>

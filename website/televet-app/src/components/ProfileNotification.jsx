@@ -106,12 +106,25 @@ const ProfileNotification = ({ firstName = "Pet Owner" }) => {
     navigate("/myprofile");
   };
 
-  const handleLogout = () => {
-    sessionStorage.removeItem("token");
-    sessionStorage.removeItem("userType");
-    sessionStorage.removeItem("firstName");
-    sessionStorage.removeItem("userid"); // ✅ Also clear userid
-    navigate("/login");
+  const handleLogout = async () => {
+    try {
+      // ✅ Call backend logout endpoint to clear cookies
+      await fetch('http://localhost:5000/api/logout', {
+        method: 'POST',
+        credentials: 'include'
+      });
+      
+      // ✅ Clear sessionStorage
+      sessionStorage.clear();
+      
+      // ✅ Navigate to login
+      navigate('/login');
+    } catch (error) {
+      console.error('Logout failed:', error);
+      // ✅ Even if backend fails, still clear local data and redirect
+      sessionStorage.clear();
+      navigate('/login');
+    }
   };
 
 

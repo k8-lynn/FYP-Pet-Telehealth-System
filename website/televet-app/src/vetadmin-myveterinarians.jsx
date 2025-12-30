@@ -94,7 +94,7 @@ const VetAdminMyVeterinarians = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
+  
     try {
       const response = await fetch('http://localhost:5000/api/veterinarians', {
         method: 'POST',
@@ -105,9 +105,10 @@ const VetAdminMyVeterinarians = () => {
           ...clinicInfo
         }),
       });
-
+  
+      // ✅ CRITICAL: Parse JSON response BEFORE checking if response.ok
       const data = await response.json();
-
+  
       if (response.ok) {
         alert('Veterinarian registered successfully!');
         setShowModal(false);
@@ -122,16 +123,23 @@ const VetAdminMyVeterinarians = () => {
           specialization: '',
           onDutyToday: 'no'
         });
-
+  
         // Refresh list
         const refreshResponse = await fetch(`http://localhost:5000/api/veterinarians/${vaId}`);
         const refreshData = await refreshResponse.json();
         if (refreshResponse.ok) setVeterinarians(refreshData);
       } else {
-        alert(data.error || 'Failed to register veterinarian');
+        // ✅ Now data is already parsed, just use it directly
+        console.log('❌ Error response:', data); // Debug log
+        if (data.error && data.error.toLowerCase().includes('email')) {
+          alert('Email already exists. Please use a different email address.');
+        } else {
+          alert(data.error || 'Failed to register veterinarian');
+        }
       }
     } catch (error) {
       console.error('Error:', error);
+      alert('An error occurred while registering the veterinarian. Please try again.');
     }
   };
 
@@ -271,7 +279,8 @@ const VetAdminMyVeterinarians = () => {
       const data = await res.json();
       
       if (res.ok) {
-        setSelectedVetAppointments(data);
+        const sortedData = data.sort((a, b) => new Date(b.appt_date) - new Date(a.appt_date));
+        setSelectedVetAppointments(sortedData);
       } else {
         alert('Failed to fetch appointments');
       }
@@ -510,13 +519,16 @@ const VetAdminMyVeterinarians = () => {
               <div className="myveterinarians-form-section">
                 <h3 className="myveterinarians-form-section-title">Professional Details</h3>
                 <div className="myveterinarians-form-row">
-                  <div className="myveterinarians-form-group">
+                <div className="myveterinarians-form-group">
                     <label>License Number *</label>
                     <input
                       type="text"
                       name="licenseNumber"
                       value={formData.licenseNumber}
                       onChange={handleInputChange}
+                      pattern="^MY-VET-\d{4}-\d{4}$"
+                      title="License number must follow format: MY-VET-YYYY-XXXX (e.g., MY-VET-2022-0147)"
+                      placeholder="e.g., MY-VET-2022-0147"
                       required
                     />
                   </div>
@@ -541,6 +553,7 @@ const VetAdminMyVeterinarians = () => {
                             value={formData.yearsOfPractice}
                             onChange={handleInputChange}
                             min="0"
+                            step="1"
                         />
                         </div>
                         <div className="myveterinarians-form-group">

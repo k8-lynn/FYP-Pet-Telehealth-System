@@ -475,7 +475,16 @@ const Register = () => {
                     <h3>Professional Verification</h3>
                     <div>
                       <label>Veterinary License Number:</label>
-                      <input type="text" name="licenseNumber" value={formData.licenseNumber} onChange={handleChange} required />
+                      <input 
+                        type="text" 
+                        name="licenseNumber" 
+                        value={formData.licenseNumber} 
+                        onChange={handleChange} 
+                        pattern="^MY-VET-\d{4}-\d{4}$"
+                        title="License number must follow format: MY-VET-YYYY-XXXX (e.g., MY-VET-2022-0147)"
+                        placeholder="e.g., MY-VET-2022-0147"
+                        required 
+                      />
                     </div>
                     <div>
                       <label>Licensing Authority / State:</label>

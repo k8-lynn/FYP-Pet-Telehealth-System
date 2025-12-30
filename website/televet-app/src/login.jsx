@@ -23,58 +23,38 @@ const Login = () => {
       const response = await fetch('http://localhost:5000/api/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include', // ✅ Enable cookies
         body: JSON.stringify(formData),
       });
       const data = await response.json();
-
+  
       if (response.ok) {
-        localStorage.clear();
-        sessionStorage.clear();
-        // ✅ Pet Parent Login
-        if (data.userType === 'petParent' || data.user_type === 'petParent') {
-          sessionStorage.clear();
-          sessionStorage.setItem('firstName', data.firstName);
-          sessionStorage.setItem('userid', data.userId);
-          sessionStorage.setItem('userType', data.userType);
-
-
-          setShowSuccess(true);
-
-          setTimeout(() => {
+        // ✅ Store in sessionStorage for backward compatibility with existing code
+        sessionStorage.setItem('firstName', data.firstName);
+        sessionStorage.setItem('userid', data.userId);
+        sessionStorage.setItem('userType', data.userType);
+  
+        if (data.vt_id) {
+          sessionStorage.setItem('vt_id', data.vt_id);
+        }
+        if (data.va_id) {
+          sessionStorage.setItem('va_id', data.va_id);
+        }
+  
+        setShowSuccess(true);
+  
+        // ✅ Navigate based on user type
+        setTimeout(() => {
+          if (data.userType === 'petParent') {
             navigate('/petowner-dashboard');
-          }, 2000);
-        } 
-        // ✅ Vet Admin Login
-        else if (data.userType === 'vetAdmin' || data.user_type === 'vetAdmin') {
-          sessionStorage.setItem('firstName', data.firstName);
-          sessionStorage.setItem('userid', data.userId);
-          sessionStorage.setItem('userType', data.userType);
-
-
-          setShowSuccess(true);
-
-          setTimeout(() => {
+          } else if (data.userType === 'vetAdmin') {
             navigate('/vetadmin-dashboard');
-          }, 2000);
-        } 
-
-        // ✅ Veterinarian Login
-        else if (data.userType === 'veterinarian' || data.user_type === 'veterinarian') {
-          sessionStorage.setItem('firstName', data.firstName);
-          sessionStorage.setItem('userid', data.userId);
-          sessionStorage.setItem('userType', data.userType);
-          sessionStorage.setItem('vt_id', data.vt_id); // ✅ Store veterinarian ID
-
-          setShowSuccess(true);
-
-          setTimeout(() => {
+          } else if (data.userType === 'veterinarian') {
             navigate('/vet-dashboard');
-          }, 2000);
-        }
-        
-        else {
-          alert('Login successful, but unknown user type.');
-        }
+          } else {
+            alert('Login successful, but unknown user type.');
+          }
+        }, 2000);
       } else {
         alert(data.message || 'Login failed');
       }
