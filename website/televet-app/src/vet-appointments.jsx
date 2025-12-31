@@ -7,6 +7,7 @@ import VetNavbar from './components/vet-navbar';
 import ProfileNotification from "./components/ProfileNotification";
 import './styles/vetadmin-mypatients.css';
 import './styles/vet-appointments.css';
+import showStyledAlert from './utils/styledAlert';
 import AppointmentDetailsModal from './components/AppointmentDetailsModal';
 
 const VetAppointments = () => {
@@ -127,14 +128,14 @@ const VetAppointments = () => {
         // Remove from local state
         setAppointments(prev => prev.filter(appt => appt.appt_id !== appt_id));
         setOpenMenuId(null);
-        alert('Appointment removed successfully');
+        showStyledAlert('Appointment removed successfully');
       } else {
         console.error('Failed to remove appointment');
-        alert('Failed to remove appointment');
+        showStyledAlert('Failed to remove appointment');
       }
     } catch (error) {
       console.error('Error removing appointment:', error);
-      alert('Failed to remove appointment');
+      showStyledAlert('Failed to remove appointment');
     }
   };
   
@@ -243,7 +244,7 @@ const handleCancelAppointment = async (apptId, cancelReason) => {
     }
 
     const data = await response.json();
-    alert('Appointment cancelled successfully');
+    showStyledAlert('Appointment cancelled successfully');
     
     // Close the modal and refresh appointments
     setShowViewModal(false);
@@ -283,7 +284,7 @@ const handleRescheduleRequest = async (apptId, rescheduleReason) => {
     }
 
     const data = await response.json();
-    alert('Reschedule request sent successfully');
+    showStyledAlert('Reschedule request sent successfully');
     
     // Refresh dashboard data after reschedule request
     if (vtId) {
@@ -295,7 +296,7 @@ const handleRescheduleRequest = async (apptId, rescheduleReason) => {
     return data;
   } catch (error) {
     console.error('Error requesting reschedule:', error);
-    alert('Failed to request reschedule');
+    showStyledAlert('Failed to request reschedule');
     throw error;
   }
 };

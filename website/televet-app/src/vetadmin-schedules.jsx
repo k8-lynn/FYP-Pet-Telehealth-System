@@ -7,6 +7,7 @@ import './styles/vetadmin-schedules.css';
 import VetAdminNavbar from './components/vetadmin-navbar';
 import PawPattern from "./components/PawPattern";
 import ProfileNotification from "./components/ProfileNotification";
+import showStyledAlert from "./utils/styledAlert";
 
 const VetAdminSchedules = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -235,7 +236,7 @@ const VetAdminSchedules = () => {
 
   const handleSaveHours = async () => {
     if (!clinic_id) {
-      alert("Clinic not found");
+      showStyledAlert("Clinic not found");
       return;
     }
   
@@ -248,7 +249,7 @@ const VetAdminSchedules = () => {
     });
   
     if (allErrors.length > 0) {
-      alert("Please fix the following errors:\n\n" + allErrors.join('\n'));
+      showStyledAlert("Please fix the following errors:\n\n" + allErrors.join('\n'));
       return;
     }
   
@@ -272,15 +273,15 @@ const VetAdminSchedules = () => {
       });
   
       if (res.ok) {
-        alert("Clinic hours updated successfully!");
+        showStyledAlert("Clinic hours updated successfully!");
         fetchClinicHours(clinic_id);
         setShowHoursModal(false);
       } else {
-        alert("Failed to update clinic hours");
+        showStyledAlert("Failed to update clinic hours");
       }
     } catch (error) {
       console.error("Error saving clinic hours:", error);
-      alert("An error occurred");
+      showStyledAlert("An error occurred");
     }
   };
 

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import "./styles/register.css";
+import showStyledAlert from "./utils/styledAlert";
 
 const Register = () => {
   const [step, setStep] = useState(1);
@@ -57,21 +58,21 @@ const Register = () => {
     // Check if user type is selected on step 1
     if (step === 1 && !formData.userType) {
       setShowUserTypeError(true);
-      alert("Please select whether you are a Pet Parent or Vet Admin");
+      showStyledAlert("Please select whether you are a Pet Parent or Vet Admin");
       return;
     }
     
     // Check password match on step 1
     if (step === 1) {
       if (formData.password !== formData.confirmPassword) {
-        alert("Passwords do not match");
+        showStyledAlert("Passwords do not match");
         return;
       }
       
       // Check if email already exists
       const emailExists = await checkEmailExists(formData.email);
       if (emailExists) {
-        alert("This email is already registered. Please use a different email or login.");
+        showStyledAlert("This email is already registered. Please use a different email or login.");
         return;
       }
     }
@@ -107,7 +108,7 @@ const Register = () => {
               // Use the full formatted address
               setFormData((prev) => ({ ...prev, vetLocation: data.display_name }));
             } else {
-              alert("Unable to fetch address. Using coordinates instead.");
+              showStyledAlert("Unable to fetch address. Using coordinates instead.");
               setFormData((prev) => ({ ...prev, vetLocation: `${lat}, ${lng}` }));
             }
           } catch (err) {
@@ -116,11 +117,11 @@ const Register = () => {
           }
         },
         () => {
-          alert("Please enable location in your browser settings.");
+          showStyledAlert("Please enable location in your browser settings.");
         }
       );
     } else {
-      alert("Geolocation is not supported by this browser.");
+      showStyledAlert("Geolocation is not supported by this browser.");
     }
   };
   
@@ -130,7 +131,7 @@ const Register = () => {
     e.preventDefault();
   
     if (!consentChecked) {
-      alert("Please confirm the consent checkbox before submitting.");
+      showStyledAlert("Please confirm the consent checkbox before submitting.");
       return;
     }
   
@@ -173,10 +174,10 @@ const Register = () => {
       });
   
       const data = await response.json();
-      alert(data.message || "Registered!");
+      showStyledAlert(data.message || "Registered!");
     } catch (err) {
       console.error("Error:", err);
-      alert("Failed to register");
+      showStyledAlert("Failed to register");
     }
   };
   

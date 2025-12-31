@@ -1,6 +1,7 @@
 //PatientProfileModal.jsx
 import React, { useState, useEffect } from 'react';
 import { X, Activity, FileText, Scale, ChevronDown, Plus } from 'lucide-react';
+import showStyledAlert from '../utils/styledAlert';
 
 const PatientProfileModal = ({
   petId,  // Just pass pet_id
@@ -195,14 +196,14 @@ const handleSaveExamChanges = async () => {
       }
     }
 
-    alert('Changes saved successfully!');
+    showStyledAlert('Changes saved successfully!');
     setEditMode(false);
     setEditingExam(null);
     setHasUnsavedChanges(false);
     fetchHealthRecords();
   } catch (error) {
     console.error('Error saving changes:', error);
-    alert('Failed to save changes. Please try again.');
+    showStyledAlert('Failed to save changes. Please try again.');
   }
 };
 
@@ -280,17 +281,17 @@ const handleSaveRecordChanges = async () => {
     });
 
     if (response.ok) {
-      alert('Changes saved successfully!');
+      showStyledAlert('Changes saved successfully!');
       setEditingRecord(null);
       setEditingRecordType(null);
       setHasUnsavedChanges(false);
       fetchHealthRecords();
     } else {
-      alert('Failed to save changes');
+      showStyledAlert('Failed to save changes');
     }
   } catch (error) {
     console.error('Error saving record changes:', error);
-    alert('Failed to save changes. Please try again.');
+    showStyledAlert('Failed to save changes. Please try again.');
   }
 };
 
@@ -329,7 +330,7 @@ const handleDeleteRecord = async (recordId, recordType) => {
     });
 
     if (response.ok) {
-      alert('Record deleted successfully!');
+      showStyledAlert('Record deleted successfully!');
       setEditingRecord(null);
       setEditingRecordType(null);
       setEditMode(false);
@@ -340,11 +341,11 @@ const handleDeleteRecord = async (recordId, recordType) => {
         fetchAllTreatments();
       }
     } else {
-      alert('Failed to delete record');
+      showStyledAlert('Failed to delete record');
     }
   } catch (error) {
     console.error('Error deleting record:', error);
-    alert('Failed to delete record. Please try again.');
+      showStyledAlert('Failed to delete record. Please try again.');
   }
 };
 
@@ -355,13 +356,13 @@ const handleFileSelect = (e) => {
     const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
     
     if (!allowedTypes.includes(file.type)) {
-      alert('Invalid file type. Please upload an image, PDF, or Word document.');
+      showStyledAlert('Invalid file type. Please upload an image, PDF, or Word document.');
       return;
     }
     
     // Validate file size (10MB max)
     if (file.size > 10 * 1024 * 1024) {
-      alert('File size must be less than 10MB');
+      showStyledAlert('File size must be less than 10MB');
       return;
     }
     
@@ -371,7 +372,7 @@ const handleFileSelect = (e) => {
 
 const handleUploadDocument = async () => {
   if (!selectedFile) {
-    alert('Please select a file to upload');
+    showStyledAlert('Please select a file to upload');
     return;
   }
 
@@ -391,16 +392,16 @@ const handleUploadDocument = async () => {
 
     if (response.ok) {
       const result = await response.json();
-      alert('Document uploaded successfully!');
+      showStyledAlert('Document uploaded successfully!');
       handleCloseAddRecordModal();
       setSelectedFile(null);
       fetchHealthRecords();
     } else {
-      alert('Failed to upload document');
+      showStyledAlert('Failed to upload document');
     }
   } catch (error) {
     console.error('Error uploading document:', error);
-    alert('Failed to upload document. Please try again.');
+    showStyledAlert('Failed to upload document. Please try again.');
   } finally {
     setUploadingFile(false);
   }
@@ -408,7 +409,7 @@ const handleUploadDocument = async () => {
 
 const handleViewDocument = (fileUrl) => {
   if (!fileUrl) {
-    alert('No file available');
+    showStyledAlert('No file available');
     return;
   }
   
@@ -418,7 +419,7 @@ const handleViewDocument = (fileUrl) => {
 
 const handleDownloadDocument = (fileUrl, title) => {
   if (!fileUrl) {
-    alert('No file available');
+    showStyledAlert('No file available');
     return;
   }
   
@@ -437,13 +438,13 @@ const handleDownloadDocument = (fileUrl, title) => {
     })
     .catch(error => {
       console.error('Download error:', error);
-      alert('Failed to download file');
+      showStyledAlert('Failed to download file');
     });
 };
 
 const handleViewDocumentModal = (fileUrl, title) => {
   if (!fileUrl) {
-    alert('No file available');
+    showStyledAlert('No file available');
     return;
   }
   
@@ -669,19 +670,19 @@ const handleViewDocumentModal = (fileUrl, title) => {
   const handleSubmitTrackingEntry = async () => {
     // Validation
     if (trackingModalType === 'weight' && (!newTrackingEntry.weight || !newTrackingEntry.date)) {
-      alert('Please fill in all required fields');
+      showStyledAlert('Please fill in all required fields');
       return;
     }
     if (trackingModalType === 'activity' && (!newTrackingEntry.activityType || !newTrackingEntry.duration || !newTrackingEntry.date)) {
-      alert('Please fill in all required fields');
+      showStyledAlert('Please fill in all required fields');
       return;
     }
     if (trackingModalType === 'symptoms' && (!newTrackingEntry.symptomTitle || !newTrackingEntry.date)) {
-      alert('Please fill in all required fields');
+      showStyledAlert('Please fill in all required fields');
       return;
     }
     if (trackingModalType === 'behavior' && (!newTrackingEntry.behaviorType || !newTrackingEntry.behaviorNote || !newTrackingEntry.date)) {
-      alert('Please fill in all required fields');
+      showStyledAlert('Please fill in all required fields');
       return;
     }
 
@@ -731,12 +732,12 @@ const handleViewDocumentModal = (fileUrl, title) => {
         body: JSON.stringify(payload)
       });
 
-      alert('Entry added successfully!');
+      showStyledAlert('Entry added successfully!');
       handleCloseTrackingModal();
       fetchTrackingData();
     } catch (error) {
       console.error('Error adding tracking entry:', error);
-      alert('Failed to add entry. Please try again.');
+      showStyledAlert('Failed to add entry. Please try again.');
     }
   };
 
@@ -781,7 +782,7 @@ const handleViewDocumentModal = (fileUrl, title) => {
       switch (addRecordType) {
         case 'vaccinations':
           if (!newRecordData.vac_name || !newRecordData.vac_date) {
-            alert('Please fill in vaccine name and date');
+            showStyledAlert('Please fill in vaccine name and date');
             return;
           }
           endpoint = `http://localhost:5000/api/pets/${petId}/vaccinations`;
@@ -796,7 +797,7 @@ const handleViewDocumentModal = (fileUrl, title) => {
 
         case 'documents':
           if (!newRecordData.doc_title || !newRecordData.doc_type) {
-            alert('Please fill in document title and type');
+            showStyledAlert('Please fill in document title and type');
             return;
           }
           
@@ -808,7 +809,7 @@ const handleViewDocumentModal = (fileUrl, title) => {
           
           // If no file but has URL, use URL
           if (!newRecordData.file_url) {
-            alert('Please either upload a file or provide a file URL');
+            showStyledAlert('Please either upload a file or provide a file URL');
             return;
           }
           
@@ -822,7 +823,7 @@ const handleViewDocumentModal = (fileUrl, title) => {
 
         case 'conditions':
           if (!newRecordData.cond_name) {
-            alert('Please fill in condition name');
+            showStyledAlert('Please fill in condition name');
             return;
           }
           endpoint = `http://localhost:5000/api/pets/${petId}/conditions`;
@@ -836,7 +837,7 @@ const handleViewDocumentModal = (fileUrl, title) => {
 
         case 'surgeries':
           if (!newRecordData.surg_name || !newRecordData.surg_date) {
-            alert('Please fill in surgery name and date');
+            showStyledAlert('Please fill in surgery name and date');
             return;
           }
           endpoint = `http://localhost:5000/api/pets/${petId}/surgeries`;
@@ -857,15 +858,15 @@ const handleViewDocumentModal = (fileUrl, title) => {
       });
 
       if (response.ok) {
-        alert('Record added successfully!');
+        showStyledAlert('Record added successfully!');
         handleCloseAddRecordModal();
         fetchHealthRecords();
       } else {
-        alert('Failed to add record');
+        showStyledAlert('Failed to add record');
       }
     } catch (error) {
       console.error('Error adding record:', error);
-      alert('Failed to add record. Please try again.');
+      showStyledAlert('Failed to add record. Please try again.');
     }
   };
 
@@ -898,7 +899,7 @@ const handleViewDocumentModal = (fileUrl, title) => {
 
   const handleSubmitTreatment = async () => {
     if (!newTreatment.type || !newTreatment.dose) {
-      alert('Please fill in treatment type and dose');
+      showStyledAlert('Please fill in treatment type and dose');
       return;
     }
 
@@ -916,18 +917,18 @@ const handleViewDocumentModal = (fileUrl, title) => {
         })
       });
 
-      alert('Treatment added successfully!');
+      showStyledAlert('Treatment added successfully!');
       setShowAddTreatmentModal(false);
       fetchHealthRecords();
     } catch (error) {
       console.error('Error adding treatment:', error);
-      alert('Failed to add treatment');
+      showStyledAlert('Failed to add treatment');
     }
   };
 
   const handleSubmitPrescription = async () => {
     if (!newPrescription.medication || !newPrescription.dose) {
-      alert('Please fill in medication name and dose');
+      showStyledAlert('Please fill in medication name and dose');
       return;
     }
 
@@ -947,12 +948,12 @@ const handleViewDocumentModal = (fileUrl, title) => {
         })
       });
 
-      alert('Prescription added successfully!');
+      showStyledAlert('Prescription added successfully!');
       setShowAddPrescriptionModal(false);
       fetchHealthRecords();
     } catch (error) {
       console.error('Error adding prescription:', error);
-      alert('Failed to add prescription');
+      showStyledAlert('Failed to add prescription');
     }
   };
 

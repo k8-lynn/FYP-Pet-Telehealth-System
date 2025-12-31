@@ -469,35 +469,43 @@
   }
   
   .schedule-calendar-day {
-    background: #f8fbff;
-    border-radius: 14px;
-    border: 2px solid #e8f0f7;
-    min-height: 200px;
+    background: white;
+    border: 3px solid #e8f0f7;
+    border-radius: 16px;
+    padding: 1rem;
+    transition: all 0.2s ease;
+    min-height: 180px;
+    display: flex;
+    flex-direction: column;
     overflow: hidden;
   }
   
   .schedule-calendar-day-header {
-    background: linear-gradient(135deg, #e8f4f8 0%, #d1e7f0 100%);
-    padding: 0.75rem;
-    text-align: center;
-    border-bottom: 2px solid #e8f0f7;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid #f1f5f9;
+    flex-shrink: 0;
   }
   
   .schedule-day-name {
-    display: block;
-    font-size: 0.8rem;
-    color: #0369a1;
-    font-weight: 700;
+    font-size: 0.75rem;
+    font-weight: 800;
+    color: #1a2e35;
     text-transform: uppercase;
-    letter-spacing: 0.05em;
-    margin-bottom: 0.25rem;
-  }
+    letter-spacing: 0.03em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }  
   
   .schedule-day-date {
-    display: block;
-    font-size: 1.5rem;
-    color: #1a2e35;
+    font-size: 1.25rem;
     font-weight: 800;
+    color: #91befe;
+    white-space: nowrap;
   }
   
   .schedule-calendar-day-content {
@@ -1743,16 +1751,18 @@
 .schedule-day-stats {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 0.5rem;
+  overflow: hidden;
 }
 
 .schedule-day-stat {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0.75rem 1rem;
+  padding: 0.5rem 0.75rem;
   border-radius: 10px;
   transition: all 0.2s ease;
+  min-width: 0;
 }
 
 .schedule-day-stat.available {
@@ -1771,9 +1781,10 @@
 }
 
 .stat-count {
-  font-size: 1.5rem;
+  font-size: 1.25rem;
   font-weight: 800;
   color: #1a2e35;
+  white-space: nowrap;
 }
 
 .schedule-day-stat.available .stat-count {
@@ -1789,11 +1800,14 @@
 }
 
 .stat-label {
-  font-size: 0.8rem;
+  font-size: 0.7rem;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.03em;
   color: #64748b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* Monthly View Styles */
@@ -2270,4 +2284,43 @@
   font-size: 12px;
   margin-top: 4px;
   display: block;
+}
+
+/* Responsive adjustments for smaller screens */
+@media (max-width: 1200px) {
+  .schedule-calendar-day {
+    padding: 0.75rem;
+    min-height: 160px;
+  }
+  
+  .stat-count {
+    font-size: 1.1rem;
+  }
+  
+  .stat-label {
+    font-size: 0.65rem;
+  }
+  
+  .schedule-day-name {
+    font-size: 0.7rem;
+  }
+  
+  .schedule-day-date {
+    font-size: 1.1rem;
+  }
+}
+
+@media (max-width: 1024px) {
+  .schedule-day-stat {
+    padding: 0.4rem 0.6rem;
+  }
+  
+  .stat-count {
+    font-size: 1rem;
+  }
+  
+  .stat-label {
+    font-size: 0.6rem;
+    letter-spacing: 0.02em;
+  }
 }

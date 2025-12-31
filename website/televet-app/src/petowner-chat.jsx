@@ -29,6 +29,7 @@ import VideoCall from "./components/VideoCall";
 import IncomingCallNotification from "./components/IncomingCallNotification";
 import PatientProfileModal from "./components/PatientProfileModal";
 import BookAppointment from "./components/bookAppointment";
+import showStyledAlert from "./utils/styledAlert";
 
 const PetOwnerChat = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -132,7 +133,7 @@ const PetOwnerChat = () => {
       }
 
       const data = await response.json();
-      alert("Appointment cancelled successfully");
+      showStyledAlert("Appointment cancelled successfully");
 
       // Close the modal and refresh appointments
       setShowAppointmentModal(false);
@@ -157,9 +158,9 @@ const PetOwnerChat = () => {
 
   const handleBookingSuccess = (details) => {
     if (details.rescheduled) {
-      alert(`Appointment rescheduled successfully to ${details.date.toLocaleDateString()} at ${details.time}. Your appointment is now pending approval.`);
+      showStyledAlert(`Appointment rescheduled successfully to ${details.date.toLocaleDateString()} at ${details.time}. Your appointment is now pending approval.`);
     } else {
-      alert(`Follow-up appointment booked for ${details.time}`);
+      showStyledAlert(`Follow-up appointment booked for ${details.time}`);
     }
     
     setRescheduleData(null);
@@ -609,7 +610,7 @@ const PetOwnerChat = () => {
         setAppointmentDetails(null);
         setLoadingAppointment(false);
         if (showModal) {
-          alert("No scheduled appointment found for this pet");
+          showStyledAlert("No scheduled appointment found for this pet");
         }
         return;
       }
@@ -629,7 +630,7 @@ const PetOwnerChat = () => {
       setAppointmentDetails(null);
       setLoadingAppointment(false);
       if (showModal) {
-        alert("Failed to fetch appointment details");
+        showStyledAlert("Failed to fetch appointment details");
       }
     }
   };
@@ -909,7 +910,7 @@ const PetOwnerChat = () => {
 
     // Validate file size (10MB)
     if (file.size > 10 * 1024 * 1024) {
-      alert("File size must be less than 10MB");
+      showStyledAlert("File size must be less than 10MB");
       return;
     }
 
@@ -928,7 +929,7 @@ const PetOwnerChat = () => {
     ];
 
     if (!allowedTypes.includes(file.type)) {
-      alert(
+      showStyledAlert(
         "Invalid file type. Only images, videos, and documents are allowed."
       );
       return;
@@ -974,7 +975,7 @@ const PetOwnerChat = () => {
       setShowFileMenu(false);
     } catch (error) {
       console.error("❌ Error uploading file:", error);
-      alert("Failed to upload file. Please try again.");
+      showStyledAlert("Failed to upload file. Please try again.");
     } finally {
       setUploading(false);
     }
@@ -1049,7 +1050,7 @@ const PetOwnerChat = () => {
   // Create new reminder
   const handleCreateReminder = async () => {
     if (!newReminder.title || !newReminder.date || !newReminder.time) {
-      alert("Please fill in all required fields");
+      showStyledAlert("Please fill in all required fields");
       return;
     }
 
@@ -1072,7 +1073,7 @@ const PetOwnerChat = () => {
       });
 
       if (response.ok) {
-        alert("Reminder created successfully!");
+        showStyledAlert("Reminder created successfully!");
         setShowCreateReminderModal(false);
         setNewReminder({
           title: "",
@@ -1084,11 +1085,11 @@ const PetOwnerChat = () => {
           recurringPeriod: "day",
         });
       } else {
-        alert("Failed to create reminder");
+        showStyledAlert("Failed to create reminder");
       }
     } catch (error) {
       console.error("❌ Error creating reminder:", error);
-      alert("Failed to create reminder");
+      showStyledAlert("Failed to create reminder");
     }
   };
 

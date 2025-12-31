@@ -8,6 +8,7 @@ import PetOwnerNavbar from './components/petowner-navbar';
 import ProfileNotification from "./components/ProfileNotification";
 import BookAppointment from './components/bookAppointment';
 import Toast from './components/toast';
+import showStyledAlert from './utils/styledAlert';
 
 const MyVet = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -184,22 +185,22 @@ const MyVet = () => {
           setCoords({ lat: latitude, lon: longitude });
           fetchVetsNearby(latitude, longitude);
         },
-        () => alert("Unable to retrieve location.")
+        () => showStyledAlert("Unable to retrieve location.")
       );
     } else {
-      alert("Geolocation not supported.");
+      showStyledAlert("Geolocation not supported.");
     }
   };
 
   const handleSearch = async () => {
-    if (!location.trim()) return alert("Enter a location.");
+    if (!location.trim()) return showStyledAlert("Enter a location.");
     setLoading(true);
     const res = await fetch(
       `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(location)}`
     );
     const data = await res.json();
     if (data.length === 0) {
-      alert("Location not found.");
+      showStyledAlert("Location not found.");
       setLoading(false);
       return;
     }
@@ -234,14 +235,14 @@ const MyVet = () => {
         (selectedVet.va_id && registeredVet.va_id && selectedVet.va_id === registeredVet.va_id) || 
         (selectedVet.va_clinicName === registeredVet.va_clinicName)
       )) {
-        alert("You are already registered with this clinic.");
+        showStyledAlert("You are already registered with this clinic.");
         return;
       }
   
       try {
         const usr_id = sessionStorage.getItem('userid');
         if (!usr_id) {
-          alert("User not logged in.");
+          showStyledAlert("User not logged in.");
           return;
         }
   
@@ -316,11 +317,11 @@ const MyVet = () => {
           }, 3000);
         } else {
           console.error("❌ Failed to update:", data.error);
-          alert("Failed to register clinic. Please try again.");
+          showStyledAlert("Failed to register clinic. Please try again.");
         }
       } catch (error) {
         console.error("❌ Error:", error);
-        alert("An error occurred while registering the clinic.");
+        showStyledAlert("An error occurred while registering the clinic.");
       }
     }
   };

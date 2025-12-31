@@ -6,6 +6,7 @@ import VetNavbar from './components/vet-navbar';
 import ProfileNotification from "./components/ProfileNotification";
 import './styles/vet-dashboard.css';
 import AppointmentDetailsModal from './components/AppointmentDetailsModal';
+import showStyledAlert from './utils/styledAlert';
 
 const VetDashboard = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -282,7 +283,7 @@ const VetDashboard = () => {
         setAppointmentDetails(null);
         setLoadingAppointment(false);
         if (showModal) {
-          alert('Appointment not found');
+          showStyledAlert('Appointment not found');
         }
         return;
       }
@@ -302,7 +303,7 @@ const VetDashboard = () => {
       setAppointmentDetails(null);
       setLoadingAppointment(false);
       if (showModal) {
-        alert('Failed to fetch appointment details');
+        showStyledAlert('Failed to fetch appointment details');
       }
     }
   };
@@ -328,7 +329,7 @@ const VetDashboard = () => {
       }
   
       const data = await response.json();
-      alert('Appointment cancelled successfully');
+      showStyledAlert('Appointment cancelled successfully');
       
       // Close the modal and refresh appointments
       setShowAppointmentModal(false);
@@ -366,7 +367,7 @@ const handleRescheduleRequest = async (apptId, rescheduleReason) => {
     }
 
     const data = await response.json();
-    alert('Reschedule request sent successfully');
+    showStyledAlert('Reschedule request sent successfully');
     
     // Refresh appointment details
     if (currentChat?.petData?.pet_id) {

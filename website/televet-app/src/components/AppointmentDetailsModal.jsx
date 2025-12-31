@@ -1,6 +1,7 @@
 //AppointmentDetailsModal.jsx
 import React, { useState } from 'react';
 import { X, MessageCircle, Calendar, XCircle } from 'lucide-react';
+import showStyledAlert from '../utils/styledAlert';
 
 const AppointmentDetailsModal = ({ 
   showModal, 
@@ -27,7 +28,7 @@ const AppointmentDetailsModal = ({
   const handleCancelSubmit = async () => {
     // Vets MUST provide a reason, pet owners it's optional
     if (userRole === 'vt' && !cancelReason.trim()) {
-      alert('Please provide a reason for cancellation');
+      showStyledAlert('Please provide a reason for cancellation');
       return;
     }
 
@@ -39,7 +40,7 @@ const AppointmentDetailsModal = ({
       onClose();
     } catch (error) {
       console.error('Error cancelling appointment:', error);
-      alert('Failed to cancel appointment');
+      showStyledAlert('Failed to cancel appointment');
     } finally {
       setIsSubmitting(false);
     }
@@ -317,7 +318,7 @@ const AppointmentDetailsModal = ({
                   className="btn-confirm-reschedule"
                   onClick={() => {
                     if (!rescheduleReason.trim()) {
-                      alert('Please provide a reason for rescheduling');
+                      showStyledAlert('Please provide a reason for rescheduling');
                       return;
                     }
                     setShowRescheduleModal(false);

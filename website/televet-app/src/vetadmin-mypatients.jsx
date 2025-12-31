@@ -6,6 +6,7 @@ import PawPattern from "./components/PawPattern";
 import VetAdminNavbar from './components/vetadmin-navbar';
 import ProfileNotification from "./components/ProfileNotification";
 import './styles/vetadmin-mypatients.css';
+import showStyledAlert from './utils/styledAlert';
 
 const VetAdminMyPatients = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -98,11 +99,11 @@ const VetAdminMyPatients = () => {
       });
 
       if (response.ok) {
-        alert('Patient removed successfully!');
+        showStyledAlert('Patient removed successfully!');
         setPatients(prev => prev.filter(patient => patient.pet_id !== pet_id));
         setOpenMenuId(null);
       } else {
-        alert('Failed to remove patient');
+        showStyledAlert('Failed to remove patient');
       }
     } catch (error) {
       console.error('Error:', error);
@@ -135,7 +136,7 @@ const VetAdminMyPatients = () => {
     e.preventDefault();
 
     if (!selectedVetId) {
-      alert('Please select a veterinarian');
+      showStyledAlert('Please select a veterinarian');
       return;
     }
 
@@ -150,7 +151,7 @@ const VetAdminMyPatients = () => {
       );
 
       if (response.ok) {
-        alert('Veterinarian assigned successfully!');
+        showStyledAlert('Veterinarian assigned successfully!');
         setShowAssignModal(false);
         
         // Refresh patients list
@@ -160,7 +161,7 @@ const VetAdminMyPatients = () => {
         const refreshData = await refreshResponse.json();
         if (refreshResponse.ok) setPatients(refreshData);
       } else {
-        alert('Failed to assign veterinarian');
+        showStyledAlert('Failed to assign veterinarian');
       }
     } catch (error) {
       console.error('Error:', error);

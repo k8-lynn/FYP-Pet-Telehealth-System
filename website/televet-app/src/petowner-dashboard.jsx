@@ -8,6 +8,7 @@ import ProfileNotification from "./components/ProfileNotification";
 import { useNavigate } from 'react-router-dom';
 import BookAppointment from './components/bookAppointment';
 import AppointmentDetailsModal from './components/AppointmentDetailsModal';
+import showStyledAlert from './utils/styledAlert';
 import Toast from './components/toast';
 
 const PetOwnerDashboard = () => {
@@ -183,7 +184,7 @@ const PetOwnerDashboard = () => {
       const response = await fetch(`http://localhost:5000/api/appointment-details/${appt_id}`);
 
       if (response.status === 404) {
-        alert('Appointment not found');
+        showStyledAlert('Appointment not found');
         setLoadingAppointmentDetails(false);
         return;
       }
@@ -199,13 +200,13 @@ const PetOwnerDashboard = () => {
     } catch (error) {
       console.error('❌ Error fetching appointment details:', error);
       setLoadingAppointmentDetails(false);
-      alert('Failed to fetch appointment details');
+      showStyledAlert('Failed to fetch appointment details');
     }
   };
 
   const handleBookingSuccess = (details) => {
     if (details.rescheduled) {
-      alert(`Appointment rescheduled successfully to ${details.date.toLocaleDateString()} at ${details.time}. Your appointment is now pending approval.`);
+      showStyledAlert(`Appointment rescheduled successfully to ${details.date.toLocaleDateString()} at ${details.time}. Your appointment is now pending approval.`);
     } else {
       setBookingDetails(details);
       setShowBookingToast(true);
@@ -255,7 +256,7 @@ const PetOwnerDashboard = () => {
 
   const handleCreateReminder = async () => {
     if (!newReminder.title || !newReminder.date || !newReminder.time) {
-      alert('Please fill in all required fields');
+      showStyledAlert('Please fill in all required fields');
       return;
     }
 
@@ -288,11 +289,11 @@ const PetOwnerDashboard = () => {
         });
         fetchRemindersForDate(ppId, selectedDate);
       } else {
-        alert('Failed to create reminder');
+        showStyledAlert('Failed to create reminder');
       }
     } catch (error) {
       console.error('❌ Error creating reminder:', error);
-      alert('Failed to create reminder');
+      showStyledAlert('Failed to create reminder');
     }
   };
 
@@ -399,7 +400,7 @@ const PetOwnerDashboard = () => {
       }
   
       const data = await response.json();
-      alert('Appointment cancelled successfully');
+      showStyledAlert('Appointment cancelled successfully');
       
       // Close the modal and refresh appointments
       setShowAppointmentModal(false);

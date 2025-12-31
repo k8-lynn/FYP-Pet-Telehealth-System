@@ -8,6 +8,7 @@ import ProfileNotification from "./components/ProfileNotification";
 import AppointmentDetailsModal from './components/AppointmentDetailsModal';
 import BookAppointment from './components/bookAppointment';
 import Toast from './components/toast';
+import showStyledAlert from './utils/styledAlert';
 
 const RemindersPage = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -203,7 +204,7 @@ const RemindersPage = () => {
       }));
       
       // Sort by date (earliest first)
-      formattedAppointments.sort((a, b) => a.rawDate - b.rawDate);
+      formattedAppointments.sort((a, b) => b.rawDate - a.rawDate);
       
       setUpcomingAppointments(formattedAppointments);
     } catch (error) {
@@ -218,7 +219,7 @@ const RemindersPage = () => {
       if (response.status === 404) {
         console.log('Appointment not found');
         setSelectedAppointmentDetails(null);
-        alert('Appointment not found');
+        showStyledAlert('Appointment not found');
         return;
       }
   
@@ -232,7 +233,7 @@ const RemindersPage = () => {
     } catch (error) {
       console.error('❌ Error fetching appointment details:', error);
       setSelectedAppointmentDetails(null);
-      alert('Failed to fetch appointment details');
+      showStyledAlert('Failed to fetch appointment details');
     }
   };
 
@@ -263,7 +264,7 @@ const RemindersPage = () => {
   // Create new reminder
   const handleCreateReminder = async () => {
     if (!newReminder.title || !newReminder.date || !newReminder.time) {
-      alert('Please fill in all required fields');
+      showStyledAlert('Please fill in all required fields');
       return;
     }
 
@@ -291,18 +292,18 @@ const RemindersPage = () => {
           fetchReminderDates(ppId, currentDate.getFullYear(), currentDate.getMonth() + 1)
         ]);
       } else {
-        alert('Failed to create reminder');
+        showStyledAlert('Failed to create reminder');
       }
     } catch (error) {
       console.error('❌ Error creating reminder:', error);
-      alert('Failed to create reminder');
+      showStyledAlert('Failed to create reminder');
     }
   };
 
   // Update existing reminder
   const handleUpdateReminder = async () => {
     if (!selectedReminder.rmd_title || !selectedReminder.rmd_date || !selectedReminder.rmd_time) {
-      alert('Please fill in all required fields');
+      showStyledAlert('Please fill in all required fields');
       return;
     }
 
@@ -330,11 +331,11 @@ const RemindersPage = () => {
           fetchReminderDates(ppId, currentDate.getFullYear(), currentDate.getMonth() + 1)
         ]);
       } else {
-        alert('Failed to update reminder');
+        showStyledAlert('Failed to update reminder');
       }
     } catch (error) {
       console.error('❌ Error updating reminder:', error);
-      alert('Failed to update reminder');
+      showStyledAlert('Failed to update reminder');
     }
   };
 
@@ -355,11 +356,11 @@ const RemindersPage = () => {
           fetchReminderDates(ppId, currentDate.getFullYear(), currentDate.getMonth() + 1)
         ]);
       } else {
-        alert('Failed to delete reminder');
+        showStyledAlert('Failed to delete reminder');
       }
     } catch (error) {
       console.error('❌ Error deleting reminder:', error);
-      alert('Failed to delete reminder');
+      showStyledAlert('Failed to delete reminder');
     }
   };
 
@@ -502,7 +503,7 @@ const RemindersPage = () => {
       }
   
       const data = await response.json();
-      alert('Appointment cancelled successfully');
+      showStyledAlert('Appointment cancelled successfully');
       
       // Close the modal and refresh appointments
       setShowAppointmentModal(false);
@@ -529,7 +530,7 @@ const RemindersPage = () => {
 
   const handleBookingSuccess = (details) => {
     if (details.rescheduled) {
-      alert(`Appointment rescheduled successfully to ${details.date.toLocaleDateString()} at ${details.time}. Your appointment is now pending approval.`);
+      showStyledAlert(`Appointment rescheduled successfully to ${details.date.toLocaleDateString()} at ${details.time}. Your appointment is now pending approval.`);
     } else {
       setBookingDetails(details);
       setShowBookingToast(true);

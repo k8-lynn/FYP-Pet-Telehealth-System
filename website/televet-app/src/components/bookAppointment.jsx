@@ -2,6 +2,7 @@
 //bookAppointment.jsx
 import React, { useState, useEffect, useRef } from 'react';
 import { Calendar, Clock, CheckCircle, ChevronLeft, ChevronRight, X, Monitor, Building2, AlertTriangle, Droplet, Wind, Activity, HeartPulse, CircleAlert, AlertCircle } from 'lucide-react';import "../styles/bookAppointment.css";
+import showStyledAlert from "../utils/styledAlert";
 import { io } from "socket.io-client";
 
 const BookAppointment = ({ clinicId, onClose, onBookingSuccess, initialDescription = '', autoFillDescription = false, rescheduleMode = false, oldAppointmentId = null, rescheduleData = null }) => {
@@ -311,18 +312,18 @@ const handleEmergencyResponse = (isEmergency) => {
     if (!selectedSlot || !selectedDate) return;
     
     if (!appointmentType) {
-      alert('Please select an appointment type');
+      showStyledAlert('Please select an appointment type');
       return;
     }
     
     if (!appointmentDescription.trim()) {
-      alert('Please provide a description');
+      showStyledAlert('Please provide a description');
       return;
     }
   
     const userId = sessionStorage.getItem('userid');
     if (!selectedPet) {
-      alert('Please select a pet');
+      showStyledAlert('Please select a pet');
       return;
     }
     
@@ -359,7 +360,7 @@ const handleEmergencyResponse = (isEmergency) => {
       });
   
       if (!updateRes.ok) {
-        alert('Failed to book appointment');
+        showStyledAlert('Failed to book appointment');
         return;
       }
   
@@ -399,7 +400,7 @@ const handleEmergencyResponse = (isEmergency) => {
           setAppointmentType('');
           setAppointmentDescription('');
         } else {
-          alert('Failed to reschedule appointment');
+          showStyledAlert('Failed to reschedule appointment');
         }
       } else {
         // NORMAL BOOKING: Create new appointment
@@ -435,13 +436,13 @@ const handleEmergencyResponse = (isEmergency) => {
           setAppointmentType('');
           setAppointmentDescription('');
         } else {
-          alert('Failed to create appointment record');
+          showStyledAlert('Failed to create appointment record');
         }
       }
   
     } catch (error) {
       console.error('Error booking slot:', error);
-      alert('An error occurred while booking');
+      showStyledAlert('An error occurred while booking');
     }
   };
   

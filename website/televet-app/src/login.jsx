@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styles from './styles/login.module.css';
+import showStyledAlert from './utils/styledAlert';
 
 const Login = () => {
   const [formData, setFormData] = useState({
@@ -52,15 +53,15 @@ const Login = () => {
           } else if (data.userType === 'veterinarian') {
             navigate('/vet-dashboard');
           } else {
-            alert('Login successful, but unknown user type.');
+            showStyledAlert('Login successful, but unknown user type.');
           }
         }, 2000);
       } else {
-        alert(data.message || 'Login failed');
+        showStyledAlert(data.message || 'Login failed');
       }
     } catch (error) {
       console.error('Login error:', error);
-      alert('Something went wrong!');
+      showStyledAlert('Something went wrong!');
     }
   };
 

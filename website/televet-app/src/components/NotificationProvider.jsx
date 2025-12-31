@@ -1,7 +1,7 @@
 /* eslint-disable react-refresh/only-export-components */
 /* eslint-disable no-unused-vars */
 // NotificationProvider.jsx
-import React, { createContext, useState, useEffect, useContext, useRef } from 'react';
+import React, { createContext, useState, useEffect, useContext, useRef, useCallback } from 'react';
 import { io } from 'socket.io-client';
 import ToastContainer from './ToastContainer';
 
@@ -22,6 +22,23 @@ export const NotificationProvider = ({ children }) => {
   const [notifications, setNotifications] = useState([]);
   const [incomingCall, setIncomingCall] = useState(null); // ✅ MOVED INSIDE COMPONENT
   const isOnChatPageRef = useRef(false);
+
+  const handleCloseToast = () => {
+    setToast(null);
+  };
+
+  const showToast = useCallback((type, title, message) => {
+    // ✅ Check BOTH the ref AND the current URL path
+    const isOnChatPage = isOnChatPageRef.current || 
+                         window.location.pathname === '/petowner-chat' || 
+                         window.location.pathname === '/vet-chat';
+    
+    if (type === 'message' && isOnChatPage) {
+      console.log('⏭️ Skipping manual toast for message (user is on chat page)');
+      return;
+    }
+    setToast({ type, title, message });
+  }, []);
 
   useEffect(() => {
     // ✅ Set up the global function FIRST before connecting socket
@@ -184,8 +201,7 @@ export const NotificationProvider = ({ children }) => {
       delete window.setIsOnChatPage;
       delete window.socket;
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [showToast]);
 
   // Request desktop notification permission on mount
   useEffect(() => {
@@ -193,23 +209,6 @@ export const NotificationProvider = ({ children }) => {
       Notification.requestPermission();
     }
   }, []);
-
-  const handleCloseToast = () => {
-    setToast(null);
-  };
-
-  const showToast = (type, title, message) => {
-    // ✅ Check BOTH the ref AND the current URL path
-    const isOnChatPage = isOnChatPageRef.current || 
-                         window.location.pathname === '/petowner-chat' || 
-                         window.location.pathname === '/vet-chat';
-    
-    if (type === 'message' && isOnChatPage) {
-      console.log('⏭️ Skipping manual toast for message (user is on chat page)');
-      return;
-    }
-    setToast({ type, title, message });
-  };
 
   return (
     <NotificationContext.Provider value={{ 

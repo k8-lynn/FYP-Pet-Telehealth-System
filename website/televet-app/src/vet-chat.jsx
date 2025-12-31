@@ -34,6 +34,7 @@ import PatientProfileModal from "./components/PatientProfileModal";
 import SuggestedReplies from "./components/SuggestedReplies";
 import TemplateManager from "./components/TemplateManager";
 import TemplateSearchModal from "./components/TemplateSearchModal";
+import showStyledAlert from "./utils/styledAlert";
 
 const VetChat = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -434,7 +435,7 @@ const VetChat = () => {
         setAppointmentDetails(null);
         setLoadingAppointment(false);
         if (showModal) {
-          alert("No scheduled appointment found for this patient");
+          showStyledAlert("No scheduled appointment found for this patient");
         }
         return;
       }
@@ -454,7 +455,7 @@ const VetChat = () => {
       setAppointmentDetails(null);
       setLoadingAppointment(false);
       if (showModal) {
-        alert("Failed to fetch appointment details");
+        showStyledAlert("Failed to fetch appointment details");
       }
     }
   };
@@ -789,7 +790,7 @@ const VetChat = () => {
 
     // Validate file size (10MB)
     if (file.size > 10 * 1024 * 1024) {
-      alert("File size must be less than 10MB");
+      showStyledAlert("File size must be less than 10MB");
       return;
     }
 
@@ -808,7 +809,7 @@ const VetChat = () => {
     ];
 
     if (!allowedTypes.includes(file.type)) {
-      alert(
+      showStyledAlert(
         "Invalid file type. Only images, videos, and documents are allowed."
       );
       return;
@@ -854,7 +855,7 @@ const VetChat = () => {
       setShowFileMenu(false);
     } catch (error) {
       console.error("❌ Error uploading file:", error);
-      alert("Failed to upload file. Please try again.");
+      showStyledAlert("Failed to upload file. Please try again.");
     } finally {
       setUploading(false);
     }
@@ -1000,7 +1001,7 @@ const VetChat = () => {
       }
 
       const data = await response.json();
-      alert("Appointment cancelled successfully");
+      showStyledAlert("Appointment cancelled successfully");
 
       // Close the modal and refresh appointments
       setShowAppointmentModal(false);
@@ -1041,7 +1042,7 @@ const VetChat = () => {
       }
 
       const data = await response.json();
-      alert("Reschedule request sent successfully");
+      showStyledAlert("Reschedule request sent successfully");
 
       // Refresh appointment details
       if (currentChat?.petData?.pet_id) {
@@ -1106,7 +1107,7 @@ const VetChat = () => {
 
   const handleSaveTemplate = async () => {
     if (!newTemplateData.category || !newTemplateData.keywords) {
-      alert("Please fill in category and keywords");
+      showStyledAlert("Please fill in category and keywords");
       return;
     }
 
@@ -1122,13 +1123,13 @@ const VetChat = () => {
         }),
       });
 
-      alert("Template saved successfully!");
+      showStyledAlert("Template saved successfully!");
       setShowSaveTemplateModal(false);
       setMessageToSave(null);
       setNewTemplateData({ category: "", keywords: "", editedMessage: "" });
     } catch (error) {
       console.error("Error saving template:", error);
-      alert("Failed to save template");
+      showStyledAlert("Failed to save template");
     }
   };
 

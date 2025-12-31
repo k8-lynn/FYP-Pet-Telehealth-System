@@ -8,6 +8,7 @@ import './styles/vetadmin-schedules.css';
 import VetAdminNavbar from './components/vetadmin-navbar';
 import PawPattern from "./components/PawPattern";
 import ProfileNotification from "./components/ProfileNotification";
+import showStyledAlert from "./utils/styledAlert";
 
 const VetAdminAppointments = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -432,12 +433,12 @@ const VetAdminAppointments = () => {
 
   const handleAddSlot = async () => {
     if (!newSlotTime) {
-      alert('Please select a time');
+      showStyledAlert('Please select a time');
       return;
     }
   
     if (!clinic_id) {
-      alert('Clinic not found');
+      showStyledAlert('Clinic not found');
       return;
     }
   
@@ -475,24 +476,24 @@ const VetAdminAppointments = () => {
         }));
         setNewSlotTime('');
         setShowSlotModal(false);
-        alert('Time slot added successfully!');
+        showStyledAlert('Time slot added successfully!');
       } else {
-        alert('Failed to add time slot');
+        showStyledAlert('Failed to add time slot');
       }
     } catch (error) {
       console.error('Error adding slot:', error);
-      alert('An error occurred');
+      showStyledAlert('An error occurred');
     }
   };
 
   const handleDeleteSlot = async () => {
     if (selectedSlotsForDeletion.length === 0) {
-      alert('Please select at least one slot to delete');
+      showStyledAlert('Please select at least one slot to delete');
       return;
     }
   
     if (!clinic_id) {
-      alert('Clinic not found');
+      showStyledAlert('Clinic not found');
       return;
     }
   
@@ -506,7 +507,7 @@ const VetAdminAppointments = () => {
     });
   
     if (nonAvailableSlots.length > 0) {
-      alert('Cannot delete slots that are booked or pending. Please unselect them first.');
+      showStyledAlert('Cannot delete slots that are booked or pending. Please unselect them first.');
       return;
     }
   
@@ -530,13 +531,13 @@ const VetAdminAppointments = () => {
         setSelectedSlotsForDeletion([]);
         setIsEditMode(false);
         setShowDeleteConfirmModal(false);
-        alert(`${selectedSlotsForDeletion.length} time slot(s) deleted successfully!`);
+        showStyledAlert(`${selectedSlotsForDeletion.length} time slot(s) deleted successfully!`);
       } else {
-        alert('Failed to delete time slots');
+        showStyledAlert('Failed to delete time slots');
       }
     } catch (error) {
       console.error('Error deleting slots:', error);
-      alert('An error occurred');
+      showStyledAlert('An error occurred');
     }
   };
 
@@ -557,7 +558,7 @@ const VetAdminAppointments = () => {
 
   const handleApproveSlot = async (slot) => {
     if (!selectedVeterinarian) {
-      alert('Please select a veterinarian');
+      showStyledAlert('Please select a veterinarian');
       return;
     }
 
@@ -574,12 +575,12 @@ const VetAdminAppointments = () => {
         });
 
         if (!assignVetRes.ok) {
-          alert('Failed to assign veterinarian to patient');
+          showStyledAlert('Failed to assign veterinarian to patient');
           return;
         }
       } catch (error) {
         console.error('Error assigning vet:', error);
-        alert('An error occurred while assigning veterinarian');
+        showStyledAlert('An error occurred while assigning veterinarian');
         return;
       }
     }
@@ -612,26 +613,26 @@ const VetAdminAppointments = () => {
         }));
         setSelectedPendingSlot(null);
         setSelectedVeterinarian(null);
-        alert('Appointment approved and assigned successfully!');
+        showStyledAlert('Appointment approved and assigned successfully!');
       } else {
-        alert('Failed to approve appointment');
+        showStyledAlert('Failed to approve appointment');
       }
     } catch (error) {
       console.error('Error approving slot:', error);
-      alert('An error occurred');
+      showStyledAlert('An error occurred');
     }
   };
 
   const handleBulkGenerateSlots = async () => {
     if (!clinic_id) {
-      alert("Clinic not found");
+      showStyledAlert("Clinic not found");
       return;
     }
 
     const { startDate, endDate, slotDuration, consultationTypes } = generateConfig;
 
     if (!startDate || !endDate || consultationTypes.length === 0) {
-      alert("Please fill in all fields");
+      showStyledAlert("Please fill in all fields");
       return;
     }
     
@@ -650,7 +651,7 @@ const VetAdminAppointments = () => {
       const data = await res.json();
       
       if (res.ok) {
-        alert(`Successfully generated slots for ${data.datesGenerated} dates!`);
+        showStyledAlert(`Successfully generated slots for ${data.datesGenerated} dates!`);
         setShowGenerateModal(false);
         
         if (viewMode === 'today') {
@@ -670,11 +671,11 @@ const VetAdminAppointments = () => {
           });
         }
       } else {
-        alert(data.error || "Failed to generate slots");
+        showStyledAlert(data.error || "Failed to generate slots");
       }
     } catch (error) {
       console.error("Error generating bulk slots:", error);
-      alert("An error occurred while generating slots");
+      showStyledAlert("An error occurred while generating slots");
     }
   };
 
@@ -723,11 +724,11 @@ const VetAdminAppointments = () => {
         console.log('✅ Modal should now be open');
       } else {
         console.error('❌ Failed to fetch appointment:', appointmentData);
-        alert('Could not find appointment details for this time slot');
+        showStyledAlert('Could not find appointment details for this time slot');
       }
     } catch (error) {
       console.error('❌ Error fetching appointment details:', error);
-      alert('Error loading appointment details');
+      showStyledAlert('Error loading appointment details');
     }
   };
   

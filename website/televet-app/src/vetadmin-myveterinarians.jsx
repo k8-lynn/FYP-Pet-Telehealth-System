@@ -7,6 +7,7 @@ import PawPattern from "./components/PawPattern";
 import VetAdminNavbar from './components/vetadmin-navbar';
 import ProfileNotification from "./components/ProfileNotification";
 import './styles/vetadmin-myveterinarians.css';
+import showStyledAlert from './utils/styledAlert';
 
 const VetAdminMyVeterinarians = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -110,7 +111,7 @@ const VetAdminMyVeterinarians = () => {
       const data = await response.json();
   
       if (response.ok) {
-        alert('Veterinarian registered successfully!');
+        showStyledAlert('Veterinarian registered successfully!');
         setShowModal(false);
         setFormData({
           firstName: '',
@@ -132,14 +133,14 @@ const VetAdminMyVeterinarians = () => {
         // ✅ Now data is already parsed, just use it directly
         console.log('❌ Error response:', data); // Debug log
         if (data.error && data.error.toLowerCase().includes('email')) {
-          alert('Email already exists. Please use a different email address.');
+          showStyledAlert('Email already exists. Please use a different email address.');
         } else {
-          alert(data.error || 'Failed to register veterinarian');
+          showStyledAlert(data.error || 'Failed to register veterinarian');
         }
       }
     } catch (error) {
       console.error('Error:', error);
-      alert('An error occurred while registering the veterinarian. Please try again.');
+      showStyledAlert('An error occurred while registering the veterinarian. Please try again.');
     }
   };
 
@@ -152,11 +153,11 @@ const VetAdminMyVeterinarians = () => {
       });
 
       if (response.ok) {
-        alert('Veterinarian deleted successfully!');
+        showStyledAlert('Veterinarian deleted successfully!');
         setVeterinarians(prev => prev.filter(vet => vet.vt_id !== vt_id));
         setOpenMenuId(null);
       } else {
-        alert('Failed to delete veterinarian');
+        showStyledAlert('Failed to delete veterinarian');
       }
     } catch (error) {
       console.error('Error:', error);
@@ -195,11 +196,11 @@ const VetAdminMyVeterinarians = () => {
           )
         );
       } else {
-        alert('Failed to update duty status');
+        showStyledAlert('Failed to update duty status');
       }
     } catch (error) {
       console.error('Error toggling duty:', error);
-      alert('An error occurred');
+      showStyledAlert('An error occurred');
     }
   };
 
@@ -210,7 +211,7 @@ const VetAdminMyVeterinarians = () => {
     
     const clinic_id = await fetchClinicId();
     if (!clinic_id) {
-      alert('Could not fetch clinic information');
+      showStyledAlert('Could not fetch clinic information');
       setLoadingAppointments(false);
       return;
     }
@@ -223,11 +224,11 @@ const VetAdminMyVeterinarians = () => {
         setPendingAppointments(data);
         setShowAssignModal(true);
       } else {
-        alert('Failed to fetch pending appointments');
+        showStyledAlert('Failed to fetch pending appointments');
       }
     } catch (error) {
       console.error('Error fetching appointments:', error);
-      alert('An error occurred');
+      showStyledAlert('An error occurred');
     } finally {
       setLoadingAppointments(false);
     }
@@ -236,7 +237,7 @@ const VetAdminMyVeterinarians = () => {
   // Add this function to handle assignment submission
   const handleConfirmAssignment = async () => {
     if (!selectedAppointment) {
-      alert('Please select an appointment');
+      showStyledAlert('Please select an appointment');
       return;
     }
 
@@ -251,7 +252,7 @@ const VetAdminMyVeterinarians = () => {
       );
 
       if (assignVetRes.ok) {
-        alert('Appointment assigned successfully!');
+        showStyledAlert('Appointment assigned successfully!');
         setShowAssignModal(false);
         setSelectedAppointment(null);
         setSelectedVetForAssignment(null);
@@ -261,11 +262,11 @@ const VetAdminMyVeterinarians = () => {
         const refreshData = await refreshResponse.json();
         if (refreshResponse.ok) setVeterinarians(refreshData);
       } else {
-        alert('Failed to assign veterinarian');
+        showStyledAlert('Failed to assign veterinarian');
       }
     } catch (error) {
       console.error('Error assigning vet:', error);
-      alert('An error occurred');
+      showStyledAlert('An error occurred');
     }
   };
 
@@ -282,11 +283,11 @@ const VetAdminMyVeterinarians = () => {
         const sortedData = data.sort((a, b) => new Date(b.appt_date) - new Date(a.appt_date));
         setSelectedVetAppointments(sortedData);
       } else {
-        alert('Failed to fetch appointments');
+        showStyledAlert('Failed to fetch appointments');
       }
     } catch (error) {
       console.error('Error fetching vet appointments:', error);
-      alert('An error occurred');
+      showStyledAlert('An error occurred');
     } finally {
       setLoadingVetAppointments(false);
     }

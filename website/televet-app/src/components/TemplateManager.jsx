@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { Plus, Edit2, Trash2, Save, X } from "lucide-react";
 import "../styles/template-manager.css";
+import showStyledAlert from "../utils/styledAlert";
 
 const TemplateManager = ({ vtId, onClose }) => {
   const [templates, setTemplates] = useState([]);
@@ -43,7 +44,7 @@ const TemplateManager = ({ vtId, onClose }) => {
 
   const handleCreate = async () => {
     if (!newTemplate.category) {
-        alert("Please select or enter a category");
+        showStyledAlert("Please select or enter a category");
         return;
     }
 
