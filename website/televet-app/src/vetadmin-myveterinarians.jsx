@@ -326,7 +326,7 @@ const VetAdminMyVeterinarians = () => {
         <div className="vetadmin-header">
           <div className="location-info">
             <MapPin size={20} className="location-icon" />
-            <span className="location-text">{clinicInfo.clinicName || 'PawCare Veterinary Clinic'}</span>
+            <span className="location-text">{clinicInfo.clinicName || 'Clinic'}</span>
           </div>
           <ProfileNotification firstName={firstName} />
         </div>

@@ -25,7 +25,7 @@ const PetOwnerNavbar = ({ sidebarOpen, setSidebarOpen }) => {
   return (
     <div className={`sidebar ${!sidebarOpen ? 'collapsed' : ''}`}>
       <div className="sidebar-header">
-        {sidebarOpen && <h2 className="sidebar-title">PetCare</h2>}
+        {sidebarOpen && <h2 className="sidebar-title">Teleheath Vet</h2>}
 
         <button
           onClick={() => setSidebarOpen(!sidebarOpen)}

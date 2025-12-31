@@ -233,10 +233,10 @@ const MyVet = () => {
       if (registeredVet && (
         (selectedVet.va_id && registeredVet.va_id && selectedVet.va_id === registeredVet.va_id) || 
         (selectedVet.va_clinicName === registeredVet.va_clinicName)
-    )) {
-      alert("You are already registered with this clinic.");
-      return;
-    }
+      )) {
+        alert("You are already registered with this clinic.");
+        return;
+      }
   
       try {
         const usr_id = sessionStorage.getItem('userid');
@@ -258,7 +258,53 @@ const MyVet = () => {
   
         if (res.ok) {
           console.log("✅ Backend update:", data.message);
-          setRegisteredVet(selectedVet);
+          
+          // ✅ CRITICAL: Fetch the complete vet data WITH clinic_id before setting state
+          const vetRes = await fetch(`http://localhost:5000/api/vet-by-name/${encodeURIComponent(selectedVet.va_clinicName)}`);
+          const completeVetData = await vetRes.json();
+          
+          if (vetRes.ok && completeVetData && completeVetData.clinic_id) {
+            // Calculate distance if geolocation available
+            if (navigator.geolocation) {
+              navigator.geolocation.getCurrentPosition(
+                (pos) => {
+                  const { latitude, longitude } = pos.coords;
+                  const distance = calculateDistance(latitude, longitude, completeVetData.va_lat, completeVetData.va_lon);
+                  completeVetData.distance = distance;
+                  setRegisteredVet(completeVetData);
+                },
+                (err) => {
+                  console.warn("⚠️ Could not get user location:", err);
+                  setRegisteredVet(completeVetData);
+                }
+              );
+            } else {
+              setRegisteredVet(completeVetData);
+            }
+  
+            // ✅ Now fetch clinic hours with the proper clinic_id
+            fetch(`http://localhost:5000/api/clinic-hours/${completeVetData.clinic_id}`)
+              .then(res => res.json())
+              .then(hoursData => {
+                if (hoursData) {
+                  console.log("✅ Clinic hours fetched after registration:", hoursData);
+                  setClinicHours(hoursData);
+                }
+              })
+              .catch(err => console.error("❌ Error fetching clinic hours:", err));
+  
+            // ✅ Fetch clinic status with the proper clinic_id
+            fetch(`http://localhost:5000/api/clinic-status/${completeVetData.clinic_id}`)
+              .then(res => res.json())
+              .then(statusData => {
+                if (statusData.status) {
+                  console.log("✅ Clinic status fetched after registration:", statusData.status);
+                  setClinicStatus(statusData.status);
+                }
+              })
+              .catch(err => console.error("❌ Error fetching clinic status:", err));
+          }
+  
           setShowSuccessNotification(true);
           setShowSearchModal(false);
           setVets([]);

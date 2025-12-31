@@ -1,3 +1,4 @@
+//vetadmin-dashboard.jsx
 import React, { useState, useEffect, useCallback } from 'react';
 import { MapPin, Calendar, Users, Stethoscope, Clock, Eye } from 'lucide-react';
 import PawPattern from "./components/PawPattern";
@@ -130,8 +131,18 @@ const VetAdminDashboard = () => {
       const response = await axios.get(`http://localhost:5000/api/clinic/${vaId}`);
       const clinicData = response.data;
       
+      console.log('✅ Clinic data received:', clinicData);
+      
       setClinicId(clinicData.clinic_id);
-      console.log('✅ Clinic ID set:', clinicData.clinic_id);
+      
+      // Update clinic info with complete data
+      setClinicInfo(prev => ({
+        ...prev,
+        clinic_name: clinicData.clinic_name,
+        clinic_location: clinicData.clinic_location,
+        clinic_phone: clinicData.clinic_phone,
+        clinic_email: clinicData.clinic_email
+      }));
     } catch (error) {
       console.error('❌ Error fetching clinic data:', error);
     }
@@ -140,24 +151,24 @@ const VetAdminDashboard = () => {
   const fetchUserProfile = useCallback(async (userId) => {
     try {
       const response = await axios.get(`http://localhost:5000/api/profile/${userId}`);
-      const userData = response.data;
-      
-      console.log('✅ User profile data:', userData);
-      
-      if (userData.va_id) {
-        setVaId(userData.va_id);
+      const data = await response.json();
+  
+      if (response.ok) {
+        setVaId(data.va_id);
         setClinicInfo({
-          clinic_name: userData.va_clinicName,
-          clinic_location: userData.va_vetLocation,
-          clinic_phone: userData.va_clinicPhone,
-          clinic_email: userData.va_clinicEmail
+          vetLocation: data.va_vetLocation,
+          clinicName: data.va_clinicName,
+          clinicPhone: data.va_clinicPhone,
+          clinicEmail: data.va_clinicEmail
         });
         
-        // Fetch full clinic data with clinic_id
-        fetchClinicData(userData.va_id);
+        // Also fetch clinic data with clinic_id
+        if (data.va_id) {
+          fetchClinicData(data.va_id);
+        }
       }
     } catch (error) {
-      console.error('❌ Error fetching user profile:', error);
+      console.error('Error fetching vet admin info:', error);
     }
   }, [fetchClinicData]);
 

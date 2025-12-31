@@ -23,6 +23,7 @@ const VideoCall = ({
   currentUserName,
   otherUserId,
   otherUserName,
+  otherUserOnline,
   petInfo,
   petId,
   vtId,
@@ -404,14 +405,18 @@ const VideoCall = ({
                   ? "Calling... Waiting for answer"
                   : callStarted && callAccepted
                   ? "Connecting..."
-                  : "Ready to Start"}
+                  : otherUserOnline
+                  ? "Ready to Start"
+                  : "User Unavailable"}
               </h3>
               <p style={{ margin: 0, color: "rgba(255, 255, 255, 0.7)" }}>
                 {receivingCall
                   ? `${otherUserName} is calling you`
                   : callStarted
                   ? ""
-                  : 'Click "Start Call" below'}
+                  : otherUserOnline
+                  ? 'Click "Start Call" below'
+                  : `${otherUserName} is currently offline`}
               </p>
             </div>
           )}
@@ -837,24 +842,46 @@ const VideoCall = ({
               </button>
             </>
           ) : !callStarted ? (
-            <button
-              onClick={callUser}
-              style={{
-                padding: "16px 32px",
-                borderRadius: "50px",
-                border: "none",
-                cursor: "pointer",
-                fontSize: "16px",
-                fontWeight: "600",
-                display: "flex",
-                alignItems: "center",
-                gap: "8px",
-                background: "#3b82f6",
-                color: "white",
-              }}
-            >
-              <Video size={24} /> Start Call
-            </button>
+            otherUserOnline ? (
+              <button
+                onClick={callUser}
+                style={{
+                  padding: "16px 32px",
+                  borderRadius: "50px",
+                  border: "none",
+                  cursor: "pointer",
+                  fontSize: "16px",
+                  fontWeight: "600",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  background: "#3b82f6",
+                  color: "white",
+                }}
+              >
+                <Video size={24} /> Start Call
+              </button>
+            ) : (
+              <button
+                disabled
+                style={{
+                  padding: "16px 32px",
+                  borderRadius: "50px",
+                  border: "none",
+                  cursor: "not-allowed",
+                  fontSize: "16px",
+                  fontWeight: "600",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  background: "#6b7280",
+                  color: "#d1d5db",
+                  opacity: 0.6,
+                }}
+              >
+                <Video size={24} /> User Offline
+              </button>
+            )
           ) : callStarted && callAccepted ? (
             <>
               <button

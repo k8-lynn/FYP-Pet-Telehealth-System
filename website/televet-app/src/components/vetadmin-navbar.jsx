@@ -26,7 +26,7 @@ const VetAdminNavbar = ({ sidebarOpen, setSidebarOpen }) => {
     <div className={`vetadmin-sidebar ${!sidebarOpen ? 'collapsed' : ''}`}>
       <div className="vetadmin-sidebar-header">
         {sidebarOpen && (
-          <h2 className="vetadmin-sidebar-title">PawCare</h2>
+          <h2 className="vetadmin-sidebar-title">Teleheath Vet</h2>
         )}
 
         <button

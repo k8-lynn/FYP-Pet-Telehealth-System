@@ -23,7 +23,7 @@ const VetNavbar = ({ sidebarOpen, setSidebarOpen }) => {
   return (
     <div className={`vet-sidebar ${!sidebarOpen ? 'collapsed' : ''}`}>
       <div className="vet-sidebar-header">
-        {sidebarOpen && <h2 className="vet-sidebar-title">PawCare</h2>}
+        {sidebarOpen && <h2 className="vet-sidebar-title">Teleheath Vet</h2>}
 
         <button
           onClick={() => setSidebarOpen(!sidebarOpen)}

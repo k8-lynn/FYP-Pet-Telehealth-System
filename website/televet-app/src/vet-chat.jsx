@@ -1178,7 +1178,7 @@ const VetChat = () => {
           <div className="location-info">
             <MapPin size={20} className="location-icon" />
             <span className="location-text">
-              {clinicInfo.clinicName || "PawCare Veterinary Clinic"}
+              {clinicInfo.clinicName || "Clinic"}
             </span>
           </div>
           <ProfileNotification firstName={firstName} />
@@ -1860,13 +1860,12 @@ const VetChat = () => {
           socket={socket}
           chatId={chatId}
           currentUserId={String(userid)}
-          currentUserName={`${firstName} ${
-            sessionStorage.getItem("lastName") || ""
-          }`}
-          otherUserId={String(currentChat?.petData?.owner_usr_id)} // or owner_usr_id for vet
+          currentUserName={`${firstName} ${sessionStorage.getItem("lastName") || ""}`}
+          otherUserId={String(currentChat?.petData?.owner_usr_id)} // or vet_usr_id for petowner
           otherUserName={currentChat?.name}
-          userRole="vt" // or "vt" for vet
-          petInfo={currentPet} // ✅ Just pass currentPet directly, pet_id is already in it
+          otherUserOnline={otherUserOnline}
+          userRole="vt" // or "pp"
+          petInfo={currentPet}
           petId={currentChat?.petData?.pet_id}
           vtId={vtId} // only for vet-chat.jsx
           onClose={() => {

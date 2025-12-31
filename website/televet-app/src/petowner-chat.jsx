@@ -48,6 +48,7 @@ const PetOwnerChat = () => {
   const { socket } = useNotification();
   const [searchQuery, setSearchQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
+  const [rescheduleData, setRescheduleData] = useState(null);
   const [searchResults, setSearchResults] = useState({
     vets: [],
     messages: [],
@@ -146,41 +147,27 @@ const PetOwnerChat = () => {
     }
   };
 
-  const handleRescheduleRequest = async (apptId, rescheduleReason) => {
-    const requestedBy = "petParent"; // Fixed: hardcode it since this is petowner-chat
+  const handleRescheduleRequest = (appointmentDetails) => {
+    // The reason is already collected in AppointmentDetailsModal
+    // Just store the appointment data and open booking modal
+    setRescheduleData(appointmentDetails);
+    setShowBookingModal(true);
+    setShowAppointmentModal(false); // Close the appointment details modal
+  };
 
-    try {
-      const response = await fetch(
-        `http://localhost:5000/api/appointments/${apptId}/reschedule-request`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            rescheduleReason,
-            requestedBy: requestedBy,
-          }),
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error("Failed to request reschedule");
-      }
-
-      const data = await response.json();
-      alert("Reschedule request sent successfully");
-
-      // Refresh appointment details
-      setShowAppointmentModal(false);
-      setAppointmentDetails(null);
-
-      // Refresh appointments list
-
-      return data;
-    } catch (error) {
-      console.error("Error requesting reschedule:", error);
-      throw error;
+  const handleBookingSuccess = (details) => {
+    if (details.rescheduled) {
+      alert(`Appointment rescheduled successfully to ${details.date.toLocaleDateString()} at ${details.time}. Your appointment is now pending approval.`);
+    } else {
+      alert(`Follow-up appointment booked for ${details.time}`);
+    }
+    
+    setRescheduleData(null);
+    setShowBookingModal(false);
+    
+    // Refresh appointment details if current pet is selected
+    if (currentChat?.petData?.pet_id) {
+      fetchAppointmentDetails(currentChat.petData.pet_id);
     }
   };
 
@@ -798,7 +785,7 @@ const PetOwnerChat = () => {
           : "🐱", // Keep emoji as fallback
         veterinarian: currentChat.name,
         vetSpecialty: currentChat.specialty,
-        clinic: currentChat.petData.vet_clinicName || "PawCare Clinic",
+        clinic: currentChat.petData.vet_clinicName || "Clinic",
         clinicLocation:
           currentChat.petData.vet_vetLocation || "Location not specified",
         lastVisit:
@@ -1733,13 +1720,12 @@ const PetOwnerChat = () => {
           socket={socket}
           chatId={chatId}
           currentUserId={String(userid)}
-          currentUserName={`${firstName} ${
-            sessionStorage.getItem("lastName") || ""
-          }`}
-          otherUserId={String(currentChat?.petData?.vet_usr_id)} // or owner_usr_id for vet
+          currentUserName={`${firstName} ${sessionStorage.getItem("lastName") || ""}`}
+          otherUserId={String(currentChat?.petData?.vet_usr_id)} // or vet_usr_id for petowner
           otherUserName={currentChat?.name}
-          userRole="pp" // or "vt" for vet
-          petInfo={currentPet} // ✅ Just pass currentPet directly, pet_id is already in it
+          otherUserOnline={otherUserOnline}
+          userRole="pp" // or "pp"
+          petInfo={currentPet}
           petId={currentChat?.petData?.pet_id}
           onClose={() => {
             setShowVideoCall(false);
@@ -1900,20 +1886,23 @@ const PetOwnerChat = () => {
       {showBookingModal && registeredClinic && (
         <div
           className="myvet-modal-overlay"
-          onClick={() => setShowBookingModal(false)}
+          onClick={() => {
+            setShowBookingModal(false);
+            setRescheduleData(null);
+          }}
         >
           <div onClick={(e) => e.stopPropagation()}>
             <BookAppointment
-              clinicId={registeredClinic.clinic_id}
-              onClose={() => setShowBookingModal(false)}
-              onBookingSuccess={(details) => {
+              clinicId={rescheduleData?.clinic_id || registeredClinic.clinic_id}
+              onClose={() => {
                 setShowBookingModal(false);
-                // Optionally show success message
-                alert(`Follow-up appointment booked for ${details.time}`);
+                setRescheduleData(null);
               }}
-              initialDescription={`Follow-up with ${
-                currentChat?.name || "veterinarian"
-              }`}
+              onBookingSuccess={handleBookingSuccess}
+              rescheduleMode={!!rescheduleData}
+              oldAppointmentId={rescheduleData?.appt_id}
+              rescheduleData={rescheduleData}
+              initialDescription={rescheduleData?.appt_description || `Follow-up with ${currentChat?.name || "veterinarian"}`}
               autoFillDescription={true}
             />
           </div>

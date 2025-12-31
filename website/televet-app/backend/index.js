@@ -163,9 +163,21 @@ io.on('connection', (socket) => {
   
   socket.on('disconnect', (reason) => {
     console.log('❌ User disconnected:', socket.id, 'Reason:', reason);
-    // ✅ Clean up chat page status
+    
     if (socket.userId) {
       usersOnChatPage.delete(socket.userId);
+      
+      // Update user status to offline in database
+      db.query(
+        'UPDATE user_t SET usr_isOnline = ? WHERE usr_id = ?',
+        ['no', socket.userId],
+        (err) => {
+          if (err) console.error('❌ Error updating disconnect status:', err);
+          
+          // Broadcast status change
+          io.emit('userStatusChanged', { usr_id: socket.userId, is_online: 'no' });
+        }
+      );
     }
   });
   
@@ -216,6 +228,15 @@ app.post('/api/login', (req, res) => {
       return res.status(401).json({ message: 'Invalid email or password' });
 
     const user = result[0];
+
+    // Update user status to online
+    db.query(
+      'UPDATE user_t SET usr_isOnline = ? WHERE usr_id = ?',
+      ['yes', user.usr_id],
+      (err) => {
+        if (err) console.error('❌ Error updating login status:', err);
+      }
+    );
 
     console.log("✅ Login successful for user:", {
       usr_id: user.usr_id,
@@ -327,6 +348,23 @@ app.post('/api/login', (req, res) => {
 // 🟢 LOGOUT
 // -------------------------------------------------------------
 app.post('/api/logout', (req, res) => {
+  const userId = req.cookies.userId;
+  const io = req.app.get('io');
+  
+  // Update user status to offline
+  if (userId) {
+    db.query(
+      'UPDATE user_t SET usr_isOnline = ? WHERE usr_id = ?',
+      ['no', userId],
+      (err) => {
+        if (err) console.error('❌ Error updating logout status:', err);
+        
+        // Broadcast status change
+        io.emit('userStatusChanged', { usr_id: userId, is_online: 'no' });
+      }
+    );
+  }
+  
   res.clearCookie('userId');
   res.clearCookie('userType');
   res.clearCookie('vt_id');
@@ -1385,7 +1423,61 @@ app.put('/api/profile/vetadmin/:usr_id', (req, res) => {
         return res.status(500).json({ error: 'Failed to update vet admin data' });
       }
 
-      res.status(200).json({ message: 'Profile updated successfully' });
+      // ✅ Get va_id to update related tables
+      const getVaIdSQL = 'SELECT va_id FROM vet_admin_t WHERE usr_id = ?';
+      
+      db.query(getVaIdSQL, [usr_id], (err3, vaResult) => {
+        if (err3 || vaResult.length === 0) {
+          console.error('⚠️ Error getting va_id:', err3);
+          return res.status(200).json({ message: 'Profile updated successfully' });
+        }
+
+        const va_id = vaResult[0].va_id;
+
+        // ✅ Update all veterinarians under this vet admin
+        const updateAllVetsSQL = `
+          UPDATE veterinarian_t
+          SET vt_vetLocation = ?, vt_clinicName = ?, vt_clinicPhone = ?, vt_clinicEmail = ?
+          WHERE va_id = ?
+        `;
+
+        db.query(updateAllVetsSQL, [
+          va_vetLocation,
+          va_clinicName,
+          va_clinicPhone,
+          va_clinicEmail,
+          va_id
+        ], (err4, vetsUpdateResult) => {
+          if (err4) {
+            console.error('⚠️ Error updating veterinarians:', err4);
+          } else {
+            console.log(`✅ Updated ${vetsUpdateResult.affectedRows} veterinarians with new clinic info`);
+          }
+
+          // ✅ NEW: Update clinic_t table
+          const updateClinicSQL = `
+            UPDATE clinic_t
+            SET clinic_name = ?, clinic_location = ?, clinic_phone = ?, clinic_email = ?, clinic_lastUpdated = NOW()
+            WHERE va_id = ?
+          `;
+
+          db.query(updateClinicSQL, [
+            va_clinicName,
+            va_vetLocation,
+            va_clinicPhone,
+            va_clinicEmail,
+            va_id
+          ], (err5, clinicUpdateResult) => {
+            if (err5) {
+              console.error('⚠️ Error updating clinic:', err5);
+            } else {
+              console.log(`✅ Updated clinic_t with new clinic info`);
+            }
+
+            res.status(200).json({ message: 'Profile updated successfully' });
+          });
+        });
+      });
     });
   });
 });
