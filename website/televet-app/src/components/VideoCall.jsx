@@ -13,6 +13,8 @@ import {
   FileText,
   ChevronDown,
   User,
+  Monitor,
+  MonitorOff,
 } from "lucide-react";
 import PatientProfileModal from "./PatientProfileModal";
 import "../styles/VideoCall.css";
@@ -46,6 +48,9 @@ const VideoCall = ({
   const [showPatientDropdown, setShowPatientDropdown] = useState(false);
   const [showHealthModal, setShowHealthModal] = useState(false);
   const actualPetInfo = petInfo || incomingCall?.petInfo;
+  const [isScreenSharing, setIsScreenSharing] = useState(false);
+  const [screenStream, setScreenStream] = useState(null);
+  const screenVideoRef = useRef();
 
   const myVideo = useRef();
   const userVideo = useRef();
@@ -56,7 +61,8 @@ const VideoCall = ({
       socket.emit("endCall", { to: otherUserId, reason });
       if (connectionRef.current) connectionRef.current.destroy();
       if (stream) stream.getTracks().forEach((track) => track.stop());
-
+      if (screenStream) screenStream.getTracks().forEach((track) => track.stop());
+  
       const message =
         reason === "cancelled"
           ? "Call Cancelled"
@@ -65,13 +71,13 @@ const VideoCall = ({
           : "Call Ended";
       setEndingMessage(message);
       setShowEndingScreen(true);
-
+  
       setTimeout(() => {
         setCallEnded(true);
         onClose();
       }, 1500);
     },
-    [socket, otherUserId, stream, onClose]
+    [socket, otherUserId, stream, screenStream, onClose]
   );
 
   const answerCall = useCallback(async () => {
@@ -213,6 +219,60 @@ const VideoCall = ({
     const newVideoOffState = !isVideoOff;
     videoTrack.enabled = !newVideoOffState;
     setIsVideoOff(newVideoOffState);
+  };
+
+  const startScreenShare = async () => {
+    try {
+      const screenMediaStream = await navigator.mediaDevices.getDisplayMedia({
+        video: {
+          cursor: "always"
+        },
+        audio: false
+      });
+      
+      setScreenStream(screenMediaStream);
+      setIsScreenSharing(true);
+      
+      // Replace video track in peer connection
+      if (connectionRef.current) {
+        const videoTrack = screenMediaStream.getVideoTracks()[0];
+        const sender = connectionRef.current._pc
+          .getSenders()
+          .find(s => s.track && s.track.kind === 'video');
+        
+        if (sender) {
+          sender.replaceTrack(videoTrack);
+        }
+      }
+      
+      // Stop screen sharing when user clicks "Stop Sharing" in browser
+      screenMediaStream.getVideoTracks()[0].onended = () => {
+        stopScreenShare();
+      };
+      
+    } catch (err) {
+      console.error("Error starting screen share:", err);
+    }
+  };
+  
+  const stopScreenShare = () => {
+    if (screenStream) {
+      screenStream.getTracks().forEach(track => track.stop());
+      setScreenStream(null);
+    }
+    setIsScreenSharing(false);
+    
+    // Switch back to camera
+    if (stream && connectionRef.current) {
+      const videoTrack = stream.getVideoTracks()[0];
+      const sender = connectionRef.current._pc
+        .getSenders()
+        .find(s => s.track && s.track.kind === 'video');
+      
+      if (sender && videoTrack) {
+        sender.replaceTrack(videoTrack);
+      }
+    }
   };
 
   return (
@@ -365,9 +425,13 @@ const VideoCall = ({
               autoPlay
               playsInline
               style={{
+                position: "absolute",
+                top: 0,
+                left: 0,
                 width: "100%",
                 height: "100%",
-                objectFit: "contain",
+                objectFit: "cover",
+                backgroundColor: "#000",
               }}
             />
           ) : (
@@ -420,6 +484,32 @@ const VideoCall = ({
               </p>
             </div>
           )}
+
+          {/* SCREEN SHARING INDICATOR */}
+          {isScreenSharing && (
+              <div
+                style={{
+                  position: "absolute",
+                  top: "20px",
+                  left: "50%",
+                  transform: "translateX(-50%)",
+                  background: "rgba(59, 130, 246, 0.9)",
+                  color: "white",
+                  padding: "12px 24px",
+                  borderRadius: "50px",
+                  fontSize: "14px",
+                  fontWeight: "600",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  boxShadow: "0 4px 12px rgba(0, 0, 0, 0.3)",
+                  zIndex: 50,
+                }}
+              >
+                <Monitor size={18} />
+                You are sharing your screen
+              </div>
+            )}
 
           {/* Local Video */}
           <div
@@ -916,6 +1006,25 @@ const VideoCall = ({
               >
                 {isVideoOff ? <VideoOff size={24} /> : <Video size={24} />}
               </button>
+
+              {/*SCREEN SHARE BUTTON */}
+              <button
+                onClick={isScreenSharing ? stopScreenShare : startScreenShare}
+                style={{
+                  background: isScreenSharing
+                    ? "rgba(59, 130, 246, 0.5)"
+                    : "rgba(255, 255, 255, 0.1)",
+                  border: "none",
+                  color: "white",
+                  padding: "16px",
+                  borderRadius: "50%",
+                  cursor: "pointer",
+                }}
+                title={isScreenSharing ? "Stop sharing" : "Share screen"}
+              >
+                {isScreenSharing ? <MonitorOff size={24} /> : <Monitor size={24} />}
+              </button>
+
               <button
                 onClick={() => leaveCall("ended")}
                 style={{
