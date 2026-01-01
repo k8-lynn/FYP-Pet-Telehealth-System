@@ -5,7 +5,7 @@ import showStyledAlert from "./utils/styledAlert";
 const Register = () => {
   const [step, setStep] = useState(1);
   const [consentChecked, setConsentChecked] = useState(false);
-  const [showUserTypeError, setShowUserTypeError] = useState(false);
+  const [setShowUserTypeError] = useState(false);
   const [formData, setFormData] = useState({
     // Common fields
     firstName: '',

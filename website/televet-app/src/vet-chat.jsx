@@ -99,6 +99,35 @@ const VetChat = () => {
     "vt" // or 'vt' for vet
   );
 
+  React.useEffect(() => {
+    if (!socket) return;
+
+    const handleConnect = () => {
+      console.log("✅ Socket connected, re-joining user room");
+      if (userid) {
+        socket.emit("joinUser", userid);
+      }
+    };
+
+    socket.on("connect", handleConnect);
+
+    // If already connected, join immediately
+    if (socket.connected && userid) {
+      socket.emit("joinUser", userid);
+    }
+
+    return () => {
+      socket.off("connect", handleConnect);
+    };
+  }, [socket, userid]);
+
+  React.useEffect(() => {
+    if (socket && userid) {
+      console.log("🔌 Emitting joinUser for userid:", userid);
+      socket.emit("joinUser", userid);
+    }
+  }, [socket, userid]);
+
   // ✅ Add this useEffect to notify NotificationProvider we're on chat page
   React.useEffect(() => {
     console.log("🏠 Mounted on Vet Chat page");
@@ -137,11 +166,17 @@ const VetChat = () => {
   // Load userid from sessionStorage
   React.useEffect(() => {
     const storedUserId = sessionStorage.getItem("userid");
-    console.log("🔑 Loading userid from session:", storedUserId); // ADD THIS
+    console.log("🔑 Loading userid from session:", storedUserId);
     if (storedUserId) {
       setUserid(storedUserId);
+
+      // ✅ Immediately join user room when userid is set
+      if (socket) {
+        console.log("🔌 Joining user room immediately:", storedUserId);
+        socket.emit("joinUser", storedUserId);
+      }
     }
-  }, []);
+  }, [socket]); // ✅ CHANGE: Add socket as dependency so it runs when socket is ready
 
   // Mark messages as read when viewing chat or when new messages arrive
   React.useEffect(() => {
@@ -219,8 +254,9 @@ const VetChat = () => {
     }
 
     if (storedVetId) {
-      console.log("📞 Calling fetchMyPatients with vt_id:", storedVetId);
-      fetchMyPatients(storedVetId);
+      console.log("📞 Setting vt_id:", storedVetId);
+      setVtId(storedVetId);
+      fetchMyPatients(storedVetId); // ✅ ADD THIS BACK!
     } else {
       console.log("⚠️ No vt_id found in session storage");
       setLoading(false);
@@ -1861,7 +1897,9 @@ const VetChat = () => {
           socket={socket}
           chatId={chatId}
           currentUserId={String(userid)}
-          currentUserName={`${firstName} ${sessionStorage.getItem("lastName") || ""}`}
+          currentUserName={`${firstName} ${
+            sessionStorage.getItem("lastName") || ""
+          }`}
           otherUserId={String(currentChat?.petData?.owner_usr_id)} // or vet_usr_id for petowner
           otherUserName={currentChat?.name}
           otherUserOnline={otherUserOnline}

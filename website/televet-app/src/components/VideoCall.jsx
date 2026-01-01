@@ -50,7 +50,6 @@ const VideoCall = ({
   const actualPetInfo = petInfo || incomingCall?.petInfo;
   const [isScreenSharing, setIsScreenSharing] = useState(false);
   const [screenStream, setScreenStream] = useState(null);
-  const screenVideoRef = useRef();
 
   const myVideo = useRef();
   const userVideo = useRef();
@@ -61,8 +60,9 @@ const VideoCall = ({
       socket.emit("endCall", { to: otherUserId, reason });
       if (connectionRef.current) connectionRef.current.destroy();
       if (stream) stream.getTracks().forEach((track) => track.stop());
-      if (screenStream) screenStream.getTracks().forEach((track) => track.stop());
-  
+      if (screenStream)
+        screenStream.getTracks().forEach((track) => track.stop());
+
       const message =
         reason === "cancelled"
           ? "Call Cancelled"
@@ -71,7 +71,7 @@ const VideoCall = ({
           : "Call Ended";
       setEndingMessage(message);
       setShowEndingScreen(true);
-  
+
       setTimeout(() => {
         setCallEnded(true);
         onClose();
@@ -113,6 +113,12 @@ const VideoCall = ({
   }, [socket, caller, callerSignal]);
 
   const callUser = useCallback(async () => {
+    // ✅ Ensure socket is connected before calling
+    if (!socket || !socket.connected) {
+      console.error("❌ Socket not connected, waiting...");
+      await new Promise((resolve) => setTimeout(resolve, 500));
+    }
+
     setCallStarted(true);
     let mediaStream = null;
     try {
@@ -131,7 +137,9 @@ const VideoCall = ({
       trickle: false,
       stream: mediaStream,
     });
+
     peer.on("signal", (data) => {
+      console.log("📞 Emitting callUser to:", otherUserId);
       socket.emit("callUser", {
         userToCall: String(otherUserId),
         from: String(currentUserId),
@@ -140,9 +148,11 @@ const VideoCall = ({
         petInfo: petInfo,
       });
     });
+
     peer.on("stream", (remoteStream) => {
       if (userVideo.current) userVideo.current.srcObject = remoteStream;
     });
+
     connectionRef.current = peer;
   }, [socket, otherUserId, currentUserId, currentUserName, petInfo]);
 
@@ -225,50 +235,49 @@ const VideoCall = ({
     try {
       const screenMediaStream = await navigator.mediaDevices.getDisplayMedia({
         video: {
-          cursor: "always"
+          cursor: "always",
         },
-        audio: false
+        audio: false,
       });
-      
+
       setScreenStream(screenMediaStream);
       setIsScreenSharing(true);
-      
+
       // Replace video track in peer connection
       if (connectionRef.current) {
         const videoTrack = screenMediaStream.getVideoTracks()[0];
         const sender = connectionRef.current._pc
           .getSenders()
-          .find(s => s.track && s.track.kind === 'video');
-        
+          .find((s) => s.track && s.track.kind === "video");
+
         if (sender) {
           sender.replaceTrack(videoTrack);
         }
       }
-      
+
       // Stop screen sharing when user clicks "Stop Sharing" in browser
       screenMediaStream.getVideoTracks()[0].onended = () => {
         stopScreenShare();
       };
-      
     } catch (err) {
       console.error("Error starting screen share:", err);
     }
   };
-  
+
   const stopScreenShare = () => {
     if (screenStream) {
-      screenStream.getTracks().forEach(track => track.stop());
+      screenStream.getTracks().forEach((track) => track.stop());
       setScreenStream(null);
     }
     setIsScreenSharing(false);
-    
+
     // Switch back to camera
     if (stream && connectionRef.current) {
       const videoTrack = stream.getVideoTracks()[0];
       const sender = connectionRef.current._pc
         .getSenders()
-        .find(s => s.track && s.track.kind === 'video');
-      
+        .find((s) => s.track && s.track.kind === "video");
+
       if (sender && videoTrack) {
         sender.replaceTrack(videoTrack);
       }
@@ -295,12 +304,10 @@ const VideoCall = ({
           width: isFullscreen ? "100%" : "90%",
           maxWidth: isFullscreen ? "none" : "1400px",
           height: isFullscreen ? "100vh" : "90vh",
-          minHeight: 0, // ← ADD THIS
           background: "#1a1a1a",
           borderRadius: isFullscreen ? 0 : "16px",
           overflow: "hidden",
-          display: "flex",
-          flexDirection: "column",
+          position: "relative",
           boxShadow: "0 20px 60px rgba(0, 0, 0, 0.5)",
         }}
       >
@@ -336,86 +343,120 @@ const VideoCall = ({
         )}
 
         {/* Header */}
+        {/* Header */}
         <div
           style={{
-            background: "rgba(0, 0, 0, 0.5)",
-            padding: "20px",
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
+            position: "absolute",
+            top: "10px",
+            left: actualPetInfo ? "180px" : "10px", // Position next to Patient Info button
+            zIndex: 10,
+            background: "rgba(0, 0, 0, 0.7)",
+            padding: "10px 16px",
+            borderRadius: "20px",
             backdropFilter: "blur(10px)",
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
+            maxWidth: "280px",
           }}
         >
-          <div>
-            <h3 style={{ color: "white", margin: 0, fontSize: "18px" }}>
-              {callAccepted && callStarted
-                ? `In call with ${otherUserName}`
-                : receivingCall
-                ? `Incoming call from ${otherUserName}`
-                : callStarted
-                ? `Calling ${otherUserName}... Waiting for answer`
-                : "Ready to Start"}
-            </h3>
-            <p
+          <div
+            style={{
+              width: "8px",
+              height: "8px",
+              borderRadius: "50%",
+              background: callAccepted && callStarted ? "#10b981" : "#f59e0b",
+              flexShrink: 0,
+            }}
+          />
+          <div
+            style={{
+              fontSize: "13px",
+              color: "white",
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+            }}
+          >
+            {callAccepted && callStarted
+              ? `${otherUserName}`
+              : receivingCall
+              ? `Incoming: ${otherUserName}`
+              : callStarted
+              ? `Calling ${otherUserName}...`
+              : "Ready"}
+          </div>
+          {actualPetInfo?.name && (
+            <div
               style={{
-                color: "rgba(255, 255, 255, 0.7)",
-                margin: "4px 0 0",
-                fontSize: "14px",
+                fontSize: "12px",
+                color: "rgba(255, 255, 255, 0.6)",
+                borderLeft: "1px solid rgba(255, 255, 255, 0.2)",
+                paddingLeft: "8px",
               }}
             >
-              {actualPetInfo?.name
-                ? `Patient: ${actualPetInfo.name}`
-                : "Telehealth Session"}
-            </p>
-          </div>
+              {actualPetInfo.name}
+            </div>
+          )}
+        </div>
 
-          <div style={{ display: "flex", gap: "8px" }}>
-            <button
-              onClick={() => setIsFullscreen(!isFullscreen)}
-              style={{
-                background: "rgba(255, 255, 255, 0.1)",
-                border: "none",
-                color: "white",
-                padding: "8px",
-                borderRadius: "8px",
-                cursor: "pointer",
-                transition: "all 0.2s",
-              }}
-            >
-              {isFullscreen ? <Minimize2 size={20} /> : <Maximize2 size={20} />}
-            </button>
-            <button
-              onClick={() => {
-                if (callStarted || receivingCall) {
-                  leaveCall("ended");
-                } else {
-                  if (stream)
-                    stream.getTracks().forEach((track) => track.stop());
-                  onClose();
-                }
-              }}
-              style={{
-                background: "rgba(239, 68, 68, 0.3)",
-                border: "none",
-                color: "white",
-                padding: "8px",
-                borderRadius: "8px",
-                cursor: "pointer",
-              }}
-            >
-              <X size={20} />
-            </button>
-          </div>
+        {/* Top Right Controls */}
+        <div
+          style={{
+            position: "absolute",
+            top: "20px",
+            right: "20px",
+            zIndex: 20,
+            display: "flex",
+            gap: "8px",
+          }}
+        >
+          <button
+            onClick={() => setIsFullscreen(!isFullscreen)}
+            style={{
+              background: "rgba(255, 255, 255, 0.1)",
+              border: "none",
+              color: "white",
+              padding: "8px",
+              borderRadius: "8px",
+              cursor: "pointer",
+              transition: "all 0.2s",
+            }}
+          >
+            {isFullscreen ? <Minimize2 size={20} /> : <Maximize2 size={20} />}
+          </button>
+          <button
+            onClick={() => {
+              if (callStarted || receivingCall) {
+                leaveCall("ended");
+              } else {
+                if (stream) stream.getTracks().forEach((track) => track.stop());
+                onClose();
+              }
+            }}
+            style={{
+              background: "rgba(239, 68, 68, 0.3)",
+              border: "none",
+              color: "white",
+              padding: "8px",
+              borderRadius: "8px",
+              cursor: "pointer",
+            }}
+          >
+            <X size={20} />
+          </button>
         </div>
 
         {/* Video Area */}
         <div
           style={{
-            flex: 1,
-            position: "relative",
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
             background: "#000",
-            minHeight: 0, // ← ADD THIS
-            overflow: "hidden", // ← ADD THIS
+            overflow: "hidden",
           }}
         >
           {/* Remote Video */}
@@ -430,7 +471,7 @@ const VideoCall = ({
                 left: 0,
                 width: "100%",
                 height: "100%",
-                objectFit: "cover",
+                objectFit: "cover", // ← Use "cover" to fill the space
                 backgroundColor: "#000",
               }}
             />
@@ -487,29 +528,29 @@ const VideoCall = ({
 
           {/* SCREEN SHARING INDICATOR */}
           {isScreenSharing && (
-              <div
-                style={{
-                  position: "absolute",
-                  top: "20px",
-                  left: "50%",
-                  transform: "translateX(-50%)",
-                  background: "rgba(59, 130, 246, 0.9)",
-                  color: "white",
-                  padding: "12px 24px",
-                  borderRadius: "50px",
-                  fontSize: "14px",
-                  fontWeight: "600",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "8px",
-                  boxShadow: "0 4px 12px rgba(0, 0, 0, 0.3)",
-                  zIndex: 50,
-                }}
-              >
-                <Monitor size={18} />
-                You are sharing your screen
-              </div>
-            )}
+            <div
+              style={{
+                position: "absolute",
+                top: "20px",
+                left: "50%",
+                transform: "translateX(-50%)",
+                background: "rgba(59, 130, 246, 0.9)",
+                color: "white",
+                padding: "12px 24px",
+                borderRadius: "50px",
+                fontSize: "14px",
+                fontWeight: "600",
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                boxShadow: "0 4px 12px rgba(0, 0, 0, 0.3)",
+                zIndex: 50,
+              }}
+            >
+              <Monitor size={18} />
+              You are sharing your screen
+            </div>
+          )}
 
           {/* Local Video */}
           <div
@@ -523,6 +564,7 @@ const VideoCall = ({
               borderRadius: "12px",
               overflow: "hidden",
               border: "2px solid rgba(255, 255, 255, 0.2)",
+              zIndex: 20,
             }}
           >
             <video
@@ -884,12 +926,19 @@ const VideoCall = ({
         {/* Controls */}
         <div
           style={{
-            background: "rgba(0, 0, 0, 0.5)",
-            padding: "24px",
+            position: "absolute",
+            bottom: "24px",
+            left: "50%",
+            transform: "translateX(-50%)",
+            zIndex: 10,
+            background: "rgba(0, 0, 0, 0.7)",
+            padding: "16px 20px",
+            borderRadius: "50px",
             display: "flex",
             justifyContent: "center",
-            gap: "16px",
+            gap: "12px",
             backdropFilter: "blur(10px)",
+            boxShadow: "0 8px 32px rgba(0, 0, 0, 0.4)",
           }}
         >
           {receivingCall && !callAccepted ? (
@@ -1022,7 +1071,11 @@ const VideoCall = ({
                 }}
                 title={isScreenSharing ? "Stop sharing" : "Share screen"}
               >
-                {isScreenSharing ? <MonitorOff size={24} /> : <Monitor size={24} />}
+                {isScreenSharing ? (
+                  <MonitorOff size={24} />
+                ) : (
+                  <Monitor size={24} />
+                )}
               </button>
 
               <button

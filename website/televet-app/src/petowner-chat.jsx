@@ -109,6 +109,28 @@ const PetOwnerChat = () => {
     }
   };
 
+  React.useEffect(() => {
+    if (!socket) return;
+
+    const handleConnect = () => {
+      console.log("✅ Socket connected, re-joining user room");
+      if (userid) {
+        socket.emit("joinUser", userid);
+      }
+    };
+
+    socket.on("connect", handleConnect);
+
+    // If already connected, join immediately
+    if (socket.connected && userid) {
+      socket.emit("joinUser", userid);
+    }
+
+    return () => {
+      socket.off("connect", handleConnect);
+    };
+  }, [socket, userid]);
+
   // Add this function in your parent component
   const handleCancelAppointment = async (apptId, cancelReason) => {
     const cancelledBy = "petParent";
@@ -158,19 +180,30 @@ const PetOwnerChat = () => {
 
   const handleBookingSuccess = (details) => {
     if (details.rescheduled) {
-      showStyledAlert(`Appointment rescheduled successfully to ${details.date.toLocaleDateString()} at ${details.time}. Your appointment is now pending approval.`);
+      showStyledAlert(
+        `Appointment rescheduled successfully to ${details.date.toLocaleDateString()} at ${
+          details.time
+        }. Your appointment is now pending approval.`
+      );
     } else {
       showStyledAlert(`Follow-up appointment booked for ${details.time}`);
     }
-    
+
     setRescheduleData(null);
     setShowBookingModal(false);
-    
+
     // Refresh appointment details if current pet is selected
     if (currentChat?.petData?.pet_id) {
       fetchAppointmentDetails(currentChat.petData.pet_id);
     }
   };
+
+  React.useEffect(() => {
+    if (socket && userid) {
+      console.log("🔌 Emitting joinUser for userid:", userid);
+      socket.emit("joinUser", userid);
+    }
+  }, [socket, userid]);
 
   // ✅ Add this useEffect to notify NotificationProvider we're on chat page
   React.useEffect(() => {
@@ -247,6 +280,13 @@ const PetOwnerChat = () => {
 
     if (storedUserId) {
       setUserid(storedUserId);
+
+      // ✅ Immediately join user room when userid is set
+      if (socket) {
+        console.log("🔌 Joining user room immediately:", storedUserId);
+        socket.emit("joinUser", storedUserId);
+      }
+
       fetchPetParentInfo(storedUserId);
     } else {
       console.log("⚠️ No userid found in session storage");
@@ -1721,7 +1761,9 @@ const PetOwnerChat = () => {
           socket={socket}
           chatId={chatId}
           currentUserId={String(userid)}
-          currentUserName={`${firstName} ${sessionStorage.getItem("lastName") || ""}`}
+          currentUserName={`${firstName} ${
+            sessionStorage.getItem("lastName") || ""
+          }`}
           otherUserId={String(currentChat?.petData?.vet_usr_id)} // or vet_usr_id for petowner
           otherUserName={currentChat?.name}
           otherUserOnline={otherUserOnline}
@@ -1903,7 +1945,10 @@ const PetOwnerChat = () => {
               rescheduleMode={!!rescheduleData}
               oldAppointmentId={rescheduleData?.appt_id}
               rescheduleData={rescheduleData}
-              initialDescription={rescheduleData?.appt_description || `Follow-up with ${currentChat?.name || "veterinarian"}`}
+              initialDescription={
+                rescheduleData?.appt_description ||
+                `Follow-up with ${currentChat?.name || "veterinarian"}`
+              }
               autoFillDescription={true}
             />
           </div>

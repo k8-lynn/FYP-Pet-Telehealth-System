@@ -51,6 +51,16 @@ io.on('connection', (socket) => {
     
     // Store userId with socket
     socket.userId = userIdStr;
+    
+    // ✅ Query and broadcast current online status when joining
+    db.query('SELECT usr_isOnline FROM user_t WHERE usr_id = ?', [userIdStr], (err, result) => {
+      if (!err && result.length > 0) {
+        io.emit('userStatusChanged', { 
+          usr_id: userIdStr, 
+          is_online: result[0].usr_isOnline 
+        });
+      }
+    });
   });
 
   // ✅Track when user is on chat page
@@ -235,6 +245,9 @@ app.post('/api/login', (req, res) => {
       ['yes', user.usr_id],
       (err) => {
         if (err) console.error('❌ Error updating login status:', err);
+        
+        // ✅ Broadcast status change immediately after login
+        io.emit('userStatusChanged', { usr_id: user.usr_id, is_online: 'yes' });
       }
     );
 
