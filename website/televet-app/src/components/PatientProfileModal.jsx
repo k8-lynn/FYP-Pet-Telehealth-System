@@ -8,6 +8,7 @@ const PatientProfileModal = ({
   vtId, // And vet_id
   viewMode = "vet",
   onClose,
+  isReadOnly = false,
 }) => {
   // All state management inside the component
   const [selectedPatient, setSelectedPatient] = useState(null);
@@ -1223,7 +1224,7 @@ const PatientProfileModal = ({
                       <FileText size={24} />
                       <h4>Documents</h4>
                       <p>{medicalHistory.documents?.length || 0} files</p>
-                      {viewMode === "vet" && (
+                      {viewMode === "vet" && !isReadOnly && (
                         <button
                           className="btn-add-card"
                           onClick={(e) => {
@@ -1242,7 +1243,7 @@ const PatientProfileModal = ({
                       <Activity size={24} />
                       <h4>Vaccinations</h4>
                       <p>{medicalHistory.vaccinations?.length || 0} vaccines</p>
-                      {viewMode === "vet" && (
+                      {viewMode === "vet" && !isReadOnly && (
                         <button
                           className="btn-add-card"
                           onClick={(e) => {
@@ -1261,7 +1262,7 @@ const PatientProfileModal = ({
                       <Activity size={24} />
                       <h4>Conditions</h4>
                       <p>{medicalHistory.conditions?.length || 0} conditions</p>
-                      {viewMode === "vet" && (
+                      {viewMode === "vet" && !isReadOnly && (
                         <button
                           className="btn-add-card"
                           onClick={(e) => {
@@ -1280,7 +1281,7 @@ const PatientProfileModal = ({
                       <Activity size={24} />
                       <h4>Surgeries</h4>
                       <p>{medicalHistory?.surgeries?.length || 0} surgeries</p>
-                      {viewMode === "vet" && (
+                      {viewMode === "vet" && !isReadOnly && (
                         <button
                           className="btn-add-card"
                           onClick={(e) => {

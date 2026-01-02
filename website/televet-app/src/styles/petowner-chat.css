@@ -1396,3 +1396,34 @@
   .pet-image-large span {
     font-size: 64px;
   }
+
+  /* 24/7 Vets Toggle */
+.available-vets-toggle {
+    padding: 0.75rem 1rem;
+    background: #f8fbff;
+    border-bottom: 2px solid #e8f0f7;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  
+  .available-vets-toggle:hover {
+    background: #e8f4f8;
+  }
+  
+  .available-vets-toggle h4 {
+    margin: 0;
+    font-size: 0.75rem;
+    color: #475569;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  
+  .toggle-icon {
+    font-size: 0.65rem;
+    color: #94a3b8;
+    transition: transform 0.2s ease;
+  }

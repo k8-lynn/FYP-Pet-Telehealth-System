@@ -4836,6 +4836,264 @@ app.get('/api/vet-unread-messages/:vt_id', (req, res) => {
   });
 });
 
+
+// GET /api/online-vets - Get available 24/7 online vets (excluding user's clinic)
+app.get('/api/online-vets/:usr_id', (req, res) => {
+  const { usr_id } = req.params;
+
+  // First get the user's registered clinic
+  const getClinicSql = `
+    SELECT pp.pp_assignedClinic 
+    FROM pet_parent_t pp 
+    WHERE pp.usr_id = ?
+  `;
+
+  db.query(getClinicSql, [usr_id], (err, clinicResult) => {
+    if (err) {
+      console.error('❌ Error fetching user clinic:', err);
+      return res.status(500).json({ error: 'Failed to fetch user clinic' });
+    }
+
+    const userClinic = clinicResult.length > 0 ? clinicResult[0].pp_assignedClinic : null;
+
+    // Get online vets from OTHER clinics
+    const sql = `
+      SELECT 
+        vt.vt_id,
+        vt.vt_specialization,
+        vt.vt_clinicName,
+        u.usr_id,
+        u.usr_firstName,
+        u.usr_lastName,
+        u.usr_isOnline
+      FROM veterinarian_t vt
+      JOIN user_t u ON vt.usr_id = u.usr_id
+      WHERE u.usr_isOnline = 'yes'
+        AND vt.vt_onDutyToday = 'yes'
+        AND vt.vt_available247 = 'yes'
+        ${userClinic ? 'AND vt.vt_clinicName != ?' : ''}
+      ORDER BY vt.vt_patientsAssigned ASC
+      LIMIT 3
+    `;
+
+    const params = userClinic ? [userClinic] : [];
+
+    db.query(sql, params, (err, vets) => {
+      if (err) {
+        console.error('❌ Error fetching online vets:', err);
+        return res.status(500).json({ error: 'Failed to fetch online vets' });
+      }
+
+      console.log(`✅ Found ${vets.length} online vets (excluding clinic: ${userClinic})`);
+      res.status(200).json(vets);
+    });
+  });
+});
+
+// POST /api/chat/start-24-7 - Start a 24/7 chat with available vet
+app.post('/api/chat/start-24-7', (req, res) => {
+  const { pp_id, vt_id } = req.body;
+
+  // Check if chat already exists
+  db.query(
+    'SELECT * FROM chat_t WHERE pp_id = ? AND vt_id = ?',
+    [pp_id, vt_id],
+    (err, results) => {
+      if (err) return res.status(500).json({ error: err.message });
+
+      if (results.length > 0) {
+        return res.json(results[0]);
+      }
+
+      // Create new 24/7 chat
+      db.query(
+        'INSERT INTO chat_t (pp_id, vt_id, chat_status, pp_online, vt_online) VALUES (?, ?, ?, ?, ?)',
+        [pp_id, vt_id, 'active', 'yes', 'yes'],
+        (err, result) => {
+          if (err) return res.status(500).json({ error: err.message });
+
+          db.query(
+            'SELECT * FROM chat_t WHERE chat_id = ?',
+            [result.insertId],
+            (err, newChat) => {
+              if (err) return res.status(500).json({ error: err.message });
+              res.json(newChat[0]);
+            }
+          );
+        }
+      );
+    }
+  );
+});
+
+// GET /api/vet-24-7-chats/:vt_id - Get 24/7 consultation chats for a vet
+app.get('/api/vet-24-7-chats/:vt_id', (req, res) => {
+  const { vt_id } = req.params;
+
+  // Get vet's usr_id first
+  const getUserIdSql = 'SELECT usr_id FROM veterinarian_t WHERE vt_id = ?';
+  
+  db.query(getUserIdSql, [vt_id], (err, vetResult) => {
+    if (err) {
+      console.error('❌ Error fetching vet usr_id:', err);
+      return res.status(500).json({ error: 'Failed to fetch vet info' });
+    }
+    
+    if (vetResult.length === 0) {
+      return res.status(404).json({ error: 'Veterinarian not found' });
+    }
+    
+    const vet_usr_id = vetResult[0].usr_id;
+
+    const sql = `
+      SELECT 
+        c.chat_id,
+        c.pp_id,
+        c.vt_id,
+        c.last_msg,
+        c.last_msg_at,
+        pp.usr_id as owner_usr_id,
+        u.usr_firstName as owner_firstName,
+        u.usr_lastName as owner_lastName,
+        u.usr_isOnline as owner_usr_isOnline,
+        COALESCE((SELECT COUNT(*) 
+         FROM chat_msg_t cm 
+         WHERE cm.chat_id = c.chat_id 
+         AND cm.sender_id != ?
+         AND cm.is_read = 'no'
+        ), 0) as unread_count
+      FROM chat_t c
+      INNER JOIN pet_parent_t pp ON c.pp_id = pp.pp_id
+      INNER JOIN user_t u ON pp.usr_id = u.usr_id
+      WHERE c.vt_id = ? 
+      AND NOT EXISTS (
+        SELECT 1 FROM pet_t pet 
+        WHERE pet.pp_id = c.pp_id 
+        AND pet.pet_assignedVet = c.vt_id
+      )
+      ORDER BY c.last_msg_at DESC
+    `;
+
+    db.query(sql, [vet_usr_id, vt_id], (err, result) => {
+      if (err) {
+        console.error('❌ Error fetching 24/7 consultations:', err);
+        return res.status(500).json({ error: 'Failed to fetch consultations' });
+      }
+
+      console.log(`✅ Retrieved ${result.length} 24/7 consultations for vet ${vt_id}`);
+      res.status(200).json(result);
+    });
+  });
+});
+
+// GET /api/petowner-24-7-chats/:pp_id - Get 24/7 consultation chats for a pet owner
+app.get('/api/petowner-24-7-chats/:pp_id', (req, res) => {
+  const { pp_id } = req.params;
+
+  // Get pet owner's usr_id first
+  const getUserIdSql = 'SELECT usr_id FROM pet_parent_t WHERE pp_id = ?';
+  
+  db.query(getUserIdSql, [pp_id], (err, ppResult) => {
+    if (err) {
+      console.error('❌ Error fetching pet owner usr_id:', err);
+      return res.status(500).json({ error: 'Failed to fetch pet owner info' });
+    }
+    
+    if (ppResult.length === 0) {
+      return res.status(404).json({ error: 'Pet owner not found' });
+    }
+    
+    const pp_usr_id = ppResult[0].usr_id;
+
+    const sql = `
+    SELECT 
+      c.chat_id,
+      c.pp_id,
+      c.vt_id,
+      c.last_msg,
+      c.last_msg_at,
+      vt.usr_id as vet_usr_id,
+      u.usr_firstName as vet_firstName,
+      u.usr_lastName as vet_lastName,
+      u.usr_isOnline as vet_usr_isOnline,
+      vt.vt_specialization,
+      vt.vt_clinicName,
+      vt.vt_available247,
+      COALESCE((SELECT COUNT(*) 
+      FROM chat_msg_t cm 
+      WHERE cm.chat_id = c.chat_id 
+      AND cm.sender_id != ?
+      AND cm.is_read = 'no'
+      ), 0) as unread_count
+    FROM chat_t c
+    INNER JOIN veterinarian_t vt ON c.vt_id = vt.vt_id
+    INNER JOIN user_t u ON vt.usr_id = u.usr_id
+    WHERE c.pp_id = ? 
+    AND NOT EXISTS (
+      SELECT 1 FROM pet_t pet 
+      WHERE pet.pp_id = c.pp_id 
+      AND pet.pet_assignedVet = c.vt_id
+    )
+    ORDER BY c.last_msg_at DESC
+  `;
+
+    db.query(sql, [pp_usr_id, pp_id], (err, result) => {
+      if (err) {
+        console.error('❌ Error fetching 24/7 consultations:', err);
+        return res.status(500).json({ error: 'Failed to fetch consultations' });
+      }
+
+      console.log(`✅ Retrieved ${result.length} 24/7 consultations for pet owner ${pp_id}`);
+      res.status(200).json(result);
+    });
+  });
+});
+
+// PUT /api/vet/:vt_id/toggle-247-availability
+app.put('/api/vet/:vt_id/toggle-247-availability', (req, res) => {
+  const { vt_id } = req.params;
+  const { available247 } = req.body;
+  
+  // Update the database
+  const sql = 'UPDATE veterinarian_t SET vt_available247 = ? WHERE vt_id = ?';
+  
+  db.query(sql, [available247, vt_id], (err, result) => {
+    if (err) {
+      console.error('❌ Error updating 24/7 availability:', err);
+      return res.status(500).json({ error: 'Failed to update availability' });
+    }
+
+    // Optional: Check if vet existed
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'Veterinarian not found' });
+    }
+
+    // ✅ FIX: Emit Socket.IO event to notify all connected clients
+    io.emit('vetAvailabilityChanged', { 
+      vt_id: parseInt(vt_id), 
+      available247 
+    });
+
+    console.log(`🔄 Vet ${vt_id} availability changed to: ${available247}`);
+    res.json({ message: 'Availability updated successfully' });
+  });
+});
+
+// GET /api/vet/:vt_id/247-availability
+app.get('/api/vet/:vt_id/247-availability', (req, res) => {
+  const { vt_id } = req.params;
+
+  const sql = 'SELECT vt_available247 FROM veterinarian_t WHERE vt_id = ?';
+  
+  db.query(sql, [vt_id], (err, result) => {
+    if (err || result.length === 0) {
+      return res.status(500).json({ error: 'Failed to fetch availability' });
+    }
+
+    res.status(200).json({ available247: result[0].vt_available247 });
+  });
+});
+
 // =============== FILE UPLOAD SETUP ===============
 import multer from 'multer';
 import path from 'path';

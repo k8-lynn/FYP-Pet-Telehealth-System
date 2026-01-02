@@ -55,6 +55,12 @@ const VetChat = () => {
   const { socket } = useNotification();
   const [searchQuery, setSearchQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
+  const [show24x7Patients, setShow24x7Patients] = useState(false);
+  const [consultation24x7Chats, setConsultation24x7Chats] = useState([]);
+  const [loading24x7, setLoading24x7] = useState(false);
+  const [selectedPetDisplay, setSelectedPetDisplay] = useState(null);
+  const [ownerPets, setOwnerPets] = useState([]);
+  const [available247, setAvailable247] = useState('yes');
   const [messagesWithSuggestions, setMessagesWithSuggestions] = useState(
     new Set()
   );
@@ -281,12 +287,18 @@ const VetChat = () => {
 
   // ✅ NEW: Combined effect to initialize chat when BOTH selectedChat and vtId are ready
   React.useEffect(() => {
+    // Check if it's a regular patient chat
     const selectedPatient = myPatients.find(
       (p) => `patient-${p.pet_id}` === selectedChat
     );
 
+    // Check if it's a 24/7 consultation chat
+    const selected247Chat = consultation24x7Chats.find(
+      (c) => c.id === selectedChat
+    );
+
     if (selectedChat && selectedPatient?.pp_id && vtId) {
-      console.log("🔄 Initializing chat for:", {
+      console.log("🔄 Initializing regular patient chat for:", {
         selectedChat,
         pet_id: selectedPatient.pet_id,
         pet_name: selectedPatient.pet_name,
@@ -294,10 +306,25 @@ const VetChat = () => {
         vt_id: vtId,
       });
       initializeChat(selectedPatient.pp_id, vtId);
+    } else if (selectedChat && selected247Chat?.petData?.pp_id && vtId) {
+      // ✅ Handle 24/7 consultation chat initialization
+      console.log("🔄 Initializing 24/7 consultation chat for:", {
+        selectedChat,
+        chat_id: selected247Chat.petData.chat_id,
+        pp_id: selected247Chat.petData.pp_id,
+        vt_id: vtId,
+      });
+      
+      // For 24/7 chats, we already have chat_id, so set it directly
+      setChatId(selected247Chat.petData.chat_id);
+      
+      // Mark messages as read after setting chat
+      setTimeout(() => {
+        markAsRead();
+      }, 500);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedChat, vtId, myPatients]); // ✅ Include myPatients in dependencies
-
+  }, [selectedChat, vtId, myPatients, consultation24x7Chats]);
   // Fetch vet info
   React.useEffect(() => {
     const fetchVetInfo = async () => {
@@ -410,6 +437,49 @@ const VetChat = () => {
       setLoading(false);
     }
   };
+
+  const fetch24x7Consultations = React.useCallback(async () => {
+    if (!vtId) return;
+    
+    try {
+      setLoading24x7(true);
+      const response = await fetch(`http://localhost:5000/api/vet-24-7-chats/${vtId}`);
+      const data = await response.json();
+      
+      console.log('✅ Fetched 24/7 consultations:', data);
+      
+      // Transform into chat format
+      const formattedChats = data.map(consultation => ({
+        id: `consultation-${consultation.chat_id}`,
+        name: `${consultation.owner_firstName} ${consultation.owner_lastName}`,
+        petName: '24/7 Consultation',
+        petType: '',
+        avatar: `${consultation.owner_firstName.charAt(0)}${consultation.owner_lastName.charAt(0)}`,
+        lastMessage: consultation.last_msg || 'Start consultation',
+        time: consultation.last_msg_at
+          ? new Date(consultation.last_msg_at).toLocaleTimeString('en-US', {
+              hour: 'numeric',
+              minute: '2-digit',
+              hour12: true,
+            })
+          : '',
+        unread: consultation.unread_count || 0,
+        online: consultation.owner_usr_isOnline === 'yes',
+        petData: {
+          ...consultation,
+          pet_id: null,
+          pet_name: '24/7 Consultation',
+          pet_species: '',
+        },
+      }));
+      
+      setConsultation24x7Chats(formattedChats);
+      setLoading24x7(false);
+    } catch (error) {
+      console.error('❌ Error fetching 24/7 consultations:', error);
+      setLoading24x7(false);
+    }
+  }, [vtId]);
 
   // Initialize chat between vet and pet parent
   const initializeChat = React.useCallback(
@@ -533,28 +603,31 @@ const VetChat = () => {
   };
 
   // Transform myPatients into chat format
-  const chats = myPatients.map((patient) => ({
-    id: `patient-${patient.pet_id}`,
-    name: `${patient.owner_firstName} ${patient.owner_lastName}`,
-    petName: patient.pet_name,
-    petType: patient.pet_species,
-    avatar: `${patient.owner_firstName?.charAt(0) || ""}${
-      patient.owner_lastName?.charAt(0) || ""
-    }`,
-    lastMessage: patient.last_msg || "No recent messages",
-    time: patient.last_msg_at
-      ? new Date(patient.last_msg_at).toLocaleTimeString("en-US", {
-          hour: "numeric",
-          minute: "2-digit",
-          hour12: true,
-        })
-      : new Date(
-          patient.pet_lastUpdated || patient.pp_createdAt
-        ).toLocaleDateString(),
-    unread: patient.unread_count || 0,
-    online: patient.owner_usr_isOnline === "yes",
-    petData: patient,
-  }));
+  const chats = [
+    ...myPatients.map((patient) => ({
+      id: `patient-${patient.pet_id}`,
+      name: `${patient.owner_firstName} ${patient.owner_lastName}`,
+      petName: patient.pet_name,
+      petType: patient.pet_species,
+      avatar: `${patient.owner_firstName?.charAt(0) || ""}${
+        patient.owner_lastName?.charAt(0) || ""
+      }`,
+      lastMessage: patient.last_msg || "No recent messages",
+      time: patient.last_msg_at
+        ? new Date(patient.last_msg_at).toLocaleTimeString("en-US", {
+            hour: "numeric",
+            minute: "2-digit",
+            hour12: true,
+          })
+        : new Date(
+            patient.pet_lastUpdated || patient.pp_createdAt
+          ).toLocaleDateString(),
+      unread: patient.unread_count || 0,
+      online: patient.owner_usr_isOnline === "yes",
+      petData: patient,
+    })),
+    ...consultation24x7Chats
+  ];
 
   const currentChat = chats.find((c) => c.id === selectedChat);
 
@@ -651,7 +724,7 @@ const VetChat = () => {
   // ADD this new useEffect after your existing socket listeners (around line 320):
   React.useEffect(() => {
     if (!socket) return;
-
+  
     const handleChatListUpdate = ({
       chat_id,
       last_msg,
@@ -659,14 +732,12 @@ const VetChat = () => {
       sender_id,
     }) => {
       console.log("📋 Chat list update received for chat:", chat_id);
-
-      // Update the local state without full refresh
+  
+      // Update regular patients
       setMyPatients((prev) =>
         prev.map((patient) => {
           if (patient.chat_id === chat_id) {
-            // If sender is not current user, increment unread
             const shouldIncrement = String(sender_id) !== String(userid);
-
             return {
               ...patient,
               last_msg,
@@ -679,14 +750,59 @@ const VetChat = () => {
           return patient;
         })
       );
+  
+      // ✅ Also update 24/7 consultation chats
+      setConsultation24x7Chats((prev) =>
+        prev.map((chat) => {
+          if (chat.petData.chat_id === chat_id) {
+            const shouldIncrement = String(sender_id) !== String(userid);
+            return {
+              ...chat,
+              lastMessage: last_msg,
+              time: new Date(last_msg_at).toLocaleTimeString('en-US', {
+                hour: 'numeric',
+                minute: '2-digit',
+                hour12: true,
+              }),
+              unread: shouldIncrement ? (chat.unread || 0) + 1 : chat.unread,
+              petData: {
+                ...chat.petData,
+                last_msg,
+                last_msg_at,
+              }
+            };
+          }
+          return chat;
+        })
+      );
     };
-
+  
     socket.on("chatListUpdate", handleChatListUpdate);
-
+  
     return () => {
       socket.off("chatListUpdate", handleChatListUpdate);
     };
   }, [socket, userid]);
+
+  // ✅ Refresh 24/7 consultations when receiving new messages from outside clinic
+  React.useEffect(() => {
+    if (!socket || !vtId) return;
+
+    const handle247NewMessage = ({ chat_id, sender_role }) => {
+      console.log("📨 New message in 24/7 chat:", chat_id);
+      
+      // If it's from a pet owner (pp) and we're showing 24/7 section, refresh
+      if (sender_role === 'pp' && show24x7Patients) {
+        fetch24x7Consultations();
+      }
+    };
+
+    socket.on("newMessage", handle247NewMessage);
+
+    return () => {
+      socket.off("newMessage", handle247NewMessage);
+    };
+  }, [socket, vtId, show24x7Patients, fetch24x7Consultations]);
 
   const currentPet = currentChat
     ? {
@@ -967,6 +1083,76 @@ const VetChat = () => {
       }
     });
   }, [messages, vtId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  React.useEffect(() => {
+    if (show24x7Patients && vtId) {
+      fetch24x7Consultations();
+    }
+  }, [show24x7Patients, vtId, fetch24x7Consultations]);
+
+  const fetchPetsByOwner = React.useCallback(async (pp_id) => {
+    try {
+      const response = await fetch(`http://localhost:5000/api/pets/by-parent/${pp_id}`);
+      const data = await response.json();
+      console.log(`✅ Fetched ${data.length} pets for pet owner pp_id: ${pp_id}`, data);
+      setOwnerPets(data);
+    } catch (error) {
+      console.error('❌ Error fetching owner pets:', error);
+      setOwnerPets([]);
+    }
+  }, []);
+
+  React.useEffect(() => {
+    if (currentChat?.petData?.pp_id && !currentChat?.petData?.pet_id) {
+      // This is a 24/7 consultation, fetch the owner's pets
+      console.log('🔍 Fetching pets for 24/7 consultation, pp_id:', currentChat.petData.pp_id);
+      fetchPetsByOwner(currentChat.petData.pp_id);
+    } else {
+      // Clear ownerPets if not a 24/7 consultation
+      setOwnerPets([]);
+    }
+  }, [currentChat?.petData?.pp_id, currentChat?.petData?.pet_id, fetchPetsByOwner]);
+
+  // Fetch 24/7 availability status
+React.useEffect(() => {
+  const fetch247Status = async () => {
+    if (!vtId) return;
+    
+    try {
+      const response = await fetch(`http://localhost:5000/api/vet/${vtId}/247-availability`);
+      const data = await response.json();
+      setAvailable247(data.available247);
+    } catch (error) {
+      console.error('Error fetching 24/7 status:', error);
+    }
+  };
+
+  fetch247Status();
+}, [vtId]);
+
+const handle247Toggle = async () => {
+  const newStatus = available247 === 'yes' ? 'no' : 'yes';
+  
+  try {
+    const response = await fetch(`http://localhost:5000/api/vet/${vtId}/toggle-247-availability`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ available247: newStatus })
+    });
+
+    if (response.ok) {
+      setAvailable247(newStatus);
+      showStyledAlert(
+        newStatus === 'yes' 
+          ? 'You are now visible in 24/7 consultations' 
+          : 'You are now hidden from 24/7 consultations'
+      );
+    }
+  } catch (error) {
+    console.error('Error toggling 24/7 availability:', error);
+    showStyledAlert('Failed to update availability');
+  }
+};
 
   const renderMessageContent = (msg) => {
     if (msg.msg_type === "img") {
@@ -1363,6 +1549,77 @@ const VetChat = () => {
               </div>
             )}
 
+
+            {/* Add this section after the regular chat list and before the closing chatListOpen check */}
+            {chatListOpen && (
+              <>
+                <div 
+                  className="available-vets-toggle"
+                  onClick={() => setShow24x7Patients(!show24x7Patients)}
+                >
+                  <h4>
+                    <span className="toggle-icon">
+                      {show24x7Patients ? '▼' : '▶'}
+                    </span>
+                    24/7 Consultations
+                  </h4>
+                  {/* ✅ ADD TOGGLE BUTTON HERE */}
+                  <button
+                    className={`availability-toggle-btn ${available247 === 'yes' ? 'available' : 'unavailable'}`}
+                    onClick={(e) => {
+                      e.stopPropagation(); // Prevent toggle collapse
+                      handle247Toggle();
+                    }}
+                    title={available247 === 'yes' ? 'You are visible in 24/7 consultations' : 'You are hidden from 24/7 consultations'}
+                  >
+                    {available247 === 'yes' ? 'Available' : 'Unavailable'}
+                  </button>
+                </div>
+
+                {show24x7Patients && (
+                  <div className="chat-list">
+                    {loading24x7 ? (
+                      <p style={{ textAlign: 'center', color: '#94a3b8', fontSize: '0.75rem' }}>
+                        Loading...
+                      </p>
+                    ) : consultation24x7Chats.length === 0 ? (
+                      <p style={{ textAlign: 'center', color: '#94a3b8', fontSize: '0.75rem' }}>
+                        No 24/7 consultations
+                      </p>
+                    ) : (
+                      consultation24x7Chats.map((chat) => (
+                        <div
+                          key={chat.id}
+                          className={`chat-item ${selectedChat === chat.id ? 'active' : ''}`}
+                          onClick={() => setSelectedChat(chat.id)}
+                        >
+                          <div className="chat-avatar-container">
+                            <div className="chat-avatar">{chat.avatar}</div>
+                            {chat.online && <div className="online-indicator" />}
+                            {chat.unread > 0 && <div className="unread-dot" />}
+                          </div>
+                          <div className="chat-item-content">
+                            <div className="chat-item-header">
+                              <h4>{chat.name}</h4>
+                              <span className="chat-time">{chat.time}</span>
+                            </div>
+                            <div className="chat-item-preview">
+                              <p>{chat.lastMessage}</p>
+                              {chat.unread > 0 && (
+                                <span className="unread-badge">{chat.unread}</span>
+                              )}
+                            </div>
+                            <span className="chat-specialty">24/7 Consultation</span>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                )}
+              </>
+            )}
+
+
             {chatListOpen && (
               <>
                 <div className="chat-list">
@@ -1447,7 +1704,9 @@ const VetChat = () => {
                   <h3>{currentChat?.name}</h3>
                   <p className="chat-header-status">
                     {otherUserOnline ? "Online" : "Offline"} •{" "}
-                    {currentChat?.petName} ({currentChat?.petType})
+                    {currentChat?.petData?.pet_id 
+                      ? `${currentChat.petName} ${currentChat.petType ? `(${currentChat.petType})` : ''}`
+                      : '24/7 Consultation'}
                   </p>
                 </div>
               </div>
@@ -1477,27 +1736,27 @@ const VetChat = () => {
             </div>
 
             {/* Quick Actions Banner */}
-            <div className="quick-actions-banner">
-              <button
-                className="quick-action-chip"
-                onClick={() => {
-                  if (currentChat?.petData?.pet_id) {
+            {currentChat?.petData?.pet_id && (
+              <div className="quick-actions-banner">
+                <button
+                  className="quick-action-chip"
+                  onClick={() => {
                     fetchAppointmentDetails(currentChat.petData.pet_id, true);
-                  }
-                }}
-                disabled={loadingAppointment}
-              >
-                <Calendar size={14} />
-                {loadingAppointment ? "Loading..." : "View Appointment Details"}
-              </button>
-              <button
-                className="quick-action-chip"
-                onClick={() => setShowHealthModal(true)}
-              >
-                <FileText size={14} />
-                Add to Medical Records
-              </button>
-            </div>
+                  }}
+                  disabled={loadingAppointment}
+                >
+                  <Calendar size={14} />
+                  {loadingAppointment ? "Loading..." : "View Appointment Details"}
+                </button>
+                <button
+                  className="quick-action-chip"
+                  onClick={() => setShowHealthModal(true)}
+                >
+                  <FileText size={14} />
+                  Add to Medical Records
+                </button>
+              </div>
+            )}
 
             {/* Messages Area */}
             <div className="messages-area" onScroll={handleScroll}>
@@ -1758,10 +2017,10 @@ const VetChat = () => {
           </div>
 
           {/* Pet Info Panel */}
-          {showPetInfo && currentPet && (
+          {showPetInfo && (
             <div className="pet-info-panel">
               <div className="pet-info-header">
-                <h3>Patient Information</h3>
+                <h3>{currentChat?.petData?.pet_id ? 'Patient Information' : 'Pet Information'}</h3>
                 <button
                   className="close-panel-btn"
                   onClick={() => setShowPetInfo(false)}
@@ -1770,114 +2029,338 @@ const VetChat = () => {
                 </button>
               </div>
 
-              <div className="pet-profile-card">
-                <div className="pet-image-large">
-                  {currentPet.image ? (
-                    <img
-                      src={`http://localhost:5000${currentPet.image}`}
-                      alt={currentPet.name}
-                      style={{
-                        width: "100%",
-                        height: "100%",
-                        objectFit: "cover",
-                        borderRadius: "12px",
-                      }}
-                    />
+              {!currentChat?.petData?.pet_id ? (
+              // 24/7 Consultation - Show pet selector
+              <>
+                <div className="pet-selector" style={{ padding: '16px', borderBottom: '1px solid #e8f0f7' }}>
+                  <label style={{ 
+                    fontSize: '14px', 
+                    fontWeight: '600', 
+                    marginBottom: '8px', 
+                    display: 'block',
+                    color: '#334155'
+                  }}>
+                    Choose pet to display:
+                  </label>
+                  <select
+                    className="pet-select-dropdown"
+                    value={selectedPetDisplay || ''}
+                    onChange={(e) => {
+                      const petId = e.target.value;
+                      setSelectedPetDisplay(petId);
+                      if (petId) {
+                        console.log('🐾 Selected pet_id:', petId);
+                        fetchAppointmentDetails(petId);
+                        fetchLastVisit(petId);
+                      }
+                    }}
+                    style={{
+                      width: '100%',
+                      padding: '10px 12px',
+                      borderRadius: '8px',
+                      border: '2px solid #e8f0f7',
+                      background: '#fff',
+                      fontSize: '14px',
+                      cursor: 'pointer',
+                      transition: 'border-color 0.2s'
+                    }}
+                  >
+                    <option value="">Choose a pet...</option>
+                    {ownerPets.map((pet) => (
+                      <option key={pet.pet_id} value={pet.pet_id}>
+                        {pet.pet_name} ({pet.pet_species})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {selectedPetDisplay && ownerPets.length > 0 ? (
+                    // Show selected pet info
+                    <>
+                      {(() => {
+                        // ✅ FIX 1: Look in ownerPets (the list populated for this specific owner)
+                        const selectedPatient = ownerPets.find(p => String(p.pet_id) === String(selectedPetDisplay));
+                        if (!selectedPatient) return null;
+
+                        const displayPet = {
+                          pet_id: selectedPatient.pet_id,
+                          name: selectedPatient.pet_name,
+                          species: selectedPatient.pet_species,
+                          breed: selectedPatient.pet_breed,
+                          age: `${selectedPatient.pet_age} years`,
+                          gender: selectedPatient.pet_gender === "m" ? "Male" : "Female",
+                          weight: `${selectedPatient.pet_weight} kg`,
+                          dietType: selectedPatient.pet_dietType || "Not specified",
+                          image: selectedPatient.pet_image || null,
+                          imageEmoji: selectedPatient.pet_species?.toLowerCase().includes("dog") ? "🐕" : "🐱",
+                          // ✅ FIX 2: Fallback to currentChat data for owner info (since pet record might not have it)
+                          owner: `${selectedPatient.owner_firstName || currentChat.petData.owner_firstName} ${selectedPatient.owner_lastName || currentChat.petData.owner_lastName}`,
+                          ownerEmail: selectedPatient.owner_email || currentChat.petData.owner_email,
+                          lastVisit: lastVisitData && lastVisitData.appt_date
+                            ? new Date(lastVisitData.appt_date).toLocaleDateString("en-US", {
+                                month: "short",
+                                day: "numeric",
+                                year: "numeric",
+                              })
+                            : "No previous visits",
+                          nextAppointment: appointmentDetails && appointmentDetails.appt_date
+                            ? new Date(appointmentDetails.appt_date).toLocaleDateString("en-US", {
+                                month: "short",
+                                day: "numeric",
+                                year: "numeric",
+                                hour: "numeric",
+                                minute: "2-digit",
+                                hour12: true,
+                              })
+                            : "-",
+                          behavioralNotes: selectedPatient.pet_behavioralNotes || "No behavioral notes recorded",
+                          medications: selectedPatient.pet_hasMedication === "yes" && selectedPatient.pet_medicationDetails
+                            ? selectedPatient.pet_medicationDetails.split(",").map((med) => med.trim())
+                            : ["No active medications"],
+                          allergies: selectedPatient.pet_hasAllergies === "yes" && selectedPatient.pet_allergyDetails
+                            ? selectedPatient.pet_allergyDetails.split(",").map((allergy) => allergy.trim())
+                            : ["No known allergies"],
+                          vaccinations: selectedPatient.pet_hasVaccination === "yes"
+                            ? [`Last vaccination: ${selectedPatient.pet_vaccinationDate
+                                ? new Date(selectedPatient.pet_vaccinationDate).toLocaleDateString()
+                                : "N/A"}`]
+                            : ["No vaccination records"],
+                        };
+
+                        return (
+                          <>
+                            <div className="pet-profile-card">
+                              <div className="pet-image-large">
+                                {displayPet.image ? (
+                                  <img
+                                    src={`http://localhost:5000${displayPet.image}`}
+                                    alt={displayPet.name}
+                                    style={{
+                                      width: "100%",
+                                      height: "100%",
+                                      objectFit: "cover",
+                                      borderRadius: "12px",
+                                    }}
+                                  />
+                                ) : (
+                                  <span>{displayPet.imageEmoji}</span>
+                                )}
+                              </div>
+                              <h2>{displayPet.name}</h2>
+                              <p className="pet-species">{displayPet.species}</p>
+
+                              <div className="pet-quick-stats">
+                                <div className="pet-stat">
+                                  <span className="stat-label-chat">Age</span>
+                                  <span className="stat-value-chat">{displayPet.age}</span>
+                                </div>
+                                <div className="pet-stat">
+                                  <span className="stat-label-chat">Gender</span>
+                                  <span className="stat-value-chat">{displayPet.gender}</span>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="pet-info-section">
+                              <h4>Owner</h4>
+                              <p className="info-text">{displayPet.owner}</p>
+                              <p className="info-text small">{displayPet.ownerEmail}</p>
+                            </div>
+
+                            <div className="pet-info-section">
+                              <h4>Breed</h4>
+                              <p className="info-text">{displayPet.breed}</p>
+                            </div>
+
+                            <div className="pet-info-section">
+                              <h4>Weight</h4>
+                              <p className="info-text">{displayPet.weight}</p>
+                            </div>
+
+                            <div className="pet-info-section">
+                              <h4>Diet Type</h4>
+                              <p className="info-text">{displayPet.dietType}</p>
+                            </div>
+
+                            <div className="pet-info-section">
+                              <h4>Last Visit</h4>
+                              <p className="info-text">{displayPet.lastVisit}</p>
+                            </div>
+
+                            <div className="pet-info-section">
+                              <h4>Next Appointment</h4>
+                              <p className="info-text highlight">{displayPet.nextAppointment}</p>
+                            </div>
+
+                            <div className="pet-info-section">
+                              <h4>Behavioral Notes</h4>
+                              <p className="info-text">{displayPet.behavioralNotes}</p>
+                            </div>
+
+                            <div className="pet-info-section">
+                              <h4>Active Medications</h4>
+                              {displayPet.medications.map((med, idx) => (
+                                <div key={idx} className="medication-item">
+                                  <span className="medication-dot">💊</span>
+                                  <p>{med}</p>
+                                </div>
+                              ))}
+                            </div>
+
+                            <div className="pet-info-section">
+                              <h4>Known Allergies</h4>
+                              <div className="tags-container">
+                                {displayPet.allergies.map((allergy, idx) => (
+                                  <span key={idx} className="condition-tag alert">
+                                    {allergy}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+
+                            <div className="pet-info-section">
+                              <h4>Vaccinations</h4>
+                              {displayPet.vaccinations.map((vac, idx) => (
+                                <div key={idx} className="medication-item">
+                                  <span className="medication-dot">💉</span>
+                                  <p>{vac}</p>
+                                </div>
+                              ))}
+                            </div>
+
+                            {/* ✅ ADD THIS BUTTON FOR 24/7 CONSULTATIONS */}
+                            <button
+                              className="view-records-btn"
+                              onClick={() => setShowHealthModal(true)}
+                            >
+                              <FileText size={16} />
+                              View Medical Records
+                            </button>
+                          </>
+                        );
+                      })()}
+                    </>
                   ) : (
-                    <span>{currentPet.imageEmoji}</span>
+                    <div style={{ 
+                      padding: '40px 16px', 
+                      textAlign: 'center', 
+                      color: '#94a3b8' 
+                    }}>
+                      <p>Select a pet to view information</p>
+                    </div>
                   )}
-                </div>
-                <h2>{currentPet.name}</h2>
-                <p className="pet-species">{currentPet.species}</p>
+                </>
+              ) : currentPet ? (
+                // Regular patient - Show current pet info
+                <>
+                  <div className="pet-profile-card">
+                    <div className="pet-image-large">
+                      {currentPet.image ? (
+                        <img
+                          src={`http://localhost:5000${currentPet.image}`}
+                          alt={currentPet.name}
+                          style={{
+                            width: "100%",
+                            height: "100%",
+                            objectFit: "cover",
+                            borderRadius: "12px",
+                          }}
+                        />
+                      ) : (
+                        <span>{currentPet.imageEmoji}</span>
+                      )}
+                    </div>
+                    <h2>{currentPet.name}</h2>
+                    <p className="pet-species">{currentPet.species}</p>
 
-                <div className="pet-quick-stats">
-                  <div className="pet-stat">
-                    <span className="stat-label-chat">Age</span>
-                    <span className="stat-value-chat">{currentPet.age}</span>
+                    <div className="pet-quick-stats">
+                      <div className="pet-stat">
+                        <span className="stat-label-chat">Age</span>
+                        <span className="stat-value-chat">{currentPet.age}</span>
+                      </div>
+                      <div className="pet-stat">
+                        <span className="stat-label-chat">Gender</span>
+                        <span className="stat-value-chat">{currentPet.gender}</span>
+                      </div>
+                    </div>
                   </div>
-                  <div className="pet-stat">
-                    <span className="stat-label-chat">Gender</span>
-                    <span className="stat-value-chat">{currentPet.gender}</span>
+
+                  <div className="pet-info-section">
+                    <h4>Owner</h4>
+                    <p className="info-text">{currentPet.owner}</p>
+                    <p className="info-text small">{currentPet.ownerEmail}</p>
                   </div>
-                </div>
-              </div>
 
-              <div className="pet-info-section">
-                <h4>Owner</h4>
-                <p className="info-text">{currentPet.owner}</p>
-                <p className="info-text small">{currentPet.ownerEmail}</p>
-              </div>
-
-              <div className="pet-info-section">
-                <h4>Breed</h4>
-                <p className="info-text">{currentPet.breed}</p>
-              </div>
-
-              <div className="pet-info-section">
-                <h4>Weight</h4>
-                <p className="info-text">{currentPet.weight}</p>
-              </div>
-
-              <div className="pet-info-section">
-                <h4>Diet Type</h4>
-                <p className="info-text">{currentPet.dietType}</p>
-              </div>
-
-              <div className="pet-info-section">
-                <h4>Last Visit</h4>
-                <p className="info-text">{currentPet.lastVisit}</p>
-              </div>
-
-              <div className="pet-info-section">
-                <h4>Next Appointment</h4>
-                <p className="info-text highlight">
-                  {currentPet.nextAppointment}
-                </p>
-              </div>
-
-              <div className="pet-info-section">
-                <h4>Behavioral Notes</h4>
-                <p className="info-text">{currentPet.behavioralNotes}</p>
-              </div>
-
-              <div className="pet-info-section">
-                <h4>Active Medications</h4>
-                {currentPet.medications.map((med, idx) => (
-                  <div key={idx} className="medication-item">
-                    <span className="medication-dot">💊</span>
-                    <p>{med}</p>
+                  <div className="pet-info-section">
+                    <h4>Breed</h4>
+                    <p className="info-text">{currentPet.breed}</p>
                   </div>
-                ))}
-              </div>
 
-              <div className="pet-info-section">
-                <h4>Known Allergies</h4>
-                <div className="tags-container">
-                  {currentPet.allergies.map((allergy, idx) => (
-                    <span key={idx} className="condition-tag alert">
-                      {allergy}
-                    </span>
-                  ))}
-                </div>
-              </div>
-
-              <div className="pet-info-section">
-                <h4>Vaccinations</h4>
-                {currentPet.vaccinations.map((vac, idx) => (
-                  <div key={idx} className="medication-item">
-                    <span className="medication-dot">💉</span>
-                    <p>{vac}</p>
+                  <div className="pet-info-section">
+                    <h4>Weight</h4>
+                    <p className="info-text">{currentPet.weight}</p>
                   </div>
-                ))}
-              </div>
 
-              <button
-                className="view-records-btn"
-                onClick={() => setShowHealthModal(true)}
-              >
-                <FileText size={16} />
-                Update Patient Records
-              </button>
+                  <div className="pet-info-section">
+                    <h4>Diet Type</h4>
+                    <p className="info-text">{currentPet.dietType}</p>
+                  </div>
+
+                  <div className="pet-info-section">
+                    <h4>Last Visit</h4>
+                    <p className="info-text">{currentPet.lastVisit}</p>
+                  </div>
+
+                  <div className="pet-info-section">
+                    <h4>Next Appointment</h4>
+                    <p className="info-text highlight">{currentPet.nextAppointment}</p>
+                  </div>
+
+                  <div className="pet-info-section">
+                    <h4>Behavioral Notes</h4>
+                    <p className="info-text">{currentPet.behavioralNotes}</p>
+                  </div>
+
+                  <div className="pet-info-section">
+                    <h4>Active Medications</h4>
+                    {currentPet.medications.map((med, idx) => (
+                      <div key={idx} className="medication-item">
+                        <span className="medication-dot">💊</span>
+                        <p>{med}</p>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="pet-info-section">
+                    <h4>Known Allergies</h4>
+                    <div className="tags-container">
+                      {currentPet.allergies.map((allergy, idx) => (
+                        <span key={idx} className="condition-tag alert">
+                          {allergy}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="pet-info-section">
+                    <h4>Vaccinations</h4>
+                    {currentPet.vaccinations.map((vac, idx) => (
+                      <div key={idx} className="medication-item">
+                        <span className="medication-dot">💉</span>
+                        <p>{vac}</p>
+                      </div>
+                    ))}
+                  </div>
+
+                  <button
+                    className="view-records-btn"
+                    onClick={() => setShowHealthModal(true)}
+                  >
+                    <FileText size={16} />
+                    Update Patient Records
+                  </button>
+                </>
+              ) : null}
             </div>
           )}
 
@@ -1913,11 +2396,15 @@ const VetChat = () => {
         />
       )}
 
-      {showHealthModal && currentChat?.petData?.pet_id && (
+      {/* Health Records Modal */}
+      {showHealthModal && (currentChat?.petData?.pet_id || selectedPetDisplay) && (
         <PatientProfileModal
-          petId={currentChat.petData.pet_id}
+          // ✅ FIX: Use selectedPetDisplay if currentChat doesn't have a fixed pet_id
+          petId={selectedPetDisplay || currentChat?.petData?.pet_id}
           vtId={vtId}
           onClose={() => setShowHealthModal(false)}
+          // ✅ FIX: Pass ReadOnly flag for 24/7 consultations (when no fixed pet_id exists)
+          isReadOnly={!currentChat?.petData?.pet_id}
         />
       )}
 
