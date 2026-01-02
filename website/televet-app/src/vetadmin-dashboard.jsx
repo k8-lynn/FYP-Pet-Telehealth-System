@@ -94,8 +94,8 @@ const VetAdminDashboard = () => {
       const todayStr = today.toISOString().split('T')[0];
       
       const todayAppts = allAppointments.filter(appt => {
-        const apptDate = new Date(appt.appt_date).toISOString().split('T')[0];
-        return apptDate === todayStr && appt.appt_status === 'scheduled';
+        const apptDate = new Date(appt.appt_date);
+        return apptDate.toDateString() === today.toDateString() && appt.appt_status === 'scheduled';
       });
       setTodaysAppointments(todayAppts);
 
