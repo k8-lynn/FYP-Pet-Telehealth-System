@@ -1529,6 +1529,42 @@ app.get("/api/vets-nearby", (req, res) => {
   });
 });
 
+// Search clinics by name
+app.get("/api/clinics/search", (req, res) => {
+  const { query } = req.query;
+
+  if (!query) {
+    return res.status(400).json({ error: "Search query is required" });
+  }
+
+  const sql = `
+    SELECT 
+      c.clinic_id,
+      c.clinic_name as va_clinicName,
+      c.clinic_location as va_vetLocation,
+      c.clinic_phone as va_clinicPhone,
+      c.clinic_email as va_clinicEmail,
+      c.clinic_lat as va_lat,
+      c.clinic_lon as va_lon,
+      c.va_id
+    FROM clinic_t c
+    WHERE c.clinic_name LIKE ? OR c.clinic_location LIKE ?
+    LIMIT 10
+  `;
+
+  const searchTerm = `%${query}%`;
+
+  db.query(sql, [searchTerm, searchTerm], (err, results) => {
+    if (err) {
+      console.error("❌ Search error:", err);
+      return res.status(500).json({ error: "Database error" });
+    }
+
+    console.log(`✅ Found ${results.length} clinics matching "${query}"`);
+    res.json(results);
+  });
+});
+
 //BACKEND
 // 🟢 ASSIGN PET PARENT TO A CLINIC 
 app.put('/api/assign-clinic', (req, res) => {

@@ -1363,3 +1363,16 @@
   transform: translateY(-1px);
   box-shadow: 0 4px 8px rgba(100, 116, 139, 0.3);
 }
+
+/* 24/7 Consultations List - Separate from regular chat list */
+.consultation-247-list {
+  overflow-y: auto;
+  padding: 0.4rem;
+  max-height: 300px; /* Only enforced when there are many items */
+}
+
+/* When empty or has few items, don't enforce height */
+.consultation-247-list:empty {
+  padding: 0;
+  max-height: 0;
+}

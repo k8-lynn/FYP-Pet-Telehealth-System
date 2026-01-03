@@ -1675,12 +1675,15 @@ const PetOwnerChat = () => {
                   className="available-vets-toggle"
                   onClick={() => setShow24x7Vets(!show24x7Vets)}
                 >
-                  <h4>
+                  <div className="vets-toggle-content">
                     <span className="toggle-icon">
                       {show24x7Vets ? '▼' : '▶'}
                     </span>
-                    24/7 Online Vets
-                  </h4>
+                    <div className="vets-toggle-text">
+                      <h4>24/7 Veterinary Support</h4>
+                      <p>Connect with an online vet instantly</p>
+                    </div>
+                  </div>
                 </div>
 
                 {show24x7Vets && (

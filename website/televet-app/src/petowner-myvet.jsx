@@ -195,18 +195,66 @@ const MyVet = () => {
   const handleSearch = async () => {
     if (!location.trim()) return showStyledAlert("Enter a location.");
     setLoading(true);
-    const res = await fetch(
-      `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(location)}`
-    );
-    const data = await res.json();
-    if (data.length === 0) {
-      showStyledAlert("Location not found.");
-      setLoading(false);
-      return;
+    
+    // First, try searching for clinics by name
+    try {
+      const clinicRes = await fetch(
+        `http://localhost:5000/api/clinics/search?query=${encodeURIComponent(location)}`
+      );
+      const clinicData = await clinicRes.json();
+      
+      if (clinicData.length > 0) {
+        // Found clinics by name - calculate distances if user location is available
+        if (navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(
+            (pos) => {
+              const { latitude, longitude } = pos.coords;
+              const withDistances = clinicData.map(clinic => ({
+                ...clinic,
+                distance: clinic.va_lat && clinic.va_lon 
+                  ? calculateDistance(latitude, longitude, clinic.va_lat, clinic.va_lon)
+                  : null
+              }));
+              setVets(withDistances);
+              setLoading(false);
+            },
+            () => {
+              // No geolocation, show without distances
+              setVets(clinicData.map(c => ({ ...c, distance: null })));
+              setLoading(false);
+            }
+          );
+        } else {
+          setVets(clinicData.map(c => ({ ...c, distance: null })));
+          setLoading(false);
+        }
+        return;
+      }
+    } catch (error) {
+      console.error("Error searching clinics:", error);
     }
-    const { lat, lon } = data[0];
-    setCoords({ lat, lon });
-    fetchVetsNearby(lat, lon);
+    
+    // If no clinics found by name, try geocoding the location
+    try {
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(location)}`
+      );
+      const data = await res.json();
+      
+      if (data.length === 0) {
+        showStyledAlert("No clinics or locations found.");
+        setLoading(false);
+        return;
+      }
+      
+      const { lat, lon } = data[0];
+      setCoords({ lat, lon });
+      fetchVetsNearby(lat, lon);
+    } catch (error) {
+      console.error("Error with location search:", error);
+      showStyledAlert("Search failed. Please try again.");
+      setLoading(false);
+    }
   };
 
   const fetchVetsNearby = async (lat, lon) => {
@@ -591,7 +639,9 @@ const MyVet = () => {
                           </div>
                         </div>
                         <div className="myvet-vet-distance">
-                          {vet.distance?.toFixed(2)} km away
+                          {vet.distance !== null && vet.distance !== undefined
+                            ? `${vet.distance.toFixed(2)} km away`
+                            : 'Distance unavailable'}
                         </div>
                       </div>
                     ))}

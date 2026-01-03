@@ -1577,7 +1577,7 @@ const handle247Toggle = async () => {
                 </div>
 
                 {show24x7Patients && (
-                  <div className="chat-list">
+                  <div className="consultation-247-list">
                     {loading24x7 ? (
                       <p style={{ textAlign: 'center', color: '#94a3b8', fontSize: '0.75rem' }}>
                         Loading...
