@@ -5953,6 +5953,70 @@ const scheduleNextReminder = () => {
   });
 };
 
+// Add this function BEFORE fireReminder
+const createNextRecurringReminder = (reminder) => {
+  if (!reminder.rmd_repeat_period) {
+    console.log('⚠️ No repeat period set, skipping recurrence');
+    return;
+  }
+
+  // Calculate next date based on repeat period
+  const currentDate = new Date(reminder.rmd_date);
+  let nextDate = new Date(currentDate);
+
+  switch (reminder.rmd_repeat_period) {
+    case 'day':
+      nextDate.setDate(currentDate.getDate() + 1);
+      break;
+    case 'week':
+      nextDate.setDate(currentDate.getDate() + 7);
+      break;
+    case 'month':
+      nextDate.setMonth(currentDate.getMonth() + 1);
+      break;
+    case 'year':
+      nextDate.setFullYear(currentDate.getFullYear() + 1);
+      break;
+    default:
+      console.log('⚠️ Invalid repeat period:', reminder.rmd_repeat_period);
+      return;
+  }
+
+  const nextDateStr = `${nextDate.getFullYear()}-${String(nextDate.getMonth() + 1).padStart(2, '0')}-${String(nextDate.getDate()).padStart(2, '0')}`;
+
+  const sql = `
+    INSERT INTO pet_parent_rmd_t (
+      pp_id,
+      pet_id,
+      rmd_title,
+      rmd_desc,
+      rmd_date,
+      rmd_time,
+      rmd_repeat,
+      rmd_repeat_period,
+      rmd_done
+    )
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'no')
+  `;
+
+  db.query(sql, [
+    reminder.pp_id,
+    reminder.pet_id || null,
+    reminder.rmd_title,
+    reminder.rmd_desc || null,
+    nextDateStr,
+    reminder.rmd_time,
+    'yes',
+    reminder.rmd_repeat_period
+  ], (err, result) => {
+    if (err) {
+      console.error('❌ Error creating next recurring reminder:', err);
+    } else {
+      console.log(`✅ Created next recurring reminder for ${nextDateStr} at ${reminder.rmd_time}`);
+    }
+  });
+};
+
 const fireReminder = (reminder) => {
   console.log(`🔔 FIRING: ${reminder.rmd_title}`);
   
@@ -6610,7 +6674,7 @@ app.get('/api/pets/:pet_id/examinations', (req, res) => {
     LEFT JOIN veterinarian_t vt ON a.vt_id = vt.vt_id
     LEFT JOIN user_t u ON vt.usr_id = u.usr_id
     LEFT JOIN clinic_t c ON a.clinic_id = c.clinic_id
-    WHERE a.pet_id = ?
+    WHERE a.pet_id = ? AND a.appt_status IN ('scheduled', 'completed')
     ORDER BY a.appt_date DESC
   `;
 
