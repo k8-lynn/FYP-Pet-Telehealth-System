@@ -6023,6 +6023,7 @@ const fireReminder = (reminder) => {
   const petInfo = reminder.pet_name ? ` for ${reminder.pet_name}` : '';
   const message = `Reminder: ${reminder.rmd_title}${petInfo}`;
   
+  // Store notification in database
   createNotification(
     reminder.usr_id,
     reminder.pet_id,
@@ -6032,7 +6033,15 @@ const fireReminder = (reminder) => {
     null
   );
 
-  // ✅ Record when this reminder was fired
+  // ✅ NEW: Emit real-time notification via Socket.IO
+  io.to(`user_${reminder.usr_id}`).emit('reminder_notification', {
+    title: reminder.rmd_title,
+    message: message,
+    pet_name: reminder.pet_name,
+    time: reminder.rmd_time
+  });
+
+  // Record when this reminder was fired
   db.query(
     'UPDATE pet_parent_rmd_t SET last_fired_at = NOW() WHERE rmd_id = ?', 
     [reminder.rmd_id],
@@ -6041,7 +6050,7 @@ const fireReminder = (reminder) => {
     }
   );
 
-  // ✅ Handle recurring reminders - create next occurrence
+  // Handle recurring reminders
   if (reminder.rmd_repeat === 'yes') {
     createNextRecurringReminder(reminder);
   }

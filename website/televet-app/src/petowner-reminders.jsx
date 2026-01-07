@@ -9,6 +9,7 @@ import AppointmentDetailsModal from './components/AppointmentDetailsModal';
 import BookAppointment from './components/bookAppointment';
 import Toast from './components/toast';
 import showStyledAlert from './utils/styledAlert';
+import io from 'socket.io-client';
 
 const RemindersPage = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -34,6 +35,7 @@ const RemindersPage = () => {
   const [registeredVet, setRegisteredVet] = useState(null);
   const [showBookingToast, setShowBookingToast] = useState(false);
   const [bookingDetails, setBookingDetails] = useState(null);
+  const socket = io('http://localhost:5000');
   
   const [newReminder, setNewReminder] = useState({
     title: '',
@@ -243,6 +245,47 @@ const RemindersPage = () => {
       fetchReminderDates(ppId, currentDate.getFullYear(), currentDate.getMonth() + 1);
     }
   }, [currentDate, ppId]);
+
+  // Add this near the top with other useEffects
+useEffect(() => {
+  if (!userid) return;
+
+  // Request notification permission
+  if ('Notification' in window && Notification.permission === 'default') {
+    Notification.requestPermission();
+  }
+
+  // Listen for reminder notifications from backend
+  const handleReminderNotification = (data) => {
+    console.log('🔔 Received reminder notification:', data);
+    
+    // Show desktop notification
+    if ('Notification' in window && Notification.permission === 'granted') {
+      new Notification(data.title, {
+        body: data.message,
+        icon: '/paw-icon.png', // Add your icon path
+        tag: 'reminder',
+        requireInteraction: true
+      });
+    }
+    
+    // Refresh reminders list
+    if (ppId) {
+      fetchTodaysReminders(ppId);
+      fetchUpcomingReminders(ppId);
+    }
+  };
+
+  // Assuming you have socket.io-client set up
+  // If not, you'll need to add: import io from 'socket.io-client';
+  // const socket = io('http://localhost:5000');
+  
+  socket.on('reminder_notification', handleReminderNotification);
+
+  return () => {
+    socket.off('reminder_notification', handleReminderNotification);
+  };
+}, [userid, ppId]);
 
   // Toggle reminder completion
   const toggleReminder = async (rmd_id, e) => {
