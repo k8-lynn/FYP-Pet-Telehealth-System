@@ -118,7 +118,7 @@ A full-stack telehealth platform developed as a Final Year Project (FYP) to conn
 * Automated appointment scheduling workflow
 * Location-based clinic discovery
 * PDF export for health records and reports
-* Responsive interface for desktop and mobile users
+* Responsive interface
 
 ## Purpose
 
