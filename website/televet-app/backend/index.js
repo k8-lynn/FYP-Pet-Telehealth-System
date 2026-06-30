@@ -15,7 +15,7 @@ const app = express();
 // ✅ Array of allowed origins (your local frontend + your future live frontend URL)
 const allowedOrigins = [
   'http://localhost:5173', 
-  'https://your-future-frontend-url.vercel.app' // 👈 Swap this out once you deploy the frontend!
+  'https://fyp-pet-telehealth-system.vercel.app' // 👈 Paste your actual Vercel URL here!
 ];
 
 // ✅ CORS configuration for Express
