@@ -12,15 +12,9 @@ dotenv.config();
 
 const app = express();
 
-// ✅ Array of allowed origins
-const allowedOrigins = [
-  'http://localhost:5173', 
-  'https://fyp-pet-telehealth-system.vercel.app'
-];
-
-// ✅ Simplified CORS configuration
+// ✅ The Magic Bullet CORS Config
 app.use(cors({
-  origin: allowedOrigins,
+  origin: true, // 👈 Automatically accepts the request's origin, no matter what Vercel URL it is!
   credentials: true
 }));
 
@@ -31,7 +25,7 @@ app.use(cookieParser());
 const server = createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: allowedOrigins, 
+    origin: true, // 👈 Automatically mirrors the origin for WebSockets too
     methods: ["GET", "POST", "PUT"],
     credentials: true
   }
