@@ -277,50 +277,54 @@ const VetChat = () => {
     }
   }, [selectedChat]); // eslint-disable-line
 
-  // ✅ Resolve the matching patient/24-7 chat OUTSIDE the effect, so we can
-  // depend on stable primitive values instead of the whole arrays
-  const selectedPatientForInit = myPatients.find(
-    (p) => `patient-${p.pet_id}` === selectedChat
-  );
-  const selected247ChatForInit = consultation24x7Chats.find(
-    (c) => c.id === selectedChat
-  );
-
-  // Combined effect to initialize chat when BOTH selectedChat and vtId are ready
+  // Fetch appointment details when selectedChat changes
   React.useEffect(() => {
-    if (selectedChat && selectedPatientForInit?.pp_id && vtId) {
+    if (selectedChat && currentChat?.petData?.pet_id) {
+      fetchAppointmentDetails(currentChat.petData.pet_id);
+      fetchLastVisit(currentChat.petData.pet_id);
+    }
+  }, [selectedChat]); // eslint-disable-line
+
+  // ✅ NEW: Combined effect to initialize chat when BOTH selectedChat and vtId are ready
+  React.useEffect(() => {
+    // Check if it's a regular patient chat
+    const selectedPatient = myPatients.find(
+      (p) => `patient-${p.pet_id}` === selectedChat
+    );
+
+    // Check if it's a 24/7 consultation chat
+    const selected247Chat = consultation24x7Chats.find(
+      (c) => c.id === selectedChat
+    );
+
+    if (selectedChat && selectedPatient?.pp_id && vtId) {
       console.log("🔄 Initializing regular patient chat for:", {
         selectedChat,
-        pet_id: selectedPatientForInit.pet_id,
-        pet_name: selectedPatientForInit.pet_name,
-        pp_id: selectedPatientForInit.pp_id,
+        pet_id: selectedPatient.pet_id,
+        pet_name: selectedPatient.pet_name,
+        pp_id: selectedPatient.pp_id,
         vt_id: vtId,
       });
-      initializeChat(selectedPatientForInit.pp_id, vtId);
-    } else if (selectedChat && selected247ChatForInit?.petData?.pp_id && vtId) {
+      initializeChat(selectedPatient.pp_id, vtId);
+    } else if (selectedChat && selected247Chat?.petData?.pp_id && vtId) {
+      // ✅ Handle 24/7 consultation chat initialization
       console.log("🔄 Initializing 24/7 consultation chat for:", {
         selectedChat,
-        chat_id: selected247ChatForInit.petData.chat_id,
-        pp_id: selected247ChatForInit.petData.pp_id,
+        chat_id: selected247Chat.petData.chat_id,
+        pp_id: selected247Chat.petData.pp_id,
         vt_id: vtId,
       });
-
+      
       // For 24/7 chats, we already have chat_id, so set it directly
-      setChatId(selected247ChatForInit.petData.chat_id);
-
+      setChatId(selected247Chat.petData.chat_id);
+      
       // Mark messages as read after setting chat
       setTimeout(() => {
         markAsRead();
       }, 500);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    selectedChat,
-    vtId,
-    selectedPatientForInit?.pp_id,
-    selected247ChatForInit?.petData?.chat_id,
-  ]);
-  
+  }, [selectedChat, vtId, myPatients, consultation24x7Chats]);
   // Fetch vet info
   React.useEffect(() => {
     const fetchVetInfo = async () => {
@@ -478,67 +482,52 @@ const VetChat = () => {
   }, [vtId]);
 
   // Initialize chat between vet and pet parent
-  const lastInitializedPair = React.useRef(null);
+  const initializeChat = React.useCallback(
+    async (pp_id, vt_id) => {
+      try {
+        console.log("📞 Initializing chat with pp_id:", pp_id, "vt_id:", vt_id);
 
-// Initialize chat between vet and pet parent
-const initializeChat = React.useCallback(
-  async (pp_id, vt_id) => {
-    // Skip if we already initialized this exact pp_id/vt_id pair
-    if (
-      chatId &&
-      lastInitializedPair.current?.pp_id === pp_id &&
-      lastInitializedPair.current?.vt_id === vt_id
-    ) {
-      return chatId;
-    }
+        const response = await fetch(
+          "https://fyp-pet-telehealth-system.onrender.com/api/chat/get-or-create",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ pp_id, vt_id }),
+          }
+        );
+        const chat = await response.json();
 
-    try {
-      console.log("📞 Initializing chat with pp_id:", pp_id, "vt_id:", vt_id);
+        console.log(
+          "✅ Chat initialized with chat_id:",
+          chat.chat_id,
+          "for pp_id:",
+          pp_id
+        );
 
-      const response = await fetch(
-        "https://fyp-pet-telehealth-system.onrender.com/api/chat/get-or-create",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ pp_id, vt_id }),
-        }
-      );
-      const chat = await response.json();
+        setChatId((prevChatId) => {
+          if (prevChatId !== chat.chat_id) {
+            console.log(
+              "🔄 Switching from chat_id",
+              prevChatId,
+              "to",
+              chat.chat_id
+            );
+          }
+          return chat.chat_id;
+        });
 
-      console.log(
-        "✅ Chat initialized with chat_id:",
-        chat.chat_id,
-        "for pp_id:",
-        pp_id
-      );
+        // Mark messages as read after initializing chat
+        setTimeout(() => {
+          markAsRead();
+        }, 500);
 
-      // Remember this pair so repeat calls are skipped
-      lastInitializedPair.current = { pp_id, vt_id };
-
-      setChatId((prevChatId) => {
-        if (prevChatId !== chat.chat_id) {
-          console.log(
-            "🔄 Switching from chat_id",
-            prevChatId,
-            "to",
-            chat.chat_id
-          );
-        }
         return chat.chat_id;
-      });
-
-      // Mark messages as read after initializing chat
-      setTimeout(() => {
-        markAsRead();
-      }, 500);
-
-      return chat.chat_id;
-    } catch (error) {
-      console.error("Error initializing chat:", error);
-    }
-  },
-  [chatId, markAsRead]
-);
+      } catch (error) {
+        console.error("Error initializing chat:", error);
+      }
+    },
+    [markAsRead]
+  );
 
   const fetchAppointmentDetails = async (pet_id, showModal = false) => {
     try {
