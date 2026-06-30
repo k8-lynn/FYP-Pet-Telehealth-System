@@ -4512,35 +4512,16 @@ app.get('/api/veterinarian/:vt_id', (req, res) => {
 // Get or create chat between pet parent and vet
 app.post('/api/chat/get-or-create', (req, res) => {
   const { pp_id, vt_id } = req.body;
-  
-  // Check if chat exists
   db.query(
-    'SELECT * FROM chat_t WHERE pp_id = ? AND vt_id = ?',
+    `INSERT INTO chat_t (pp_id, vt_id) VALUES (?, ?)
+     ON DUPLICATE KEY UPDATE chat_id = LAST_INSERT_ID(chat_id)`,
     [pp_id, vt_id],
-    (err, results) => {
+    (err) => {
       if (err) return res.status(500).json({ error: err.message });
-      
-      if (results.length > 0) {
-        return res.json(results[0]);
-      }
-      
-      // Create new chat
-      db.query(
-        'INSERT INTO chat_t (pp_id, vt_id) VALUES (?, ?)',
-        [pp_id, vt_id],
-        (err, result) => {
-          if (err) return res.status(500).json({ error: err.message });
-          
-          db.query(
-            'SELECT * FROM chat_t WHERE chat_id = ?',
-            [result.insertId],
-            (err, newChat) => {
-              if (err) return res.status(500).json({ error: err.message });
-              res.json(newChat[0]);
-            }
-          );
-        }
-      );
+      db.query('SELECT * FROM chat_t WHERE pp_id = ? AND vt_id = ?', [pp_id, vt_id], (err2, rows) => {
+        if (err2) return res.status(500).json({ error: err2.message });
+        res.json(rows[0]);
+      });
     }
   );
 });
