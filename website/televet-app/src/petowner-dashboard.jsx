@@ -91,7 +91,7 @@ const PetOwnerDashboard = () => {
 
   const fetchPetParentInfo = async (usr_id) => {
     try {
-      const response = await fetch(`http://localhost:5000/api/petparent/${usr_id}`);
+      const response = await fetch(`https://fyp-pet-telehealth-system.onrender.com/api/petparent/${usr_id}`);
       const data = await response.json();
 
       if (response.ok && data.pp_id) {
@@ -109,11 +109,11 @@ const PetOwnerDashboard = () => {
 
   const fetchAssignedClinic = async (usr_id) => {
     try {
-      const res = await fetch(`http://localhost:5000/api/user-clinic/${usr_id}`);
+      const res = await fetch(`https://fyp-pet-telehealth-system.onrender.com/api/user-clinic/${usr_id}`);
       const data = await res.json();
 
       if (data.clinic) {
-        const vetRes = await fetch(`http://localhost:5000/api/vet-by-name/${encodeURIComponent(data.clinic)}`);
+        const vetRes = await fetch(`https://fyp-pet-telehealth-system.onrender.com/api/vet-by-name/${encodeURIComponent(data.clinic)}`);
         const vetData = await vetRes.json();
 
         if (vetRes.ok && vetData) {
@@ -127,7 +127,7 @@ const PetOwnerDashboard = () => {
 
   const fetchUserPets = async (usr_id) => {
     try {
-      const response = await fetch(`http://localhost:5000/api/user-pets/${usr_id}`);
+      const response = await fetch(`https://fyp-pet-telehealth-system.onrender.com/api/user-pets/${usr_id}`);
       const data = await response.json();
       setUserPets(data);
     } catch (error) {
@@ -142,7 +142,7 @@ const PetOwnerDashboard = () => {
       console.log('📅 Fetching reminders for date:', dateStr);
       
       // Use the new specific endpoint
-      const response = await fetch(`http://localhost:5000/api/reminders/${pp_id}/by-date/${dateStr}`);
+      const response = await fetch(`https://fyp-pet-telehealth-system.onrender.com/api/reminders/${pp_id}/by-date/${dateStr}`);
       const reminders = await response.json();
       
       console.log('✅ Received reminders:', reminders);
@@ -154,7 +154,7 @@ const PetOwnerDashboard = () => {
 
   const fetchUpcomingAppointments = async (usr_id) => {
     try {
-      const response = await fetch(`http://localhost:5000/api/user-appointments/${usr_id}`);
+      const response = await fetch(`https://fyp-pet-telehealth-system.onrender.com/api/user-appointments/${usr_id}`);
       
       if (!response.ok) {
         console.error('Failed to fetch appointments');
@@ -181,7 +181,7 @@ const PetOwnerDashboard = () => {
   const fetchAppointmentDetailsById = async (appt_id) => {
     try {
       setLoadingAppointmentDetails(true);
-      const response = await fetch(`http://localhost:5000/api/appointment-details/${appt_id}`);
+      const response = await fetch(`https://fyp-pet-telehealth-system.onrender.com/api/appointment-details/${appt_id}`);
 
       if (response.status === 404) {
         showStyledAlert('Appointment not found');
@@ -227,7 +227,7 @@ const PetOwnerDashboard = () => {
 
   const fetchReminderDates = async (pp_id, year, month) => {
     try {
-      const response = await fetch(`http://localhost:5000/api/reminders/${pp_id}/dates/${year}/${month}`);
+      const response = await fetch(`https://fyp-pet-telehealth-system.onrender.com/api/reminders/${pp_id}/dates/${year}/${month}`);
       const data = await response.json();
       setReminderDates(new Set(data.days));
     } catch (error) {
@@ -237,7 +237,7 @@ const PetOwnerDashboard = () => {
   
   const fetchAppointmentDates = async (usr_id, year, month) => {
     try {
-      const response = await fetch(`http://localhost:5000/api/user-appointments/${usr_id}`);
+      const response = await fetch(`https://fyp-pet-telehealth-system.onrender.com/api/user-appointments/${usr_id}`);
       const appointments = await response.json();
       
       const dates = new Set();
@@ -261,7 +261,7 @@ const PetOwnerDashboard = () => {
     }
 
     try {
-      const response = await fetch('http://localhost:5000/api/reminders', {
+      const response = await fetch('https://fyp-pet-telehealth-system.onrender.com/api/reminders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -384,7 +384,7 @@ const PetOwnerDashboard = () => {
     const cancelledBy = 'petParent';
     
     try {
-      const response = await fetch(`http://localhost:5000/api/appointments/${apptId}/cancel`, {
+      const response = await fetch(`https://fyp-pet-telehealth-system.onrender.com/api/appointments/${apptId}/cancel`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

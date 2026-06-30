@@ -82,7 +82,7 @@ const BookAppointment = ({ clinicId, onClose, onBookingSuccess, initialDescripti
     try {
       const dateStr = formatDateForAPI(date);
       // ✅ ADD consultationType parameter
-      const res = await fetch(`http://localhost:5000/api/clinic-slots/${clinicId}/date/${dateStr}/${consultationType}`);
+      const res = await fetch(`https://fyp-pet-telehealth-system.onrender.com/api/clinic-slots/${clinicId}/date/${dateStr}/${consultationType}`);
       const data = await res.json();
       
       if (data && data.slots) {
@@ -112,7 +112,7 @@ const BookAppointment = ({ clinicId, onClose, onBookingSuccess, initialDescripti
 
       // ✅ ADD consultationType parameter
       const res = await fetch(
-        `http://localhost:5000/api/clinic-slots/${clinicId}/range/${consultationType}?startDate=${startDate}&endDate=${endDate}`
+        `https://fyp-pet-telehealth-system.onrender.com/api/clinic-slots/${clinicId}/range/${consultationType}?startDate=${startDate}&endDate=${endDate}`
       );
       const data = await res.json();
       
@@ -136,7 +136,7 @@ const BookAppointment = ({ clinicId, onClose, onBookingSuccess, initialDescripti
 
       // ✅ ADD consultationType parameter
       const res = await fetch(
-        `http://localhost:5000/api/clinic-slots/${clinicId}/range/${consultationType}?startDate=${startDate}&endDate=${endDate}`
+        `https://fyp-pet-telehealth-system.onrender.com/api/clinic-slots/${clinicId}/range/${consultationType}?startDate=${startDate}&endDate=${endDate}`
       );
       const data = await res.json();
       
@@ -175,7 +175,7 @@ const BookAppointment = ({ clinicId, onClose, onBookingSuccess, initialDescripti
     if (!clinicId) return;
 
     // Create socket connection
-    socketRef.current = io("http://localhost:5000", {
+    socketRef.current = io("https://fyp-pet-telehealth-system.onrender.com", {
       transports: ["websocket"],
       reconnectionAttempts: 5,
       reconnectionDelay: 1000,
@@ -261,7 +261,7 @@ const BookAppointment = ({ clinicId, onClose, onBookingSuccess, initialDescripti
       if (!userId) return;
   
       try {
-        const res = await fetch(`http://localhost:5000/api/user-pets/${userId}`);
+        const res = await fetch(`https://fyp-pet-telehealth-system.onrender.com/api/user-pets/${userId}`);
         const data = await res.json();
         setUserPets(data);
       } catch (error) {
@@ -332,7 +332,7 @@ const handleEmergencyResponse = (isEmergency) => {
   
     try {
       // Step 1: Get current slots
-      const res = await fetch(`http://localhost:5000/api/clinic-slots/${clinicId}/date/${dateStr}/${consultationType}`);
+      const res = await fetch(`https://fyp-pet-telehealth-system.onrender.com/api/clinic-slots/${clinicId}/date/${dateStr}/${consultationType}`);
       const data = await res.json();
       
       let currentSlots = data?.slots || [];
@@ -353,7 +353,7 @@ const handleEmergencyResponse = (isEmergency) => {
       );
   
       // Step 3: Update NEW slots in database
-      const updateRes = await fetch(`http://localhost:5000/api/clinic-slots/${clinicId}/date/${dateStr}/${consultationType}`, {
+      const updateRes = await fetch(`https://fyp-pet-telehealth-system.onrender.com/api/clinic-slots/${clinicId}/date/${dateStr}/${consultationType}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ slots: updatedSlots })
@@ -369,7 +369,7 @@ const handleEmergencyResponse = (isEmergency) => {
       
       if (rescheduleMode && oldAppointmentId) {
         // RESCHEDULE: Update existing appointment and release old slot
-        const rescheduleRes = await fetch(`http://localhost:5000/api/appointments/${oldAppointmentId}/reschedule`, {
+        const rescheduleRes = await fetch(`https://fyp-pet-telehealth-system.onrender.com/api/appointments/${oldAppointmentId}/reschedule`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -404,7 +404,7 @@ const handleEmergencyResponse = (isEmergency) => {
         }
       } else {
         // NORMAL BOOKING: Create new appointment
-        const appointmentRes = await fetch('http://localhost:5000/api/appointments', {
+        const appointmentRes = await fetch('https://fyp-pet-telehealth-system.onrender.com/api/appointments', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({

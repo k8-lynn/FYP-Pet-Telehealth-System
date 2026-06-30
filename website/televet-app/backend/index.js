@@ -12,20 +12,34 @@ dotenv.config();
 
 const app = express();
 
-// ✅ CORS configuration MUST be before other middleware
+// ✅ Array of allowed origins (your local frontend + your future live frontend URL)
+const allowedOrigins = [
+  'http://localhost:5173', 
+  'https://your-future-frontend-url.vercel.app' // 👈 Swap this out once you deploy the frontend!
+];
+
+// ✅ CORS configuration for Express
 app.use(cors({
-  origin: 'http://localhost:5173',
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.indexOf(origin) === -1) {
+      const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
+      return callback(new Error(msg), false);
+    }
+    return callback(null, true);
+  },
   credentials: true
 }));
 
 app.use(express.json());
 app.use(cookieParser());
 
-// ✅ Create HTTP server & Socket.IO instance
+// ✅ Create HTTP server & Socket.IO instance with matching CORS rules
 const server = createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: "http://localhost:5173",
+    origin: allowedOrigins, // ✅ Allows both local and live frontend connections
     methods: ["GET", "POST", "PUT"],
     credentials: true
   }

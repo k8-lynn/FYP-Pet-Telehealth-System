@@ -82,11 +82,11 @@ const VetAdminDashboard = () => {
 
     try {
       // Fetch appointment counts
-      const countsResponse = await axios.get(`http://localhost:5000/api/clinic-appointments-count/${clinicId}`);
+      const countsResponse = await axios.get(`https://fyp-pet-telehealth-system.onrender.com/api/clinic-appointments-count/${clinicId}`);
       setAppointmentCounts(countsResponse.data);
 
       // Fetch all appointments for clinic
-      const appointmentsResponse = await axios.get(`http://localhost:5000/api/appointments/clinic/${clinicId}`);
+      const appointmentsResponse = await axios.get(`https://fyp-pet-telehealth-system.onrender.com/api/appointments/clinic/${clinicId}`);
       const allAppointments = appointmentsResponse.data;
 
       // Filter today's appointments
@@ -106,7 +106,7 @@ const VetAdminDashboard = () => {
       // Fetch patients count
       if (clinicInfo && clinicInfo.clinic_name) {
         const patientsResponse = await axios.get(
-          `http://localhost:5000/api/patients/clinic/${encodeURIComponent(clinicInfo.clinic_name)}`
+          `https://fyp-pet-telehealth-system.onrender.com/api/patients/clinic/${encodeURIComponent(clinicInfo.clinic_name)}`
         );
         setTotalPatients(patientsResponse.data.length);
         
@@ -114,7 +114,7 @@ const VetAdminDashboard = () => {
       }
 
       // Fetch veterinarians
-      const vetsResponse = await axios.get(`http://localhost:5000/api/veterinarians/${vaId}`);
+      const vetsResponse = await axios.get(`https://fyp-pet-telehealth-system.onrender.com/api/veterinarians/${vaId}`);
       const onDutyVets = vetsResponse.data.filter(vet => vet.vt_onDutyToday === 'yes').length;
       setActiveVets(onDutyVets);
 
@@ -128,7 +128,7 @@ const VetAdminDashboard = () => {
 
   const fetchClinicData = useCallback(async (vaId) => {
     try {
-      const response = await axios.get(`http://localhost:5000/api/clinic/${vaId}`);
+      const response = await axios.get(`https://fyp-pet-telehealth-system.onrender.com/api/clinic/${vaId}`);
       const clinicData = response.data;
       
       console.log('✅ Clinic data received:', clinicData);
@@ -150,7 +150,7 @@ const VetAdminDashboard = () => {
 
   const fetchUserProfile = useCallback(async (userId) => {
     try {
-      const response = await axios.get(`http://localhost:5000/api/profile/${userId}`);
+      const response = await axios.get(`https://fyp-pet-telehealth-system.onrender.com/api/profile/${userId}`);
       const data = await response.json();
   
       if (response.ok) {

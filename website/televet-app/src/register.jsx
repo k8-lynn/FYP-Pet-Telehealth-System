@@ -167,7 +167,7 @@ const Register = () => {
     };
   
     try {
-      const response = await fetch("http://localhost:5000/api/register", {
+      const response = await fetch("https://fyp-pet-telehealth-system.onrender.com/api/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formattedData),
@@ -195,7 +195,7 @@ const Register = () => {
 
   const checkEmailExists = async (email) => {
     try {
-      const response = await fetch(`http://localhost:5000/api/check-email?email=${encodeURIComponent(email)}`);
+      const response = await fetch(`https://fyp-pet-telehealth-system.onrender.com/api/check-email?email=${encodeURIComponent(email)}`);
       const data = await response.json();
       return data.exists;
     } catch (err) {

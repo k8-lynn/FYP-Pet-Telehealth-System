@@ -58,7 +58,7 @@ const VetAdminMyVeterinarians = () => {
       if (!userid) return;
 
       try {
-        const response = await fetch(`http://localhost:5000/api/profile/${userid}`);
+        const response = await fetch(`https://fyp-pet-telehealth-system.onrender.com/api/profile/${userid}`);
         const data = await response.json();
 
         if (response.ok) {
@@ -82,7 +82,7 @@ const VetAdminMyVeterinarians = () => {
   useEffect(() => {
     if (!vaId) return;
 
-    fetch(`http://localhost:5000/api/veterinarians/${vaId}`)
+    fetch(`https://fyp-pet-telehealth-system.onrender.com/api/veterinarians/${vaId}`)
       .then(res => res.json())
       .then(data => setVeterinarians(data))
       .catch(err => console.error('Error fetching veterinarians:', err));
@@ -97,7 +97,7 @@ const VetAdminMyVeterinarians = () => {
     e.preventDefault();
   
     try {
-      const response = await fetch('http://localhost:5000/api/veterinarians', {
+      const response = await fetch('https://fyp-pet-telehealth-system.onrender.com/api/veterinarians', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -126,7 +126,7 @@ const VetAdminMyVeterinarians = () => {
         });
   
         // Refresh list
-        const refreshResponse = await fetch(`http://localhost:5000/api/veterinarians/${vaId}`);
+        const refreshResponse = await fetch(`https://fyp-pet-telehealth-system.onrender.com/api/veterinarians/${vaId}`);
         const refreshData = await refreshResponse.json();
         if (refreshResponse.ok) setVeterinarians(refreshData);
       } else {
@@ -148,7 +148,7 @@ const VetAdminMyVeterinarians = () => {
     if (!window.confirm('Are you sure you want to delete this veterinarian?')) return;
 
     try {
-      const response = await fetch(`http://localhost:5000/api/veterinarians/${vt_id}`, {
+      const response = await fetch(`https://fyp-pet-telehealth-system.onrender.com/api/veterinarians/${vt_id}`, {
         method: 'DELETE',
       });
 
@@ -169,7 +169,7 @@ const VetAdminMyVeterinarians = () => {
     if (!vaId) return null;
     
     try {
-      const res = await fetch(`http://localhost:5000/api/clinic/${vaId}`);
+      const res = await fetch(`https://fyp-pet-telehealth-system.onrender.com/api/clinic/${vaId}`);
       const data = await res.json();
       return res.ok ? data.clinic_id : null;
     } catch (error) {
@@ -181,7 +181,7 @@ const VetAdminMyVeterinarians = () => {
   // Add this function to handle duty toggle
   const handleToggleDuty = async (vt_id) => {
     try {
-      const response = await fetch(`http://localhost:5000/api/veterinarians/${vt_id}/toggle-duty`, {
+      const response = await fetch(`https://fyp-pet-telehealth-system.onrender.com/api/veterinarians/${vt_id}/toggle-duty`, {
         method: 'PUT'
       });
 
@@ -217,7 +217,7 @@ const VetAdminMyVeterinarians = () => {
     }
 
     try {
-      const res = await fetch(`http://localhost:5000/api/pending-appointments/${clinic_id}`);
+      const res = await fetch(`https://fyp-pet-telehealth-system.onrender.com/api/pending-appointments/${clinic_id}`);
       const data = await res.json();
       
       if (res.ok) {
@@ -243,7 +243,7 @@ const VetAdminMyVeterinarians = () => {
 
     try {
       const assignVetRes = await fetch(
-        `http://localhost:5000/api/patients/${selectedAppointment.pet_id}/assign-vet`,
+        `https://fyp-pet-telehealth-system.onrender.com/api/patients/${selectedAppointment.pet_id}/assign-vet`,
         {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
@@ -258,7 +258,7 @@ const VetAdminMyVeterinarians = () => {
         setSelectedVetForAssignment(null);
         
         // Refresh veterinarians list
-        const refreshResponse = await fetch(`http://localhost:5000/api/veterinarians/${vaId}`);
+        const refreshResponse = await fetch(`https://fyp-pet-telehealth-system.onrender.com/api/veterinarians/${vaId}`);
         const refreshData = await refreshResponse.json();
         if (refreshResponse.ok) setVeterinarians(refreshData);
       } else {
@@ -276,7 +276,7 @@ const VetAdminMyVeterinarians = () => {
     setLoadingVetAppointments(true);
   
     try {
-      const res = await fetch(`http://localhost:5000/api/appointments/vet/${vet.vt_id}`);
+      const res = await fetch(`https://fyp-pet-telehealth-system.onrender.com/api/appointments/vet/${vet.vt_id}`);
       const data = await res.json();
       
       if (res.ok) {

@@ -141,7 +141,7 @@ const PetOwnerChat = () => {
 
     try {
       const response = await fetch(
-        `http://localhost:5000/api/appointments/${apptId}/cancel`,
+        `https://fyp-pet-telehealth-system.onrender.com/api/appointments/${apptId}/cancel`,
         {
           method: "PUT",
           headers: {
@@ -402,13 +402,13 @@ const PetOwnerChat = () => {
 
       try {
         const res = await fetch(
-          `http://localhost:5000/api/user-clinic/${userid}`
+          `https://fyp-pet-telehealth-system.onrender.com/api/user-clinic/${userid}`
         );
         const data = await res.json();
 
         if (data.clinic) {
           const vetRes = await fetch(
-            `http://localhost:5000/api/vet-by-name/${encodeURIComponent(
+            `https://fyp-pet-telehealth-system.onrender.com/api/vet-by-name/${encodeURIComponent(
               data.clinic
             )}`
           );
@@ -433,7 +433,7 @@ const PetOwnerChat = () => {
     try {
       console.log("🔍 Fetching pet parent for userId:", userId); // ADD THIS
       const response = await fetch(
-        `http://localhost:5000/api/petparent/${userId}`
+        `https://fyp-pet-telehealth-system.onrender.com/api/petparent/${userId}`
       );
       const data = await response.json();
 
@@ -461,7 +461,7 @@ const PetOwnerChat = () => {
 
       // ✅ Use the new endpoint
       const response = await fetch(
-        `http://localhost:5000/api/pets/by-parent/${pp_id}`
+        `https://fyp-pet-telehealth-system.onrender.com/api/pets/by-parent/${pp_id}`
       );
 
       console.log("📡 Response status:", response.status);
@@ -483,7 +483,7 @@ const PetOwnerChat = () => {
                 `🔍 Fetching vet info for pet "${pet.pet_name}" with vt_id: ${pet.pet_assignedVet}`
               );
               const vetResponse = await fetch(
-                `http://localhost:5000/api/veterinarian/${pet.pet_assignedVet}`
+                `https://fyp-pet-telehealth-system.onrender.com/api/veterinarian/${pet.pet_assignedVet}`
               );
 
               console.log(
@@ -564,7 +564,7 @@ const PetOwnerChat = () => {
     
     try {
       setLoading24x7(true);
-      const response = await fetch(`http://localhost:5000/api/online-vets/${userid}`);
+      const response = await fetch(`https://fyp-pet-telehealth-system.onrender.com/api/online-vets/${userid}`);
       const data = await response.json();
       
       console.log('✅ Fetched 24/7 online vets:', data);
@@ -583,7 +583,7 @@ const PetOwnerChat = () => {
       if (!ppId) return;
       
       try {
-        const response = await fetch(`http://localhost:5000/api/petowner-24-7-chats/${ppId}`);
+        const response = await fetch(`https://fyp-pet-telehealth-system.onrender.com/api/petowner-24-7-chats/${ppId}`);
         const data = await response.json();
         
         console.log('✅ Fetched existing 24/7 consultations:', data);
@@ -596,14 +596,14 @@ const PetOwnerChat = () => {
           if (consultation.vt_id) {
             try {
               // 1. Get Availability
-              const availRes = await fetch(`http://localhost:5000/api/vet/${consultation.vt_id}/247-availability`);
+              const availRes = await fetch(`https://fyp-pet-telehealth-system.onrender.com/api/vet/${consultation.vt_id}/247-availability`);
               if (availRes.ok) {
                 const availData = await availRes.json();
                 extraVetData.vet_available247 = availData.available247;
               }
 
               // 2. Get Profile (for Specialization)
-              const profileRes = await fetch(`http://localhost:5000/api/veterinarians/${consultation.vt_id}`); 
+              const profileRes = await fetch(`https://fyp-pet-telehealth-system.onrender.com/api/veterinarians/${consultation.vt_id}`); 
               // Note: endpoint might vary, using the one that fetches by ID or similar
               // If that endpoint doesn't exist, we rely on what we have, but usually we try to fetch details.
               
@@ -653,7 +653,7 @@ const PetOwnerChat = () => {
   const initializeChat = async (pp_id, vt_id) => {
     try {
       const response = await fetch(
-        "http://localhost:5000/api/chat/get-or-create",
+        "https://fyp-pet-telehealth-system.onrender.com/api/chat/get-or-create",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -750,7 +750,7 @@ const PetOwnerChat = () => {
     try {
       setLoadingAppointment(true);
       const response = await fetch(
-        `http://localhost:5000/api/scheduled-appointment/${pet_id}`
+        `https://fyp-pet-telehealth-system.onrender.com/api/scheduled-appointment/${pet_id}`
       );
 
       if (response.status === 404) {
@@ -786,7 +786,7 @@ const PetOwnerChat = () => {
   const fetchLastVisit = async (pet_id) => {
     try {
       const response = await fetch(
-        `http://localhost:5000/api/last-completed-appointment/${pet_id}`
+        `https://fyp-pet-telehealth-system.onrender.com/api/last-completed-appointment/${pet_id}`
       );
 
       if (response.status === 404) {
@@ -858,7 +858,7 @@ const PetOwnerChat = () => {
       
       const checkAvailability = async () => {
         try {
-          const response = await fetch(`http://localhost:5000/api/vet/${vtId}/247-availability`);
+          const response = await fetch(`https://fyp-pet-telehealth-system.onrender.com/api/vet/${vtId}/247-availability`);
           if (response.ok) {
             const data = await response.json();
             
@@ -1150,7 +1150,7 @@ const PetOwnerChat = () => {
     // Search through actual messages in database
     try {
       const response = await fetch(
-        `http://localhost:5000/api/chat/search-messages?query=${encodeURIComponent(
+        `https://fyp-pet-telehealth-system.onrender.com/api/chat/search-messages?query=${encodeURIComponent(
           query
         )}&usr_id=${userid}&role=pp`
       );
@@ -1237,7 +1237,7 @@ const PetOwnerChat = () => {
 
     try {
       const response = await fetch(
-        "http://localhost:5000/api/chat/upload-file",
+        "https://fyp-pet-telehealth-system.onrender.com/api/chat/upload-file",
         {
           method: "POST",
           body: formData,
@@ -1267,7 +1267,7 @@ const PetOwnerChat = () => {
       return (
         <div className="message-image">
           <img
-            src={`http://localhost:5000${msg.msg}`}
+            src={`https://fyp-pet-telehealth-system.onrender.com${msg.msg}`}
             alt="Shared image"
             style={{
               maxWidth: "300px",
@@ -1276,7 +1276,7 @@ const PetOwnerChat = () => {
               cursor: "pointer",
             }}
             onClick={() =>
-              window.open(`http://localhost:5000${msg.msg}`, "_blank")
+              window.open(`https://fyp-pet-telehealth-system.onrender.com${msg.msg}`, "_blank")
             }
           />
         </div>
@@ -1286,7 +1286,7 @@ const PetOwnerChat = () => {
       return (
         <div className="message-file">
           <a
-            href={`http://localhost:5000${msg.msg}`}
+            href={`https://fyp-pet-telehealth-system.onrender.com${msg.msg}`}
             target="_blank"
             rel="noopener noreferrer"
             style={{
@@ -1311,7 +1311,7 @@ const PetOwnerChat = () => {
   const fetchUserPetsForReminder = React.useCallback(async () => {
     try {
       const response = await fetch(
-        `http://localhost:5000/api/user-pets/${userid}`
+        `https://fyp-pet-telehealth-system.onrender.com/api/user-pets/${userid}`
       );
       const data = await response.json();
       setUserPets(data);
@@ -1336,7 +1336,7 @@ const PetOwnerChat = () => {
     }
 
     try {
-      const response = await fetch("http://localhost:5000/api/reminders", {
+      const response = await fetch("https://fyp-pet-telehealth-system.onrender.com/api/reminders", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -1427,7 +1427,7 @@ const PetOwnerChat = () => {
   
     try {
       // Create/get chat with this vet
-      const response = await fetch('http://localhost:5000/api/chat/start-24-7', {
+      const response = await fetch('https://fyp-pet-telehealth-system.onrender.com/api/chat/start-24-7', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ pp_id: ppId, vt_id: vet.vt_id })
@@ -2143,7 +2143,7 @@ const PetOwnerChat = () => {
                   <div className="pet-image-large">
                     {displayPet.image ? (
                       <img
-                        src={`http://localhost:5000${displayPet.image}`}
+                        src={`https://fyp-pet-telehealth-system.onrender.com${displayPet.image}`}
                         alt={displayPet.name}
                         style={{
                           width: "100%",

@@ -24,7 +24,7 @@ const ProfileNotification = ({ firstName = "Pet Owner" }) => {
       if (!userId) return;
 
       try {
-        const res = await fetch(`http://localhost:5000/api/notifications/${userId}`);
+        const res = await fetch(`https://fyp-pet-telehealth-system.onrender.com/api/notifications/${userId}`);
         const data = await res.json();
         
         if (res.ok) {
@@ -85,7 +85,7 @@ const ProfileNotification = ({ firstName = "Pet Owner" }) => {
     if (!wasClosing && unreadCount > 0) {
       try {
         const userId = sessionStorage.getItem('userid');
-        const res = await fetch(`http://localhost:5000/api/notifications/${userId}/mark-all-read`, {
+        const res = await fetch(`https://fyp-pet-telehealth-system.onrender.com/api/notifications/${userId}/mark-all-read`, {
           method: 'PUT'
         });
   
@@ -109,7 +109,7 @@ const ProfileNotification = ({ firstName = "Pet Owner" }) => {
   const handleLogout = async () => {
     try {
       // ✅ Call backend logout endpoint to clear cookies
-      await fetch('http://localhost:5000/api/logout', {
+      await fetch('https://fyp-pet-telehealth-system.onrender.com/api/logout', {
         method: 'POST',
         credentials: 'include'
       });
@@ -130,7 +130,7 @@ const ProfileNotification = ({ firstName = "Pet Owner" }) => {
 
   const deleteNotification = async (notificationId) => {
     try {
-      const res = await fetch(`http://localhost:5000/api/notifications/${notificationId}`, {
+      const res = await fetch(`https://fyp-pet-telehealth-system.onrender.com/api/notifications/${notificationId}`, {
         method: 'DELETE'
       });
 

@@ -61,7 +61,7 @@ const VetAdminSchedules = () => {
   useEffect(() => {
     if (!clinic_id) return;
 
-    socketRef.current = io("http://localhost:5000", {
+    socketRef.current = io("https://fyp-pet-telehealth-system.onrender.com", {
       transports: ["websocket"],
       reconnectionAttempts: 5,
       reconnectionDelay: 1000,
@@ -106,7 +106,7 @@ const VetAdminSchedules = () => {
 
   const fetchVetAdminData = async (userId) => {
     try {
-      const res = await fetch(`http://localhost:5000/api/profile/${userId}`);
+      const res = await fetch(`https://fyp-pet-telehealth-system.onrender.com/api/profile/${userId}`);
       const data = await res.json();
   
       if (data.va_id) {
@@ -124,7 +124,7 @@ const VetAdminSchedules = () => {
 
   const fetchClinicData = async (vaId) => {
     try {
-      const res = await fetch(`http://localhost:5000/api/clinic/${vaId}`);
+      const res = await fetch(`https://fyp-pet-telehealth-system.onrender.com/api/clinic/${vaId}`);
       const data = await res.json();
       
       if (data.clinic_id) {
@@ -162,7 +162,7 @@ const VetAdminSchedules = () => {
 
   const fetchClinicHours = async (clinicId) => {
     try {
-      const res = await fetch(`http://localhost:5000/api/clinic-hours/${clinicId}`);
+      const res = await fetch(`https://fyp-pet-telehealth-system.onrender.com/api/clinic-hours/${clinicId}`);
       const data = await res.json();
       
       console.log("📥 Raw data from backend:", data);
@@ -266,7 +266,7 @@ const VetAdminSchedules = () => {
     console.log("💾 Saving payload:", payload);
   
     try {
-      const res = await fetch(`http://localhost:5000/api/clinic-hours/${clinic_id}`, {
+      const res = await fetch(`https://fyp-pet-telehealth-system.onrender.com/api/clinic-hours/${clinic_id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -291,7 +291,7 @@ const VetAdminSchedules = () => {
     const newStatus = clinicStatus === 'open' ? 'closed' : 'open';
 
     try {
-      const res = await fetch(`http://localhost:5000/api/clinic-status/${clinic_id}`, {
+      const res = await fetch(`https://fyp-pet-telehealth-system.onrender.com/api/clinic-status/${clinic_id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: newStatus })

@@ -22,7 +22,7 @@ const SuggestedReplies = ({ message, vtId, onSelectReply, onClose }) => {
 
       try {
         const response = await fetch(
-          "http://localhost:5000/api/vet-templates/analyze",
+          "https://fyp-pet-telehealth-system.onrender.com/api/vet-templates/analyze",
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },

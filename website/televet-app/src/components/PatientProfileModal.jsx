@@ -157,7 +157,7 @@ const PatientProfileModal = ({
     try {
       // Save main exam details
       await fetch(
-        `http://localhost:5000/api/examinations/${editingExam.appt_id}`,
+        `https://fyp-pet-telehealth-system.onrender.com/api/examinations/${editingExam.appt_id}`,
         {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
@@ -174,7 +174,7 @@ const PatientProfileModal = ({
         const treatment = editingExam.treatments[i];
         if (treatment.treat_id) {
           await fetch(
-            `http://localhost:5000/api/treatments/${treatment.treat_id}`,
+            `https://fyp-pet-telehealth-system.onrender.com/api/treatments/${treatment.treat_id}`,
             {
               method: "PUT",
               headers: { "Content-Type": "application/json" },
@@ -194,7 +194,7 @@ const PatientProfileModal = ({
       for (let i = 0; i < editingExam.prescriptions.length; i++) {
         const rx = editingExam.prescriptions[i];
         if (rx.rx_id) {
-          await fetch(`http://localhost:5000/api/prescriptions/${rx.rx_id}`, {
+          await fetch(`https://fyp-pet-telehealth-system.onrender.com/api/prescriptions/${rx.rx_id}`, {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -249,7 +249,7 @@ const PatientProfileModal = ({
 
       switch (editingRecordType) {
         case "vaccinations":
-          endpoint = `http://localhost:5000/api/vaccinations/${editingRecord.vac_id}`;
+          endpoint = `https://fyp-pet-telehealth-system.onrender.com/api/vaccinations/${editingRecord.vac_id}`;
           payload = {
             vac_name: editingRecord.vaccine,
             vac_date: editingRecord.vac_date,
@@ -259,7 +259,7 @@ const PatientProfileModal = ({
           break;
 
         case "documents":
-          endpoint = `http://localhost:5000/api/documents/${editingRecord.doc_id}`;
+          endpoint = `https://fyp-pet-telehealth-system.onrender.com/api/documents/${editingRecord.doc_id}`;
           payload = {
             doc_title: editingRecord.title,
             doc_type: editingRecord.type,
@@ -268,7 +268,7 @@ const PatientProfileModal = ({
           break;
 
         case "conditions":
-          endpoint = `http://localhost:5000/api/conditions/${editingRecord.cond_id}`;
+          endpoint = `https://fyp-pet-telehealth-system.onrender.com/api/conditions/${editingRecord.cond_id}`;
           payload = {
             cond_name: editingRecord.condition,
             diag_date: editingRecord.diag_date,
@@ -278,7 +278,7 @@ const PatientProfileModal = ({
           break;
 
         case "surgeries":
-          endpoint = `http://localhost:5000/api/surgeries/${editingRecord.surg_id}`;
+          endpoint = `https://fyp-pet-telehealth-system.onrender.com/api/surgeries/${editingRecord.surg_id}`;
           payload = {
             surg_name: editingRecord.name,
             surg_date: editingRecord.date,
@@ -324,22 +324,22 @@ const PatientProfileModal = ({
 
       switch (recordType) {
         case "vaccinations":
-          endpoint = `http://localhost:5000/api/vaccinations/${recordId}`;
+          endpoint = `https://fyp-pet-telehealth-system.onrender.com/api/vaccinations/${recordId}`;
           break;
         case "documents":
-          endpoint = `http://localhost:5000/api/documents/${recordId}`;
+          endpoint = `https://fyp-pet-telehealth-system.onrender.com/api/documents/${recordId}`;
           break;
         case "conditions":
-          endpoint = `http://localhost:5000/api/conditions/${recordId}`;
+          endpoint = `https://fyp-pet-telehealth-system.onrender.com/api/conditions/${recordId}`;
           break;
         case "surgeries":
-          endpoint = `http://localhost:5000/api/surgeries/${recordId}`;
+          endpoint = `https://fyp-pet-telehealth-system.onrender.com/api/surgeries/${recordId}`;
           break;
         case "treatments":
-          endpoint = `http://localhost:5000/api/treatments/${recordId}`;
+          endpoint = `https://fyp-pet-telehealth-system.onrender.com/api/treatments/${recordId}`;
           break;
         case "prescriptions":
-          endpoint = `http://localhost:5000/api/prescriptions/${recordId}`;
+          endpoint = `https://fyp-pet-telehealth-system.onrender.com/api/prescriptions/${recordId}`;
           break;
       }
 
@@ -414,7 +414,7 @@ const PatientProfileModal = ({
       formData.append("doc_type", newRecordData.doc_type);
 
       const response = await fetch(
-        "http://localhost:5000/api/pets/upload-document",
+        "https://fyp-pet-telehealth-system.onrender.com/api/pets/upload-document",
         {
           method: "POST",
           body: formData,
@@ -445,7 +445,7 @@ const PatientProfileModal = ({
     }
 
     // Force download by fetching and creating blob
-    fetch(`http://localhost:5000${fileUrl}`)
+    fetch(`https://fyp-pet-telehealth-system.onrender.com${fileUrl}`)
       .then((response) => response.blob())
       .then((blob) => {
         const url = window.URL.createObjectURL(blob);
@@ -522,12 +522,12 @@ const PatientProfileModal = ({
 
     if (["jpg", "jpeg", "png", "gif"].includes(fileExtension)) {
       const img = document.createElement("img");
-      img.src = `http://localhost:5000${fileUrl}`;
+      img.src = `https://fyp-pet-telehealth-system.onrender.com${fileUrl}`;
       img.style.cssText = "max-width: 100%; max-height: 90vh; display: block;";
       container.appendChild(img);
     } else if (fileExtension === "pdf") {
       const iframe = document.createElement("iframe");
-      iframe.src = `http://localhost:5000${fileUrl}`;
+      iframe.src = `https://fyp-pet-telehealth-system.onrender.com${fileUrl}`;
       iframe.style.cssText = "width: 80vw; height: 90vh; border: none;";
       container.appendChild(iframe);
     } else {
@@ -545,7 +545,7 @@ const PatientProfileModal = ({
   const fetchPatientDetails = async () => {
     try {
       const response = await fetch(
-        `http://localhost:5000/api/patients/${petId}`
+        `https://fyp-pet-telehealth-system.onrender.com/api/patients/${petId}`
       );
       const data = await response.json();
       if (response.ok) {
@@ -560,8 +560,8 @@ const PatientProfileModal = ({
   const fetchHealthRecords = async () => {
     try {
       const [examRes, historyRes] = await Promise.all([
-        fetch(`http://localhost:5000/api/pets/${petId}/examinations`),
-        fetch(`http://localhost:5000/api/pets/${petId}/medical-history`),
+        fetch(`https://fyp-pet-telehealth-system.onrender.com/api/pets/${petId}/examinations`),
+        fetch(`https://fyp-pet-telehealth-system.onrender.com/api/pets/${petId}/medical-history`),
       ]);
 
       const examinationsData = await examRes.json();
@@ -592,10 +592,10 @@ const PatientProfileModal = ({
     try {
       const [weightRes, activityRes, symptomRes, behaviorRes] =
         await Promise.all([
-          fetch(`http://localhost:5000/api/pets/${petId}/weight-log`),
-          fetch(`http://localhost:5000/api/pets/${petId}/activity-log`),
-          fetch(`http://localhost:5000/api/pets/${petId}/symptom-log`),
-          fetch(`http://localhost:5000/api/pets/${petId}/behavior-log`),
+          fetch(`https://fyp-pet-telehealth-system.onrender.com/api/pets/${petId}/weight-log`),
+          fetch(`https://fyp-pet-telehealth-system.onrender.com/api/pets/${petId}/activity-log`),
+          fetch(`https://fyp-pet-telehealth-system.onrender.com/api/pets/${petId}/symptom-log`),
+          fetch(`https://fyp-pet-telehealth-system.onrender.com/api/pets/${petId}/behavior-log`),
         ]);
 
       setTrackingData({
@@ -613,7 +613,7 @@ const PatientProfileModal = ({
   const fetchAllMedications = async () => {
     try {
       const response = await fetch(
-        `http://localhost:5000/api/pets/${petId}/all-medications`
+        `https://fyp-pet-telehealth-system.onrender.com/api/pets/${petId}/all-medications`
       );
       const data = await response.json();
       setAllMedications(data);
@@ -627,7 +627,7 @@ const PatientProfileModal = ({
   const fetchAllTreatments = async () => {
     try {
       const response = await fetch(
-        `http://localhost:5000/api/pets/${petId}/all-treatments`
+        `https://fyp-pet-telehealth-system.onrender.com/api/pets/${petId}/all-treatments`
       );
       const data = await response.json();
       setAllTreatments(data);
@@ -641,7 +641,7 @@ const PatientProfileModal = ({
   const fetchSoapNotes = async () => {
     try {
       const response = await fetch(
-        `http://localhost:5000/api/pets/${petId}/soap-notes`
+        `https://fyp-pet-telehealth-system.onrender.com/api/pets/${petId}/soap-notes`
       );
       const data = await response.json();
       setSoapNotes(data);
@@ -739,7 +739,7 @@ const PatientProfileModal = ({
 
       switch (trackingModalType) {
         case "weight":
-          endpoint = `http://localhost:5000/api/pets/${petId}/weight-log`;
+          endpoint = `https://fyp-pet-telehealth-system.onrender.com/api/pets/${petId}/weight-log`;
           payload = {
             weight: newTrackingEntry.weight,
             rec_date: newTrackingEntry.date,
@@ -747,7 +747,7 @@ const PatientProfileModal = ({
           };
           break;
         case "activity":
-          endpoint = `http://localhost:5000/api/pets/${petId}/activity-log`;
+          endpoint = `https://fyp-pet-telehealth-system.onrender.com/api/pets/${petId}/activity-log`;
           payload = {
             activityType: newTrackingEntry.activityType,
             duration: newTrackingEntry.duration,
@@ -756,7 +756,7 @@ const PatientProfileModal = ({
           };
           break;
         case "symptoms":
-          endpoint = `http://localhost:5000/api/pets/${petId}/symptom-log`;
+          endpoint = `https://fyp-pet-telehealth-system.onrender.com/api/pets/${petId}/symptom-log`;
           payload = {
             symptomTitle: newTrackingEntry.symptomTitle,
             symptomDescription: newTrackingEntry.symptomDescription,
@@ -764,7 +764,7 @@ const PatientProfileModal = ({
           };
           break;
         case "behavior":
-          endpoint = `http://localhost:5000/api/pets/${petId}/behavior-log`;
+          endpoint = `https://fyp-pet-telehealth-system.onrender.com/api/pets/${petId}/behavior-log`;
           payload = {
             behaviorType: newTrackingEntry.behaviorType,
             behaviorNote: newTrackingEntry.behaviorNote,
@@ -832,7 +832,7 @@ const PatientProfileModal = ({
             showStyledAlert("Please fill in vaccine name and date");
             return;
           }
-          endpoint = `http://localhost:5000/api/pets/${petId}/vaccinations`;
+          endpoint = `https://fyp-pet-telehealth-system.onrender.com/api/pets/${petId}/vaccinations`;
           payload = {
             vac_name: newRecordData.vac_name,
             vac_date: newRecordData.vac_date,
@@ -862,7 +862,7 @@ const PatientProfileModal = ({
             return;
           }
 
-          endpoint = `http://localhost:5000/api/pets/${petId}/documents`;
+          endpoint = `https://fyp-pet-telehealth-system.onrender.com/api/pets/${petId}/documents`;
           payload = {
             doc_title: newRecordData.doc_title,
             doc_type: newRecordData.doc_type,
@@ -875,7 +875,7 @@ const PatientProfileModal = ({
             showStyledAlert("Please fill in condition name");
             return;
           }
-          endpoint = `http://localhost:5000/api/pets/${petId}/conditions`;
+          endpoint = `https://fyp-pet-telehealth-system.onrender.com/api/pets/${petId}/conditions`;
           payload = {
             cond_name: newRecordData.cond_name,
             diag_date: newRecordData.diag_date,
@@ -889,7 +889,7 @@ const PatientProfileModal = ({
             showStyledAlert("Please fill in surgery name and date");
             return;
           }
-          endpoint = `http://localhost:5000/api/pets/${petId}/surgeries`;
+          endpoint = `https://fyp-pet-telehealth-system.onrender.com/api/pets/${petId}/surgeries`;
           payload = {
             surg_name: newRecordData.surg_name,
             surg_date: newRecordData.surg_date,
@@ -954,7 +954,7 @@ const PatientProfileModal = ({
 
     try {
       await fetch(
-        `http://localhost:5000/api/examinations/${selectedApptId}/treatments`,
+        `https://fyp-pet-telehealth-system.onrender.com/api/examinations/${selectedApptId}/treatments`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -986,7 +986,7 @@ const PatientProfileModal = ({
 
     try {
       await fetch(
-        `http://localhost:5000/api/examinations/${selectedApptId}/prescriptions`,
+        `https://fyp-pet-telehealth-system.onrender.com/api/examinations/${selectedApptId}/prescriptions`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },

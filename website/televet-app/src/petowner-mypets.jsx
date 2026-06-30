@@ -89,13 +89,13 @@ const PetOwnerMyPets = () => {
     try {
       // Fetch examinations
       const examRes = await axios.get(
-        `http://localhost:5000/api/pets/${petId}/examinations`
+        `https://fyp-pet-telehealth-system.onrender.com/api/pets/${petId}/examinations`
       );
       setExaminations(examRes.data);
 
       // Fetch medical history
       const historyRes = await axios.get(
-        `http://localhost:5000/api/pets/${petId}/medical-history`
+        `https://fyp-pet-telehealth-system.onrender.com/api/pets/${petId}/medical-history`
       );
       setMedicalHistory(historyRes.data);
     } catch (error) {
@@ -116,10 +116,10 @@ const PetOwnerMyPets = () => {
     try {
       const [weightRes, activityRes, symptomRes, behaviorRes] =
         await Promise.all([
-          axios.get(`http://localhost:5000/api/pets/${petId}/weight-log`),
-          axios.get(`http://localhost:5000/api/pets/${petId}/activity-log`),
-          axios.get(`http://localhost:5000/api/pets/${petId}/symptom-log`),
-          axios.get(`http://localhost:5000/api/pets/${petId}/behavior-log`),
+          axios.get(`https://fyp-pet-telehealth-system.onrender.com/api/pets/${petId}/weight-log`),
+          axios.get(`https://fyp-pet-telehealth-system.onrender.com/api/pets/${petId}/activity-log`),
+          axios.get(`https://fyp-pet-telehealth-system.onrender.com/api/pets/${petId}/symptom-log`),
+          axios.get(`https://fyp-pet-telehealth-system.onrender.com/api/pets/${petId}/behavior-log`),
         ]);
 
       setTrackingData({
@@ -136,7 +136,7 @@ const PetOwnerMyPets = () => {
   const fetchSoapNotes = async (petId) => {
     try {
       const response = await axios.get(
-        `http://localhost:5000/api/pets/${petId}/soap-notes`
+        `https://fyp-pet-telehealth-system.onrender.com/api/pets/${petId}/soap-notes`
       );
       setSoapNotes(response.data);
     } catch (error) {
@@ -148,7 +148,7 @@ const PetOwnerMyPets = () => {
   const fetchAllTreatments = async (petId) => {
     try {
       const response = await axios.get(
-        `http://localhost:5000/api/pets/${petId}/all-treatments`
+        `https://fyp-pet-telehealth-system.onrender.com/api/pets/${petId}/all-treatments`
       );
       setAllTreatments(response.data);
     } catch (error) {
@@ -161,7 +161,7 @@ const PetOwnerMyPets = () => {
   const fetchAllPrescriptions = async (petId) => {
     try {
       const response = await axios.get(
-        `http://localhost:5000/api/pets/${petId}/all-medications`
+        `https://fyp-pet-telehealth-system.onrender.com/api/pets/${petId}/all-medications`
       );
       setAllPrescriptions(response.data);
     } catch (error) {
@@ -186,7 +186,7 @@ const PetOwnerMyPets = () => {
       }
 
       const response = await axios.get(
-        `http://localhost:5000/api/pets/${userId}`
+        `https://fyp-pet-telehealth-system.onrender.com/api/pets/${userId}`
       );
 
       // ✅ Map database field names to consistent frontend keys
@@ -288,7 +288,7 @@ const PetOwnerMyPets = () => {
         return;
       }
 
-      const response = await axios.post("http://localhost:5000/api/add-pet", {
+      const response = await axios.post("https://fyp-pet-telehealth-system.onrender.com/api/add-pet", {
         userId,
         ...newPetData,
         gender: newPetData.gender === "male" ? "m" : "f",
@@ -322,7 +322,7 @@ const PetOwnerMyPets = () => {
     }
 
     try {
-      await axios.delete(`http://localhost:5000/api/pets/${confirmDelete}`);
+      await axios.delete(`https://fyp-pet-telehealth-system.onrender.com/api/pets/${confirmDelete}`);
 
       setMessage({
         type: "success",
@@ -395,7 +395,7 @@ const PetOwnerMyPets = () => {
       };
 
       await axios.put(
-        `http://localhost:5000/api/pets/${selectedPet.id}`,
+        `https://fyp-pet-telehealth-system.onrender.com/api/pets/${selectedPet.id}`,
         payload
       );
 
@@ -500,7 +500,7 @@ const PetOwnerMyPets = () => {
 
       switch (trackingModalType) {
         case "weight":
-          endpoint = `http://localhost:5000/api/pets/${selectedPet.id}/weight-log`;
+          endpoint = `https://fyp-pet-telehealth-system.onrender.com/api/pets/${selectedPet.id}/weight-log`;
           payload = {
             weight: newTrackingEntry.weight,
             rec_date: newTrackingEntry.date,
@@ -508,7 +508,7 @@ const PetOwnerMyPets = () => {
           };
           break;
         case "activity":
-          endpoint = `http://localhost:5000/api/pets/${selectedPet.id}/activity-log`;
+          endpoint = `https://fyp-pet-telehealth-system.onrender.com/api/pets/${selectedPet.id}/activity-log`;
           payload = {
             activityType: newTrackingEntry.activityType,
             duration: newTrackingEntry.duration,
@@ -517,7 +517,7 @@ const PetOwnerMyPets = () => {
           };
           break;
         case "symptoms":
-          endpoint = `http://localhost:5000/api/pets/${selectedPet.id}/symptom-log`;
+          endpoint = `https://fyp-pet-telehealth-system.onrender.com/api/pets/${selectedPet.id}/symptom-log`;
           payload = {
             symptomTitle: newTrackingEntry.symptomTitle,
             symptomDescription: newTrackingEntry.symptomDescription,
@@ -525,7 +525,7 @@ const PetOwnerMyPets = () => {
           };
           break;
         case "behavior":
-          endpoint = `http://localhost:5000/api/pets/${selectedPet.id}/behavior-log`;
+          endpoint = `https://fyp-pet-telehealth-system.onrender.com/api/pets/${selectedPet.id}/behavior-log`;
           payload = {
             behaviorType: newTrackingEntry.behaviorType,
             behaviorNote: newTrackingEntry.behaviorNote,
@@ -570,7 +570,7 @@ const PetOwnerMyPets = () => {
 
     try {
       await axios.post(
-        `http://localhost:5000/api/pets/${selectedPet.id}/soap-notes`,
+        `https://fyp-pet-telehealth-system.onrender.com/api/pets/${selectedPet.id}/soap-notes`,
         {
           soap_date: newSoapNote.date,
           subj: newSoapNote.subjective,
@@ -1284,7 +1284,7 @@ const PetOwnerMyPets = () => {
 
     try {
       const response = await axios.post(
-        `http://localhost:5000/api/pets/${selectedPet.id}/upload-image`,
+        `https://fyp-pet-telehealth-system.onrender.com/api/pets/${selectedPet.id}/upload-image`,
         formData,
         {
           headers: {
@@ -1323,7 +1323,7 @@ const PetOwnerMyPets = () => {
 
     try {
       await axios.delete(
-        `http://localhost:5000/api/pets/${selectedPet.id}/delete-image`
+        `https://fyp-pet-telehealth-system.onrender.com/api/pets/${selectedPet.id}/delete-image`
       );
 
       setMessage({
@@ -1355,7 +1355,7 @@ const PetOwnerMyPets = () => {
       return;
     }
 
-    fetch(`http://localhost:5000${fileUrl}`)
+    fetch(`https://fyp-pet-telehealth-system.onrender.com${fileUrl}`)
       .then((response) => response.blob())
       .then((blob) => {
         const url = window.URL.createObjectURL(blob);
@@ -1430,12 +1430,12 @@ const PetOwnerMyPets = () => {
 
     if (["jpg", "jpeg", "png", "gif"].includes(fileExtension)) {
       const img = document.createElement("img");
-      img.src = `http://localhost:5000${fileUrl}`;
+      img.src = `https://fyp-pet-telehealth-system.onrender.com${fileUrl}`;
       img.style.cssText = "max-width: 100%; max-height: 90vh; display: block;";
       container.appendChild(img);
     } else if (fileExtension === "pdf") {
       const iframe = document.createElement("iframe");
-      iframe.src = `http://localhost:5000${fileUrl}`;
+      iframe.src = `https://fyp-pet-telehealth-system.onrender.com${fileUrl}`;
       iframe.style.cssText = "width: 80vw; height: 90vh; border: none;";
       container.appendChild(iframe);
     } else {
@@ -1498,7 +1498,7 @@ const PetOwnerMyPets = () => {
                 <div className="pet-card-image">
                   {pet.petImage ? (
                     <img
-                      src={`http://localhost:5000${pet.petImage}`}
+                      src={`https://fyp-pet-telehealth-system.onrender.com${pet.petImage}`}
                       alt={pet.name}
                     />
                   ) : (
@@ -2945,7 +2945,7 @@ const PetOwnerMyPets = () => {
                       <img src={imagePreview} alt={selectedPet.name} />
                     ) : selectedPet.petImage ? (
                       <img
-                        src={`http://localhost:5000${selectedPet.petImage}`}
+                        src={`https://fyp-pet-telehealth-system.onrender.com${selectedPet.petImage}`}
                         alt={selectedPet.name}
                       />
                     ) : (

@@ -33,7 +33,7 @@ const TemplateManager = ({ vtId, onClose }) => {
   const fetchTemplates = useCallback(async () => {
     try {
       const response = await fetch(
-        `http://localhost:5000/api/vet-templates/${vtId}`
+        `https://fyp-pet-telehealth-system.onrender.com/api/vet-templates/${vtId}`
       );
       const data = await response.json();
       setTemplates(data);
@@ -49,7 +49,7 @@ const TemplateManager = ({ vtId, onClose }) => {
     }
 
     try {
-      await fetch("http://localhost:5000/api/vet-templates", {
+      await fetch("https://fyp-pet-telehealth-system.onrender.com/api/vet-templates", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ vt_id: vtId, ...newTemplate }),
@@ -66,7 +66,7 @@ const TemplateManager = ({ vtId, onClose }) => {
 
   const handleUpdate = async (templateId, updates) => {
     try {
-      await fetch(`http://localhost:5000/api/vet-templates/${templateId}`, {
+      await fetch(`https://fyp-pet-telehealth-system.onrender.com/api/vet-templates/${templateId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(updates),
@@ -83,7 +83,7 @@ const TemplateManager = ({ vtId, onClose }) => {
     if (!window.confirm("Delete this template?")) return;
 
     try {
-      await fetch(`http://localhost:5000/api/vet-templates/${templateId}`, {
+      await fetch(`https://fyp-pet-telehealth-system.onrender.com/api/vet-templates/${templateId}`, {
         method: "DELETE",
       });
       fetchTemplates();

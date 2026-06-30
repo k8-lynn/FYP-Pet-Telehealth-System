@@ -12,7 +12,7 @@ const TemplateSearchModal = ({ vtId, onSelectTemplate, onClose }) => {
   const fetchTemplates = useCallback(async () => {
     try {
       const response = await fetch(
-        `http://localhost:5000/api/vet-templates/${vtId}`
+        `https://fyp-pet-telehealth-system.onrender.com/api/vet-templates/${vtId}`
       );
       const data = await response.json();
       const activeTemplates = data.filter((t) => t.is_active === "yes");

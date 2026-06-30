@@ -13,7 +13,7 @@ export const useOnlineStatus = (userId) => {
 
     const updateOnlineStatus = async (status) => {
       try {
-        const response = await fetch('http://localhost:5000/api/user/online-status', {
+        const response = await fetch('https://fyp-pet-telehealth-system.onrender.com/api/user/online-status', {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ usr_id: userId, is_online: status })
@@ -36,7 +36,7 @@ export const useOnlineStatus = (userId) => {
         [JSON.stringify({ usr_id: userId, is_online: 'no' })],
         { type: 'application/json' }
       );
-      navigator.sendBeacon('http://localhost:5000/api/user/online-status', blob);
+      navigator.sendBeacon('https://fyp-pet-telehealth-system.onrender.com/api/user/online-status', blob);
     };
 
     window.addEventListener('beforeunload', handleBeforeUnload);

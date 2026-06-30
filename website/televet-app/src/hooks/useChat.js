@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import io from 'socket.io-client';
 
-const SOCKET_URL = 'http://localhost:5000';
+const SOCKET_URL = 'https://fyp-pet-telehealth-system.onrender.com';
 
 export const useChat = (chatId, userId, userRole) => {
   const [messages, setMessages] = useState([]);
@@ -122,7 +122,7 @@ export const useChat = (chatId, userId, userRole) => {
       
       try {
         // Get chat details to find the other user
-        const chatResponse = await fetch(`http://localhost:5000/api/chat/${chatId}/details`);
+        const chatResponse = await fetch(`https://fyp-pet-telehealth-system.onrender.com/api/chat/${chatId}/details`);
         const chatData = await chatResponse.json();
         
         // Determine other user's ID based on current user's role
@@ -133,7 +133,7 @@ export const useChat = (chatId, userId, userRole) => {
         console.log('👤 Other user ID set to:', otherUserId);
 
         // Force refresh the status
-        const statusResponse = await fetch(`http://localhost:5000/api/user/online-status/${otherUserId}`);
+        const statusResponse = await fetch(`https://fyp-pet-telehealth-system.onrender.com/api/user/online-status/${otherUserId}`);
         const statusData = await statusResponse.json();
         console.log('📊 Initial status for other user:', statusData);
         setOtherUserOnline(statusData.is_online);
@@ -202,7 +202,7 @@ export const useChat = (chatId, userId, userRole) => {
     if (!chatId) return;
     
     try {
-      const response = await fetch(`http://localhost:5000/api/chat/${chatId}/messages`);
+      const response = await fetch(`https://fyp-pet-telehealth-system.onrender.com/api/chat/${chatId}/messages`);
       const data = await response.json();
       console.log('📨 Fetched messages:', data);
       setMessages(data);
@@ -216,7 +216,7 @@ export const useChat = (chatId, userId, userRole) => {
     if (!chatId || !messageText.trim() || !userId) return;
   
     try {
-      const response = await fetch('http://localhost:5000/api/chat/send-message', {
+      const response = await fetch('https://fyp-pet-telehealth-system.onrender.com/api/chat/send-message', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -242,7 +242,7 @@ const markAsRead = useCallback(async () => {
   if (!chatId || !userId) return;
   
   try {
-    const response = await fetch(`http://localhost:5000/api/chat/${chatId}/mark-read`, {
+    const response = await fetch(`https://fyp-pet-telehealth-system.onrender.com/api/chat/${chatId}/mark-read`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ usr_id: userId })

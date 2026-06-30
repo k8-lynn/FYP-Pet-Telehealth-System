@@ -44,7 +44,7 @@ function AppWrapper() {
     const checkSession = async () => {
       try {
         const response = await fetch(
-          "http://localhost:5000/api/check-session",
+          "https://fyp-pet-telehealth-system.onrender.com/api/check-session",
           {
             credentials: "include",
           }

@@ -35,7 +35,7 @@ const RemindersPage = () => {
   const [registeredVet, setRegisteredVet] = useState(null);
   const [showBookingToast, setShowBookingToast] = useState(false);
   const [bookingDetails, setBookingDetails] = useState(null);
-  const socket = io('http://localhost:5000');
+  const socket = io('https://fyp-pet-telehealth-system.onrender.com');
   
   const [newReminder, setNewReminder] = useState({
     title: '',
@@ -74,7 +74,7 @@ const RemindersPage = () => {
   // Fetch pet parent info to get pp_id
   const fetchPetParentInfo = async (usr_id) => {
     try {
-      const response = await fetch(`http://localhost:5000/api/petparent/${usr_id}`);
+      const response = await fetch(`https://fyp-pet-telehealth-system.onrender.com/api/petparent/${usr_id}`);
       const data = await response.json();
 
       if (response.ok && data.pp_id) {
@@ -96,11 +96,11 @@ const RemindersPage = () => {
 
   const fetchAssignedClinic = async (usr_id) => {
     try {
-      const res = await fetch(`http://localhost:5000/api/user-clinic/${usr_id}`);
+      const res = await fetch(`https://fyp-pet-telehealth-system.onrender.com/api/user-clinic/${usr_id}`);
       const data = await res.json();
   
       if (data.clinic) {
-        const vetRes = await fetch(`http://localhost:5000/api/vet-by-name/${encodeURIComponent(data.clinic)}`);
+        const vetRes = await fetch(`https://fyp-pet-telehealth-system.onrender.com/api/vet-by-name/${encodeURIComponent(data.clinic)}`);
         const vetData = await vetRes.json();
   
         if (vetRes.ok && vetData) {
@@ -115,7 +115,7 @@ const RemindersPage = () => {
   // Fetch user's pets for the dropdown
   const fetchUserPets = async (usr_id) => {
     try {
-      const response = await fetch(`http://localhost:5000/api/user-pets/${usr_id}`);
+      const response = await fetch(`https://fyp-pet-telehealth-system.onrender.com/api/user-pets/${usr_id}`);
       const data = await response.json();
       setUserPets(data);
     } catch (error) {
@@ -126,7 +126,7 @@ const RemindersPage = () => {
   // Fetch today's reminders
   const fetchTodaysReminders = async (pp_id) => {
     try {
-      const response = await fetch(`http://localhost:5000/api/reminders/${pp_id}/today`);
+      const response = await fetch(`https://fyp-pet-telehealth-system.onrender.com/api/reminders/${pp_id}/today`);
       const data = await response.json();
       setTodaysReminders(data);
     } catch (error) {
@@ -141,7 +141,7 @@ const RemindersPage = () => {
       
       console.log('📅 Fetching reminders for date:', dateStr);
       
-      const response = await fetch(`http://localhost:5000/api/reminders/${pp_id}/by-date/${dateStr}`);
+      const response = await fetch(`https://fyp-pet-telehealth-system.onrender.com/api/reminders/${pp_id}/by-date/${dateStr}`);
       const data = await response.json();
       
       console.log('✅ Received reminders:', data);
@@ -154,7 +154,7 @@ const RemindersPage = () => {
   // Fetch upcoming reminders
   const fetchUpcomingReminders = async (pp_id) => {
     try {
-      const response = await fetch(`http://localhost:5000/api/reminders/${pp_id}/upcoming`);
+      const response = await fetch(`https://fyp-pet-telehealth-system.onrender.com/api/reminders/${pp_id}/upcoming`);
       const data = await response.json();
       setUpcomingReminders(data);
     } catch (error) {
@@ -165,7 +165,7 @@ const RemindersPage = () => {
   // Fetch reminder dates for calendar
   const fetchReminderDates = async (pp_id, year, month) => {
     try {
-      const response = await fetch(`http://localhost:5000/api/reminders/${pp_id}/dates/${year}/${month}`);
+      const response = await fetch(`https://fyp-pet-telehealth-system.onrender.com/api/reminders/${pp_id}/dates/${year}/${month}`);
       const data = await response.json();
       setDaysWithReminders(data.days || []);
     } catch (error) {
@@ -176,7 +176,7 @@ const RemindersPage = () => {
   // Fetch upcoming appointments
   const fetchUpcomingAppointments = async (usr_id) => {
     try {
-      const response = await fetch(`http://localhost:5000/api/user-appointments/${usr_id}`);
+      const response = await fetch(`https://fyp-pet-telehealth-system.onrender.com/api/user-appointments/${usr_id}`);
       
       if (!response.ok) {
         console.error('Failed to fetch appointments');
@@ -216,7 +216,7 @@ const RemindersPage = () => {
 
   const fetchAppointmentDetailsById = async (appt_id) => {
     try {
-      const response = await fetch(`http://localhost:5000/api/appointment-details/${appt_id}`);
+      const response = await fetch(`https://fyp-pet-telehealth-system.onrender.com/api/appointment-details/${appt_id}`);
   
       if (response.status === 404) {
         console.log('Appointment not found');
@@ -278,7 +278,7 @@ useEffect(() => {
 
   // Assuming you have socket.io-client set up
   // If not, you'll need to add: import io from 'socket.io-client';
-  // const socket = io('http://localhost:5000');
+  // const socket = io('https://fyp-pet-telehealth-system.onrender.com');
   
   socket.on('reminder_notification', handleReminderNotification);
 
@@ -292,7 +292,7 @@ useEffect(() => {
     e.stopPropagation();
     
     try {
-      const response = await fetch(`http://localhost:5000/api/reminders/${rmd_id}/toggle`, {
+      const response = await fetch(`https://fyp-pet-telehealth-system.onrender.com/api/reminders/${rmd_id}/toggle`, {
         method: 'PUT'
       });
 
@@ -312,7 +312,7 @@ useEffect(() => {
     }
 
     try {
-      const response = await fetch('http://localhost:5000/api/reminders', {
+      const response = await fetch('https://fyp-pet-telehealth-system.onrender.com/api/reminders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -351,7 +351,7 @@ useEffect(() => {
     }
 
     try {
-      const response = await fetch(`http://localhost:5000/api/reminders/${selectedReminder.rmd_id}`, {
+      const response = await fetch(`https://fyp-pet-telehealth-system.onrender.com/api/reminders/${selectedReminder.rmd_id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -387,7 +387,7 @@ useEffect(() => {
     if (!confirm('Are you sure you want to delete this reminder?')) return;
 
     try {
-      const response = await fetch(`http://localhost:5000/api/reminders/${selectedReminder.rmd_id}`, {
+      const response = await fetch(`https://fyp-pet-telehealth-system.onrender.com/api/reminders/${selectedReminder.rmd_id}`, {
         method: 'DELETE'
       });
 
@@ -530,7 +530,7 @@ useEffect(() => {
     const cancelledBy = 'petParent';
     
     try {
-      const response = await fetch(`http://localhost:5000/api/appointments/${apptId}/cancel`, {
+      const response = await fetch(`https://fyp-pet-telehealth-system.onrender.com/api/appointments/${apptId}/cancel`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

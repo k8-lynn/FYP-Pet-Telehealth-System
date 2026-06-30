@@ -29,7 +29,7 @@ const MyProfile = () => {
 
   const fetchProfileData = async () => {
     try {
-      const response = await fetch(`http://localhost:5000/api/profile/${userId}`);
+      const response = await fetch(`https://fyp-pet-telehealth-system.onrender.com/api/profile/${userId}`);
       const data = await response.json();
 
       if (response.ok) {
@@ -58,11 +58,11 @@ const MyProfile = () => {
     try {
       let endpoint;
       if (userType === 'petParent') {
-        endpoint = `http://localhost:5000/api/profile/petparent/${userId}`;
+        endpoint = `https://fyp-pet-telehealth-system.onrender.com/api/profile/petparent/${userId}`;
       } else if (userType === 'vetAdmin') {
-        endpoint = `http://localhost:5000/api/profile/vetadmin/${userId}`;
+        endpoint = `https://fyp-pet-telehealth-system.onrender.com/api/profile/vetadmin/${userId}`;
       } else if (userType === 'veterinarian') {
-        endpoint = `http://localhost:5000/api/profile/veterinarian/${userId}`;
+        endpoint = `https://fyp-pet-telehealth-system.onrender.com/api/profile/veterinarian/${userId}`;
       }
   
       const response = await fetch(endpoint, {

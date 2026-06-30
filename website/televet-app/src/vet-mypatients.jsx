@@ -35,7 +35,7 @@ const VetMyPatients = () => {
       if (!userid) return;
 
       try {
-        const response = await fetch(`http://localhost:5000/api/profile/${userid}`);
+        const response = await fetch(`https://fyp-pet-telehealth-system.onrender.com/api/profile/${userid}`);
         const data = await response.json();
 
         if (response.ok) {
@@ -61,7 +61,7 @@ const VetMyPatients = () => {
 
     console.log('🔍 Fetching patients for vet:', vtId);
     
-    fetch(`http://localhost:5000/api/patients/vet/${vtId}`)
+    fetch(`https://fyp-pet-telehealth-system.onrender.com/api/patients/vet/${vtId}`)
       .then(res => {
         console.log('📡 Response status:', res.status);
         return res.json();

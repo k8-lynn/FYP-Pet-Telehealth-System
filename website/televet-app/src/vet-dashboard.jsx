@@ -47,7 +47,7 @@ const VetDashboard = () => {
       try {
         console.log("🔍 Fetching vet profile for userid:", userid);
         const response = await fetch(
-          `http://localhost:5000/api/profile/${userid}`
+          `https://fyp-pet-telehealth-system.onrender.com/api/profile/${userid}`
         );
         const data = await response.json();
 
@@ -77,7 +77,7 @@ const VetDashboard = () => {
       try {
         console.log("🔍 Fetching clinic_id for vt_id:", vt_id);
         const response = await fetch(
-          `http://localhost:5000/api/clinic-by-vet/${vt_id}`
+          `https://fyp-pet-telehealth-system.onrender.com/api/clinic-by-vet/${vt_id}`
         );
         const data = await response.json();
 
@@ -110,7 +110,7 @@ const VetDashboard = () => {
       // 1. Fetch appointments for this vet
       console.log("📅 Fetching appointments for vt_id:", vt_id);
       const appointmentsRes = await fetch(
-        `http://localhost:5000/api/appointments/vet/${vt_id}`
+        `https://fyp-pet-telehealth-system.onrender.com/api/appointments/vet/${vt_id}`
       );
       const appointments = await appointmentsRes.json();
       console.log("✅ All appointments:", appointments);
@@ -148,7 +148,7 @@ const VetDashboard = () => {
       // 2. Count unread messages
       console.log("💬 Fetching unread messages for vt_id:", vt_id);
       const unreadRes = await fetch(
-        `http://localhost:5000/api/vet-unread-messages/${vt_id}`
+        `https://fyp-pet-telehealth-system.onrender.com/api/vet-unread-messages/${vt_id}`
       );
       const unreadData = await unreadRes.json();
       const unreadCount = unreadData.unread_count || 0;
@@ -157,7 +157,7 @@ const VetDashboard = () => {
       // 3. Fetch patients assigned to this vet
       console.log("👥 Fetching patients for vt_id:", vt_id);
       const patientsRes = await fetch(
-        `http://localhost:5000/api/patients/vet/${vt_id}`
+        `https://fyp-pet-telehealth-system.onrender.com/api/patients/vet/${vt_id}`
       );
       const patients = await patientsRes.json();
       console.log("✅ Patients:", patients);
@@ -298,7 +298,7 @@ const VetDashboard = () => {
     try {
       setLoadingAppointment(true);
       const response = await fetch(
-        `http://localhost:5000/api/appointment-details/${appt_id}`
+        `https://fyp-pet-telehealth-system.onrender.com/api/appointment-details/${appt_id}`
       );
 
       if (response.status === 404) {
@@ -337,7 +337,7 @@ const VetDashboard = () => {
 
     try {
       const response = await fetch(
-        `http://localhost:5000/api/appointments/${apptId}/cancel`,
+        `https://fyp-pet-telehealth-system.onrender.com/api/appointments/${apptId}/cancel`,
         {
           method: "PUT",
           headers: {
@@ -376,7 +376,7 @@ const VetDashboard = () => {
 
     try {
       const response = await fetch(
-        `http://localhost:5000/api/appointments/${apptId}/reschedule-request`,
+        `https://fyp-pet-telehealth-system.onrender.com/api/appointments/${apptId}/reschedule-request`,
         {
           method: "PUT",
           headers: {

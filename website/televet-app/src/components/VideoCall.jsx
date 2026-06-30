@@ -711,7 +711,7 @@ const VideoCall = ({
                 >
                   {actualPetInfo.image ? (
                     <img
-                      src={`http://localhost:5000${actualPetInfo.image}`}
+                      src={`https://fyp-pet-telehealth-system.onrender.com${actualPetInfo.image}`}
                       alt={actualPetInfo.name}
                       style={{
                         width: "64px",

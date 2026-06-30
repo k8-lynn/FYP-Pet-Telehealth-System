@@ -332,7 +332,7 @@ const VetChat = () => {
 
       try {
         const response = await fetch(
-          `http://localhost:5000/api/profile/${userid}`
+          `https://fyp-pet-telehealth-system.onrender.com/api/profile/${userid}`
         );
         const data = await response.json();
 
@@ -398,7 +398,7 @@ const VetChat = () => {
       console.log("🔍 Fetching patients for vt_id:", vt_id);
 
       const response = await fetch(
-        `http://localhost:5000/api/vet-patients/${vt_id}`
+        `https://fyp-pet-telehealth-system.onrender.com/api/vet-patients/${vt_id}`
       );
 
       console.log("📡 Response status:", response.status);
@@ -443,7 +443,7 @@ const VetChat = () => {
     
     try {
       setLoading24x7(true);
-      const response = await fetch(`http://localhost:5000/api/vet-24-7-chats/${vtId}`);
+      const response = await fetch(`https://fyp-pet-telehealth-system.onrender.com/api/vet-24-7-chats/${vtId}`);
       const data = await response.json();
       
       console.log('✅ Fetched 24/7 consultations:', data);
@@ -488,7 +488,7 @@ const VetChat = () => {
         console.log("📞 Initializing chat with pp_id:", pp_id, "vt_id:", vt_id);
 
         const response = await fetch(
-          "http://localhost:5000/api/chat/get-or-create",
+          "https://fyp-pet-telehealth-system.onrender.com/api/chat/get-or-create",
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -533,7 +533,7 @@ const VetChat = () => {
     try {
       setLoadingAppointment(true);
       const response = await fetch(
-        `http://localhost:5000/api/scheduled-appointment/${pet_id}`
+        `https://fyp-pet-telehealth-system.onrender.com/api/scheduled-appointment/${pet_id}`
       );
 
       if (response.status === 404) {
@@ -569,7 +569,7 @@ const VetChat = () => {
   const fetchLastVisit = async (pet_id) => {
     try {
       const response = await fetch(
-        `http://localhost:5000/api/last-completed-appointment/${pet_id}`
+        `https://fyp-pet-telehealth-system.onrender.com/api/last-completed-appointment/${pet_id}`
       );
 
       if (response.status === 404) {
@@ -901,7 +901,7 @@ const VetChat = () => {
     // Search through actual messages in database
     try {
       const response = await fetch(
-        `http://localhost:5000/api/chat/search-messages?query=${encodeURIComponent(
+        `https://fyp-pet-telehealth-system.onrender.com/api/chat/search-messages?query=${encodeURIComponent(
           query
         )}&usr_id=${userid}&role=vt`
       );
@@ -988,7 +988,7 @@ const VetChat = () => {
 
     try {
       const response = await fetch(
-        "http://localhost:5000/api/chat/upload-file",
+        "https://fyp-pet-telehealth-system.onrender.com/api/chat/upload-file",
         {
           method: "POST",
           body: formData,
@@ -1092,7 +1092,7 @@ const VetChat = () => {
 
   const fetchPetsByOwner = React.useCallback(async (pp_id) => {
     try {
-      const response = await fetch(`http://localhost:5000/api/pets/by-parent/${pp_id}`);
+      const response = await fetch(`https://fyp-pet-telehealth-system.onrender.com/api/pets/by-parent/${pp_id}`);
       const data = await response.json();
       console.log(`✅ Fetched ${data.length} pets for pet owner pp_id: ${pp_id}`, data);
       setOwnerPets(data);
@@ -1119,7 +1119,7 @@ React.useEffect(() => {
     if (!vtId) return;
     
     try {
-      const response = await fetch(`http://localhost:5000/api/vet/${vtId}/247-availability`);
+      const response = await fetch(`https://fyp-pet-telehealth-system.onrender.com/api/vet/${vtId}/247-availability`);
       const data = await response.json();
       setAvailable247(data.available247);
     } catch (error) {
@@ -1134,7 +1134,7 @@ const handle247Toggle = async () => {
   const newStatus = available247 === 'yes' ? 'no' : 'yes';
   
   try {
-    const response = await fetch(`http://localhost:5000/api/vet/${vtId}/toggle-247-availability`, {
+    const response = await fetch(`https://fyp-pet-telehealth-system.onrender.com/api/vet/${vtId}/toggle-247-availability`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ available247: newStatus })
@@ -1159,7 +1159,7 @@ const handle247Toggle = async () => {
       return (
         <div className="message-image">
           <img
-            src={`http://localhost:5000${msg.msg}`}
+            src={`https://fyp-pet-telehealth-system.onrender.com${msg.msg}`}
             alt="Shared image"
             style={{
               maxWidth: "300px",
@@ -1168,7 +1168,7 @@ const handle247Toggle = async () => {
               cursor: "pointer",
             }}
             onClick={() =>
-              window.open(`http://localhost:5000${msg.msg}`, "_blank")
+              window.open(`https://fyp-pet-telehealth-system.onrender.com${msg.msg}`, "_blank")
             }
           />
         </div>
@@ -1178,7 +1178,7 @@ const handle247Toggle = async () => {
       return (
         <div className="message-file">
           <a
-            href={`http://localhost:5000${msg.msg}`}
+            href={`https://fyp-pet-telehealth-system.onrender.com${msg.msg}`}
             target="_blank"
             rel="noopener noreferrer"
             style={{
@@ -1205,7 +1205,7 @@ const handle247Toggle = async () => {
 
     try {
       const response = await fetch(
-        `http://localhost:5000/api/appointments/${apptId}/cancel`,
+        `https://fyp-pet-telehealth-system.onrender.com/api/appointments/${apptId}/cancel`,
         {
           method: "PUT",
           headers: {
@@ -1246,7 +1246,7 @@ const handle247Toggle = async () => {
 
     try {
       const response = await fetch(
-        `http://localhost:5000/api/appointments/${apptId}/reschedule-request`,
+        `https://fyp-pet-telehealth-system.onrender.com/api/appointments/${apptId}/reschedule-request`,
         {
           method: "PUT",
           headers: {
@@ -1299,7 +1299,7 @@ const handle247Toggle = async () => {
     if (selectedTemplate && sentMessage) {
       const wasEdited = message !== selectedTemplate.template_message;
 
-      await fetch("http://localhost:5000/api/vet-templates/log-usage", {
+      await fetch("https://fyp-pet-telehealth-system.onrender.com/api/vet-templates/log-usage", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -1334,7 +1334,7 @@ const handle247Toggle = async () => {
     }
 
     try {
-      await fetch("http://localhost:5000/api/vet-templates", {
+      await fetch("https://fyp-pet-telehealth-system.onrender.com/api/vet-templates", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -1368,7 +1368,7 @@ const handle247Toggle = async () => {
 
     try {
       const response = await fetch(
-        "http://localhost:5000/api/vet-templates/analyze",
+        "https://fyp-pet-telehealth-system.onrender.com/api/vet-templates/analyze",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -2133,7 +2133,7 @@ const handle247Toggle = async () => {
                               <div className="pet-image-large">
                                 {displayPet.image ? (
                                   <img
-                                    src={`http://localhost:5000${displayPet.image}`}
+                                    src={`https://fyp-pet-telehealth-system.onrender.com${displayPet.image}`}
                                     alt={displayPet.name}
                                     style={{
                                       width: "100%",
@@ -2257,7 +2257,7 @@ const handle247Toggle = async () => {
                     <div className="pet-image-large">
                       {currentPet.image ? (
                         <img
-                          src={`http://localhost:5000${currentPet.image}`}
+                          src={`https://fyp-pet-telehealth-system.onrender.com${currentPet.image}`}
                           alt={currentPet.name}
                           style={{
                             width: "100%",

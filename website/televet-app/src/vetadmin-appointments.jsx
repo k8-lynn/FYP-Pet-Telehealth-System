@@ -127,7 +127,7 @@ const VetAdminAppointments = () => {
   useEffect(() => {
     if (!clinic_id) return;
 
-    socketRef.current = io("http://localhost:5000", {
+    socketRef.current = io("https://fyp-pet-telehealth-system.onrender.com", {
       transports: ["websocket"],
       reconnectionAttempts: 5,
       reconnectionDelay: 1000,
@@ -206,7 +206,7 @@ const VetAdminAppointments = () => {
 
   const fetchVeterinarians = async (vaId) => {
     try {
-      const res = await fetch(`http://localhost:5000/api/veterinarians/${vaId}`);
+      const res = await fetch(`https://fyp-pet-telehealth-system.onrender.com/api/veterinarians/${vaId}`);
       const data = await res.json();
       
       if (res.ok) {
@@ -219,7 +219,7 @@ const VetAdminAppointments = () => {
 
   const fetchVetAdminData = async (userId) => {
     try {
-      const res = await fetch(`http://localhost:5000/api/profile/${userId}`);
+      const res = await fetch(`https://fyp-pet-telehealth-system.onrender.com/api/profile/${userId}`);
       const data = await res.json();
   
       if (data.va_id) {
@@ -237,7 +237,7 @@ const VetAdminAppointments = () => {
 
   const fetchClinicData = async (vaId) => {
     try {
-      const res = await fetch(`http://localhost:5000/api/clinic/${vaId}`);
+      const res = await fetch(`https://fyp-pet-telehealth-system.onrender.com/api/clinic/${vaId}`);
       const data = await res.json();
       
       if (data.clinic_id) {
@@ -275,7 +275,7 @@ const VetAdminAppointments = () => {
 
   const fetchClinicHours = async (clinicId) => {
     try {
-      const res = await fetch(`http://localhost:5000/api/clinic-hours/${clinicId}`);
+      const res = await fetch(`https://fyp-pet-telehealth-system.onrender.com/api/clinic-hours/${clinicId}`);
       const data = await res.json();
       
       if (data) {
@@ -298,7 +298,7 @@ const VetAdminAppointments = () => {
   const fetchClinicSlotsByDate = async (clinicId, date, type = consultationType) => {
     const dateKey = formatDateKey(date);
     try {
-      const res = await fetch(`http://localhost:5000/api/clinic-slots/${clinicId}/date/${dateKey}/${type || consultationType}`);
+      const res = await fetch(`https://fyp-pet-telehealth-system.onrender.com/api/clinic-slots/${clinicId}/date/${dateKey}/${type || consultationType}`);
       const data = await res.json();
       
       if (data && data.slots) {
@@ -328,7 +328,7 @@ const VetAdminAppointments = () => {
     const endKey = formatDateKey(endDate);
     
     try {
-      const res = await fetch(`http://localhost:5000/api/clinic-slots/${clinicId}/range/${type}?startDate=${startKey}&endDate=${endKey}`);
+      const res = await fetch(`https://fyp-pet-telehealth-system.onrender.com/api/clinic-slots/${clinicId}/range/${type}?startDate=${startKey}&endDate=${endKey}`);
       const data = await res.json();
       
       if (data && data.slots) {
@@ -351,7 +351,7 @@ const VetAdminAppointments = () => {
 
   const fetchAppointmentCounts = async (clinicId) => {
     try {
-      const res = await fetch(`http://localhost:5000/api/clinic-appointments-count/${clinicId}`);
+      const res = await fetch(`https://fyp-pet-telehealth-system.onrender.com/api/clinic-appointments-count/${clinicId}`);
       const data = await res.json();
       
       if (res.ok) {
@@ -460,7 +460,7 @@ const VetAdminAppointments = () => {
     });
   
     try {
-      const res = await fetch(`http://localhost:5000/api/clinic-slots/${clinic_id}/date/${dateKey}/${consultationType}`, {
+      const res = await fetch(`https://fyp-pet-telehealth-system.onrender.com/api/clinic-slots/${clinic_id}/date/${dateKey}/${consultationType}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ slots: updatedSlots })
@@ -514,7 +514,7 @@ const VetAdminAppointments = () => {
     const updatedSlots = existingSlots.filter(slot => !selectedSlotsForDeletion.includes(slot.id));
   
     try {
-      const res = await fetch(`http://localhost:5000/api/clinic-slots/${clinic_id}/date/${dateKey}/${consultationType}`, {
+      const res = await fetch(`https://fyp-pet-telehealth-system.onrender.com/api/clinic-slots/${clinic_id}/date/${dateKey}/${consultationType}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ slots: updatedSlots })
@@ -568,7 +568,7 @@ const VetAdminAppointments = () => {
 
     if (slot.petId) {
       try {
-        const assignVetRes = await fetch(`http://localhost:5000/api/patients/${slot.petId}/assign-vet`, {
+        const assignVetRes = await fetch(`https://fyp-pet-telehealth-system.onrender.com/api/patients/${slot.petId}/assign-vet`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ vt_id: selectedVeterinarian.vt_id })
@@ -597,7 +597,7 @@ const VetAdminAppointments = () => {
     );
 
     try {
-      const res = await fetch(`http://localhost:5000/api/clinic-slots/${clinic_id}/date/${dateKey}/${consultationType}`, {
+      const res = await fetch(`https://fyp-pet-telehealth-system.onrender.com/api/clinic-slots/${clinic_id}/date/${dateKey}/${consultationType}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ slots: updatedSlots })
@@ -637,7 +637,7 @@ const VetAdminAppointments = () => {
     }
     
     try {
-      const res = await fetch(`http://localhost:5000/api/clinic-slots/generate-bulk/${clinic_id}`, {
+      const res = await fetch(`https://fyp-pet-telehealth-system.onrender.com/api/clinic-slots/generate-bulk/${clinic_id}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -713,7 +713,7 @@ const VetAdminAppointments = () => {
       console.log('📅 Looking for appointment at:', apptDateTime);
       
       // ✅ Pass the appointment date as a query parameter
-      const response = await fetch(`http://localhost:5000/api/scheduled-appointment-by-pet/${slot.petId}?appt_date=${encodeURIComponent(apptDateTime)}`);
+      const response = await fetch(`https://fyp-pet-telehealth-system.onrender.com/api/scheduled-appointment-by-pet/${slot.petId}?appt_date=${encodeURIComponent(apptDateTime)}`);
       const appointmentData = await response.json();
       
       console.log('📋 Appointment data received:', appointmentData);
@@ -938,7 +938,7 @@ const VetAdminAppointments = () => {
                           setSelectedPendingSlot(slot);
                           
                           try {
-                            const res = await fetch(`http://localhost:5000/api/appointment-by-pet/${slot.petId}`);
+                            const res = await fetch(`https://fyp-pet-telehealth-system.onrender.com/api/appointment-by-pet/${slot.petId}`);
                             const data = await res.json();
                             if (res.ok) {
                               setSelectedAppointmentDetails(data);
@@ -1224,7 +1224,7 @@ const VetAdminAppointments = () => {
                                 setSelectedPendingSlot(slot);
                                 
                                 try {
-                                  const res = await fetch(`http://localhost:5000/api/appointment-by-pet/${slot.petId}`);
+                                  const res = await fetch(`https://fyp-pet-telehealth-system.onrender.com/api/appointment-by-pet/${slot.petId}`);
                                   const data = await res.json();
                                   if (res.ok) {
                                     setSelectedAppointmentDetails(data);

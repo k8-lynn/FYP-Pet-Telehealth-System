@@ -37,7 +37,7 @@ const VetAppointments = () => {
       if (!userid) return;
 
       try {
-        const response = await fetch(`http://localhost:5000/api/profile/${userid}`);
+        const response = await fetch(`https://fyp-pet-telehealth-system.onrender.com/api/profile/${userid}`);
         const data = await response.json();
 
         if (response.ok) {
@@ -63,7 +63,7 @@ const VetAppointments = () => {
 
     console.log('🔍 Fetching appointments for vet:', vtId);
     
-    fetch(`http://localhost:5000/api/appointments/vet/${vtId}`)
+    fetch(`https://fyp-pet-telehealth-system.onrender.com/api/appointments/vet/${vtId}`)
       .then(res => {
         console.log('📡 Response status:', res.status);
         return res.json();
@@ -90,7 +90,7 @@ const VetAppointments = () => {
 
   const handleMarkCompleted = async (appt_id) => {
     try {
-      const response = await fetch(`http://localhost:5000/api/appointments/${appt_id}/status`, {
+      const response = await fetch(`https://fyp-pet-telehealth-system.onrender.com/api/appointments/${appt_id}/status`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: 'completed' })
@@ -120,7 +120,7 @@ const VetAppointments = () => {
     }
   
     try {
-      const response = await fetch(`http://localhost:5000/api/appointments/${appt_id}`, {
+      const response = await fetch(`https://fyp-pet-telehealth-system.onrender.com/api/appointments/${appt_id}`, {
         method: 'DELETE'
       });
   
@@ -228,7 +228,7 @@ const handleCancelAppointment = async (apptId, cancelReason) => {
   const cancelledBy = 'veterinarian';
   
   try {
-    const response = await fetch(`http://localhost:5000/api/appointments/${apptId}/cancel`, {
+    const response = await fetch(`https://fyp-pet-telehealth-system.onrender.com/api/appointments/${apptId}/cancel`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
@@ -252,7 +252,7 @@ const handleCancelAppointment = async (apptId, cancelReason) => {
 
     // Refresh appointments for this vet
     if (vtId) {
-      const res = await fetch(`http://localhost:5000/api/appointments/vet/${vtId}`);
+      const res = await fetch(`https://fyp-pet-telehealth-system.onrender.com/api/appointments/vet/${vtId}`);
       const data = await res.json();
       setAppointments(data);
     }
@@ -268,7 +268,7 @@ const handleRescheduleRequest = async (apptId, rescheduleReason) => {
   const requestedBy = 'veterinarian'; // Fixed: this is vet-dashboard
   
   try {
-    const response = await fetch(`http://localhost:5000/api/appointments/${apptId}/reschedule-request`, {
+    const response = await fetch(`https://fyp-pet-telehealth-system.onrender.com/api/appointments/${apptId}/reschedule-request`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
@@ -288,7 +288,7 @@ const handleRescheduleRequest = async (apptId, rescheduleReason) => {
     
     // Refresh dashboard data after reschedule request
     if (vtId) {
-      const res = await fetch(`http://localhost:5000/api/appointments/vet/${vtId}`);
+      const res = await fetch(`https://fyp-pet-telehealth-system.onrender.com/api/appointments/vet/${vtId}`);
       const data = await res.json();
       setAppointments(data);
     }

@@ -83,7 +83,7 @@ export const NotificationProvider = ({ children }) => {
     );
 
     // Connect to your backend Socket.IO server
-    const newSocket = io("http://localhost:5000", {
+    const newSocket = io("https://fyp-pet-telehealth-system.onrender.com", {
       transports: ["websocket"],
       reconnection: true,
       reconnectionDelay: 1000,

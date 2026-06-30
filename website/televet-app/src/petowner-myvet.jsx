@@ -29,7 +29,7 @@ const MyVet = () => {
 
   // Socket.IO connection
   useEffect(() => {
-    const socket = io('http://localhost:5000');
+    const socket = io('https://fyp-pet-telehealth-system.onrender.com');
 
     socket.on('connect', () => {
       console.log('✅ Connected to Socket.IO server');
@@ -94,12 +94,12 @@ const MyVet = () => {
       if (!usr_id) return;
   
       try {
-        const res = await fetch(`http://localhost:5000/api/user-clinic/${usr_id}`);
+        const res = await fetch(`https://fyp-pet-telehealth-system.onrender.com/api/user-clinic/${usr_id}`);
         const data = await res.json();
   
         if (data.clinic) {
           console.log("📍 Assigned clinic found:", data.clinic);
-          const vetRes = await fetch(`http://localhost:5000/api/vet-by-name/${encodeURIComponent(data.clinic)}`);
+          const vetRes = await fetch(`https://fyp-pet-telehealth-system.onrender.com/api/vet-by-name/${encodeURIComponent(data.clinic)}`);
           const vetData = await vetRes.json();
   
           if (vetRes.ok && vetData) {
@@ -124,7 +124,7 @@ const MyVet = () => {
             // Fetch clinic hours
             if (vetData.clinic_id) {
               try {
-                const hoursRes = await fetch(`http://localhost:5000/api/clinic-hours/${vetData.clinic_id}`);
+                const hoursRes = await fetch(`https://fyp-pet-telehealth-system.onrender.com/api/clinic-hours/${vetData.clinic_id}`);
                 const hoursData = await hoursRes.json();
               
                 if (hoursRes.ok && hoursData) {
@@ -141,7 +141,7 @@ const MyVet = () => {
 
               // Fetch clinic status
               try {
-                const statusRes = await fetch(`http://localhost:5000/api/clinic-status/${vetData.clinic_id}`);
+                const statusRes = await fetch(`https://fyp-pet-telehealth-system.onrender.com/api/clinic-status/${vetData.clinic_id}`);
                 const statusData = await statusRes.json();
                 
                 if (statusRes.ok && statusData.status) {
@@ -199,7 +199,7 @@ const MyVet = () => {
     // First, try searching for clinics by name
     try {
       const clinicRes = await fetch(
-        `http://localhost:5000/api/clinics/search?query=${encodeURIComponent(location)}`
+        `https://fyp-pet-telehealth-system.onrender.com/api/clinics/search?query=${encodeURIComponent(location)}`
       );
       const clinicData = await clinicRes.json();
       
@@ -260,7 +260,7 @@ const MyVet = () => {
   const fetchVetsNearby = async (lat, lon) => {
     setLoading(true);
     const res = await fetch(
-      `http://localhost:5000/api/vets-nearby?lat=${lat}&lon=${lon}`
+      `https://fyp-pet-telehealth-system.onrender.com/api/vets-nearby?lat=${lat}&lon=${lon}`
     );
     const data = await res.json();
 
@@ -294,7 +294,7 @@ const MyVet = () => {
           return;
         }
   
-        const res = await fetch("http://localhost:5000/api/assign-clinic", {
+        const res = await fetch("https://fyp-pet-telehealth-system.onrender.com/api/assign-clinic", {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -309,7 +309,7 @@ const MyVet = () => {
           console.log("✅ Backend update:", data.message);
           
           // ✅ CRITICAL: Fetch the complete vet data WITH clinic_id before setting state
-          const vetRes = await fetch(`http://localhost:5000/api/vet-by-name/${encodeURIComponent(selectedVet.va_clinicName)}`);
+          const vetRes = await fetch(`https://fyp-pet-telehealth-system.onrender.com/api/vet-by-name/${encodeURIComponent(selectedVet.va_clinicName)}`);
           const completeVetData = await vetRes.json();
           
           if (vetRes.ok && completeVetData && completeVetData.clinic_id) {
@@ -332,7 +332,7 @@ const MyVet = () => {
             }
   
             // ✅ Now fetch clinic hours with the proper clinic_id
-            fetch(`http://localhost:5000/api/clinic-hours/${completeVetData.clinic_id}`)
+            fetch(`https://fyp-pet-telehealth-system.onrender.com/api/clinic-hours/${completeVetData.clinic_id}`)
               .then(res => res.json())
               .then(hoursData => {
                 if (hoursData) {
@@ -343,7 +343,7 @@ const MyVet = () => {
               .catch(err => console.error("❌ Error fetching clinic hours:", err));
   
             // ✅ Fetch clinic status with the proper clinic_id
-            fetch(`http://localhost:5000/api/clinic-status/${completeVetData.clinic_id}`)
+            fetch(`https://fyp-pet-telehealth-system.onrender.com/api/clinic-status/${completeVetData.clinic_id}`)
               .then(res => res.json())
               .then(statusData => {
                 if (statusData.status) {
