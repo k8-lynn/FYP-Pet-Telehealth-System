@@ -12,34 +12,26 @@ dotenv.config();
 
 const app = express();
 
-// ✅ Array of allowed origins (your local frontend + your future live frontend URL)
+// ✅ Array of allowed origins
 const allowedOrigins = [
   'http://localhost:5173', 
-  'https://fyp-pet-telehealth-system.vercel.app' // 👈 Paste your actual Vercel URL here!
+  'https://fyp-pet-telehealth-system.vercel.app'
 ];
 
-// ✅ CORS configuration for Express
+// ✅ Simplified CORS configuration
 app.use(cors({
-  origin: function (origin, callback) {
-    // Allow requests with no origin (like mobile apps or curl requests)
-    if (!origin) return callback(null, true);
-    if (allowedOrigins.indexOf(origin) === -1) {
-      const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
-      return callback(new Error(msg), false);
-    }
-    return callback(null, true);
-  },
+  origin: allowedOrigins,
   credentials: true
 }));
 
 app.use(express.json());
 app.use(cookieParser());
 
-// ✅ Create HTTP server & Socket.IO instance with matching CORS rules
+// ✅ Create HTTP server & Socket.IO instance
 const server = createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: allowedOrigins, // ✅ Allows both local and live frontend connections
+    origin: allowedOrigins, 
     methods: ["GET", "POST", "PUT"],
     credentials: true
   }
