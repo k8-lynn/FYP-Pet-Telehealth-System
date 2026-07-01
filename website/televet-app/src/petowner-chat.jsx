@@ -67,6 +67,7 @@ const PetOwnerChat = () => {
   const [onlineVets, setOnlineVets] = useState([]);
   const [loading24x7, setLoading24x7] = useState(false);
   const [selectedPetDisplay, setSelectedPetDisplay] = useState(null);
+  const isInitializing = React.useRef(false);
   const [newReminder, setNewReminder] = useState({
     title: "",
     pet_id: "",
@@ -303,25 +304,24 @@ const PetOwnerChat = () => {
   // Update the selectedChat useEffect:
   React.useEffect(() => {
     if (selectedChat && currentChat?.petData) {
-      // ✅ Only fetch appointment details if there's a pet_id
       if (currentChat.petData.pet_id) {
         fetchAppointmentDetails(currentChat.petData.pet_id);
         fetchLastVisit(currentChat.petData.pet_id);
       }
   
-      // ✅ Initialize chat if we have chat_id already OR need to create one
       if (ppId && currentChat.petData.pet_assignedVet) {
-        // ✅ If chat_id exists (24/7 or returning to existing chat), use it directly
         if (currentChat.petData.chat_id) {
-          console.log('🔄 Reusing existing chat_id:', currentChat.petData.chat_id);
           setChatId(currentChat.petData.chat_id);
-        } else {
-          // ✅ Otherwise, initialize/create chat
-          initializeChat(ppId, currentChat.petData.pet_assignedVet);
+        } else if (!isInitializing.current) {
+          // ✅ FIX: Block concurrent requests
+          isInitializing.current = true;
+          initializeChat(ppId, currentChat.petData.pet_assignedVet).finally(() => {
+             isInitializing.current = false;
+          });
         }
       }
     }
-  }, [selectedChat, ppId]); // eslint-disable-line
+  }, [selectedChat, ppId]);
 
   // Fetch messages when chatId changes
   React.useEffect(() => {

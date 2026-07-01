@@ -4510,10 +4510,10 @@ app.get('/api/veterinarian/:vt_id', (req, res) => {
 // =============== CHAT ENDPOINTS ===============
 
 // Get or create chat between pet parent and vet
+// index.js - Line ~2034
 app.post('/api/chat/get-or-create', (req, res) => {
   const { pp_id, vt_id } = req.body;
   
-  // Check if chat exists
   db.query(
     'SELECT * FROM chat_t WHERE pp_id = ? AND vt_id = ?',
     [pp_id, vt_id],
@@ -4524,19 +4524,20 @@ app.post('/api/chat/get-or-create', (req, res) => {
         return res.json(results[0]);
       }
       
-      // Create new chat
+      // ✅ FIX: Use INSERT IGNORE to prevent race condition crashes
       db.query(
-        'INSERT INTO chat_t (pp_id, vt_id) VALUES (?, ?)',
+        'INSERT IGNORE INTO chat_t (pp_id, vt_id) VALUES (?, ?)',
         [pp_id, vt_id],
         (err, result) => {
           if (err) return res.status(500).json({ error: err.message });
           
+          // Re-fetch to get the ID, whether it was just created or already existed
           db.query(
-            'SELECT * FROM chat_t WHERE chat_id = ?',
-            [result.insertId],
-            (err, newChat) => {
+            'SELECT * FROM chat_t WHERE pp_id = ? AND vt_id = ?',
+            [pp_id, vt_id],
+            (err, finalChat) => {
               if (err) return res.status(500).json({ error: err.message });
-              res.json(newChat[0]);
+              res.json(finalChat[0]);
             }
           );
         }

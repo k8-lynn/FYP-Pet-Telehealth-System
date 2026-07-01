@@ -286,45 +286,29 @@ const VetChat = () => {
   }, [selectedChat]); // eslint-disable-line
 
   // ✅ NEW: Combined effect to initialize chat when BOTH selectedChat and vtId are ready
+  // vet-chat.jsx - Line ~212
   React.useEffect(() => {
-    // Check if it's a regular patient chat
     const selectedPatient = myPatients.find(
       (p) => `patient-${p.pet_id}` === selectedChat
     );
-
-    // Check if it's a 24/7 consultation chat
     const selected247Chat = consultation24x7Chats.find(
       (c) => c.id === selectedChat
     );
 
     if (selectedChat && selectedPatient?.pp_id && vtId) {
-      console.log("🔄 Initializing regular patient chat for:", {
-        selectedChat,
-        pet_id: selectedPatient.pet_id,
-        pet_name: selectedPatient.pet_name,
-        pp_id: selectedPatient.pp_id,
-        vt_id: vtId,
-      });
-      initializeChat(selectedPatient.pp_id, vtId);
+      // ✅ FIX: Check if we already have a chat_id before initializing
+      if (selectedPatient.chat_id) {
+        setChatId(selectedPatient.chat_id);
+      } else {
+        console.log("🔄 Initializing regular patient chat...");
+        initializeChat(selectedPatient.pp_id, vtId);
+      }
     } else if (selectedChat && selected247Chat?.petData?.pp_id && vtId) {
-      // ✅ Handle 24/7 consultation chat initialization
-      console.log("🔄 Initializing 24/7 consultation chat for:", {
-        selectedChat,
-        chat_id: selected247Chat.petData.chat_id,
-        pp_id: selected247Chat.petData.pp_id,
-        vt_id: vtId,
-      });
-      
-      // For 24/7 chats, we already have chat_id, so set it directly
       setChatId(selected247Chat.petData.chat_id);
-      
-      // Mark messages as read after setting chat
-      setTimeout(() => {
-        markAsRead();
-      }, 500);
+      setTimeout(() => { markAsRead(); }, 500);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedChat, vtId, myPatients, consultation24x7Chats]);
+  
   // Fetch vet info
   React.useEffect(() => {
     const fetchVetInfo = async () => {
