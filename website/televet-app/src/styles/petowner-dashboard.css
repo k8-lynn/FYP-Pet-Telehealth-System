@@ -218,7 +218,7 @@
 .schedule-timeline {
   position: relative;
   overflow-y: auto;
-  max-height: 800px; /* Increased from 600px */
+  max-height: 800px; 
   padding-right: 0.5rem;
 }
 
@@ -244,16 +244,15 @@
   position: relative;
   display: flex;
   border-bottom: 1px solid #f1f5f9;
-  min-height: 80px; /* Increased back to 80px for better spacing */
+  min-height: 80px; 
   padding: 0;
   transition: all 0.2s ease;
 }
 
 .time-slot:hover {
-  background: #f8fbff;
-  margin: 0 -1.25rem;
-  padding: 1.1rem 1.25rem;
-  border-radius: 14px;
+  background: transparent;
+  margin: 0;
+  padding: 0;
 }
 
 .time-label {
@@ -261,13 +260,16 @@
   color: #64748b;
   font-size: 0.9rem;
   font-weight: 700;
+  padding: 1.1rem 0;
+  flex-shrink: 0;
 }
 
 .time-content {
+  position: relative;
   flex: 1;
-  padding-left: 1.5rem;
-  color: #334155;
-  font-weight: 500;
+  padding: 0;
+  margin: 0;
+  border-left: 2px solid #e2e8f0;
 }
 
 /* Calendar & Scheduled Container */
@@ -468,79 +470,70 @@
   transform: translateY(-2px) scale(1.02);
 }
 
-/* Responsive adjustments */
-@media (max-width: 1200px) {
-  .main-content {
-    padding-left: 340px;
-  }
-  
-  .sidebar.collapsed ~ .main-content {
-    padding-left: 140px;
-  }
-}
-
-@media (max-width: 992px) {
-  .dashboard-content {
-    grid-template-columns: 1fr;
-  }
-  
-  .main-content {
-    padding-left: 2.5rem;
-  }
-  
-  .schedule-section,
-  .calendar-section,
-  .scheduled-section {
-    padding: 2rem;
-  }
-  
-  .scheduled-header {
-    padding: 1.5rem 2rem;
-  }
-}
-
-@media (max-width: 768px) {
-  .main-content {
-    padding: 1.5rem;
-  }
-  
-  .schedule-title-container h2,
-  .calendar-header h3,
-  .scheduled-header h3 {
-    font-size: 1.4rem;
-  }
-}
-
 /* Appointment blocks in timeline */
 .appointment-block {
+  position: absolute;
+  left: 8px;
+  right: 8px;
   background: linear-gradient(135deg, #a8ceff 0%, #91befe 100%);
   color: white;
-  padding: 1rem 1.25rem;
-  border-radius: 14px;
-  margin-bottom: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-radius: 12px;
   cursor: pointer;
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   border: 2px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 2px 8px rgba(168, 206, 255, 0.3);
+  z-index: 1;
+  overflow: hidden;
 }
 
 .appointment-block:hover {
-  transform: translateY(-3px) scale(1.02);
-  box-shadow: 0 8px 20px rgba(168, 206, 255, 0.4);
+  transform: translateX(4px) scale(1.02);
+  box-shadow: 0 4px 16px rgba(168, 206, 255, 0.5);
   background: linear-gradient(135deg, #91befe 0%, #7aabf5 100%);
+  z-index: 2;
 }
 
 .appointment-title {
   font-weight: 700;
-  font-size: 0.95rem;
-  margin-bottom: 0.4rem;
+  font-size: 0.9rem;
+  margin-bottom: 0.3rem;
   letter-spacing: -0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .appointment-time {
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   opacity: 0.95;
   font-weight: 600;
 }
+
+.appointment-block .consultation-badge {
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0.25rem 0.6rem;
+  border-radius: 6px;
+  margin-left: 0.5rem;
+  border: 2px solid;
+}
+
+.appointment-block .consultation-badge.online {
+  background: #dbeafe;
+  color: #3b82f6;
+  border-color: #3b82f640;
+}
+
+.appointment-block .consultation-badge.physical {
+  background: #e0e7ff;
+  color: #6366f1;
+  border-color: #6366f140;
+}
+
+/* Multiple appointments in same hour - stagger them */
+.appointment-block.staggered-1 { left: 48px; right: 8px; }
+.appointment-block.staggered-2 { left: 88px; right: 8px; }
 
 /* Reminders in scheduled section */
 .reminders-list {
@@ -604,96 +597,6 @@
   border: 2px solid #e2e8f0;
 }
 
-/* Responsive adjustments for reminders */
-@media (max-width: 768px) {
-  .reminders-list {
-    padding: 0 1.5rem;
-  }
-  
-  .reminder-title,
-  .reminder-time-small {
-    font-size: 0.875rem;
-  }
-  
-  .reminder-pet {
-    font-size: 0.8rem;
-  }
-}
-
-.time-slot:hover {
-  background: transparent;
-  margin: 0;
-  padding: 0;
-}
-
-.time-label {
-  width: 95px;
-  color: #64748b;
-  font-size: 0.9rem;
-  font-weight: 700;
-  padding: 1.1rem 0;
-  flex-shrink: 0;
-}
-
-.time-content {
-  position: relative;
-  flex: 1;
-  padding: 0;
-  margin: 0;
-  border-left: 2px solid #e2e8f0;
-}
-
-/* Appointment positioning */
-.appointment-block {
-  position: absolute;
-  left: 8px;
-  right: 8px;
-  background: linear-gradient(135deg, #a8ceff 0%, #91befe 100%);
-  color: white;
-  padding: 0.75rem 1rem;
-  border-radius: 12px;
-  cursor: pointer;
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-  border: 2px solid rgba(255, 255, 255, 0.2);
-  box-shadow: 0 2px 8px rgba(168, 206, 255, 0.3);
-  z-index: 1;
-  overflow: hidden;
-}
-
-.appointment-block:hover {
-  transform: translateX(4px) scale(1.02);
-  box-shadow: 0 4px 16px rgba(168, 206, 255, 0.5);
-  background: linear-gradient(135deg, #91befe 0%, #7aabf5 100%);
-  z-index: 2;
-}
-
-.appointment-title {
-  font-weight: 700;
-  font-size: 0.9rem;
-  margin-bottom: 0.3rem;
-  letter-spacing: -0.01em;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.appointment-time {
-  font-size: 0.8rem;
-  opacity: 0.95;
-  font-weight: 600;
-}
-
-/* Multiple appointments in same hour - stagger them */
-.appointment-block.staggered-1 {
-  left: 48px;
-  right: 8px;
-}
-
-.appointment-block.staggered-2 {
-  left: 88px;
-  right: 8px;
-}
-
 .calendar-indicator-dot {
   position: absolute;
   bottom: 4px;
@@ -713,25 +616,146 @@
   border-bottom: 1px solid #f1f5f9;
 }
 
-/* In the appointment block section */
-/* In the appointment block section */
-.appointment-block .consultation-badge {
-  font-size: 0.7rem;
-  font-weight: 700;
-  padding: 0.25rem 0.6rem;
-  border-radius: 6px;
-  margin-left: 0.5rem;
-  border: 2px solid;
+
+/* ========================================= */
+/* 📱 MOBILE RESPONSIVE MEDIA QUERIES        */
+/* ========================================= */
+
+@media (max-width: 1200px) {
+  .main-content {
+    padding-left: 340px;
+  }
+  
+  .sidebar.collapsed ~ .main-content {
+    padding-left: 140px;
+  }
 }
 
-.appointment-block .consultation-badge.online {
-  background: #dbeafe;
-  color: #3b82f6;
-  border-color: #3b82f640;
+@media (max-width: 992px) {
+  .dashboard-content {
+    grid-template-columns: 1fr;
+  }
+  
+  .main-content {
+    padding-left: 2.5rem;
+  }
+  
+  .schedule-section,
+  .calendar-section,
+  .scheduled-section {
+    padding: 2rem;
+  }
+  
+  .scheduled-header {
+    padding: 1.5rem 2rem;
+  }
 }
 
-.appointment-block .consultation-badge.physical {
-  background: #e0e7ff;
-  color: #6366f1;
-  border-color: #6366f140;
+@media (max-width: 768px) {
+  .main-content {
+    padding: 1rem; 
+  }
+  
+  /* Shrink padding inside cards */
+  .schedule-section,
+  .calendar-section,
+  .scheduled-section {
+    padding: 1.25rem;
+    border-radius: 16px;
+  }
+
+  /* Stack Schedule Header */
+  .schedule-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1rem;
+    padding-bottom: 1rem;
+  }
+
+  /* Full width button */
+  .book-appointment-button {
+    width: 100%;
+    justify-content: center;
+    padding: 0.8rem;
+  }
+  
+  /* Narrower time labels so appointments fit */
+  .time-label {
+    width: 65px; 
+    font-size: 0.8rem;
+  }
+
+  /* Adjust Scheduled header */
+  .scheduled-header {
+    padding: 1.25rem;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1rem;
+  }
+  
+  .view-all-button {
+    width: 100%;
+    text-align: center;
+  }
+
+  /* Full width create task button */
+  .create-task-button {
+    width: calc(100% - 2.5rem);
+    padding: 1rem;
+  }
+
+  .schedule-title-container h2,
+  .calendar-header h3,
+  .scheduled-header h3 {
+    font-size: 1.4rem;
+  }
+
+  .reminders-list {
+    padding: 0 1.25rem;
+  }
+  
+  .scheduled-date-display {
+    padding: 1rem 1.25rem;
+  }
+
+  /* Resize calendar days */
+  .calendar-weekday {
+    font-size: 0.7rem;
+    padding: 0.4rem;
+  }
+  
+  .calendar-day {
+    font-size: 0.85rem;
+  }
+}
+
+@media (max-width: 480px) {
+  /* Stack top right header elements */
+  .header {
+    flex-direction: column-reverse;
+    align-items: flex-end;
+    margin-bottom: 1.5rem;
+  }
+  
+  .user-profile {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .schedule-title-container h2,
+  .calendar-header h3,
+  .scheduled-header h3 {
+    font-size: 1.25rem;
+  }
+
+  /* Stack reminders so time tag doesn't get squeezed */
+  .reminder-item-dashboard {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+
+  .reminder-time-small {
+    align-self: flex-start;
+  }
 }
